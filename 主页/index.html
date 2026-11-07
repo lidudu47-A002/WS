@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>WS Launcher</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="container">
+    <h1>white square</h1>
+    <div class="subtitle">The Adventure of the White Square</div>
+
+    <!-- 账户面板 -->
+    <div class="account-panel" id="accountPanel">
+        <div id="loginForm">
+            <div class="input-group">
+                <label>👤 Username</label>
+                <input type="text" id="loginUsername" placeholder="Enter username" autocomplete="off">
+            </div>
+            <div class="input-group">
+                <label>🔒 Password</label>
+                <input type="password" id="loginPassword" placeholder="Enter password">
+            </div>
+            <div class="account-actions">
+                <button class="account-btn primary" id="loginBtn">Log In</button>
+                <button class="account-btn" id="switchToRegisterBtn">Sign Up</button>
+            </div>
+        </div>
+        <div id="registerForm" style="display:none;">
+            <div class="input-group">
+                <label>👤 Username</label>
+                <input type="text" id="regUsername" placeholder="Enter username" autocomplete="off">
+            </div>
+            <div class="input-group">
+                <label>🔒 Password</label>
+                <input type="password" id="regPassword" placeholder="Enter password">
+            </div>
+            <div class="input-group">
+                <label>🔒 Confirm Password</label>
+                <input type="password" id="regPasswordConfirm" placeholder="Re-enter password">
+            </div>
+            <div class="account-actions">
+                <button class="account-btn primary" id="registerBtn">Sign Up</button>
+                <button class="account-btn" id="switchToLoginBtn">Back to Log In</button>
+            </div>
+        </div>
+        <div id="loggedInPanel" style="display:none;">
+            <div class="welcome-text" id="welcomeMsg"></div>
+        </div>
+        <div id="accountMessage" class="info-message"></div>
+    </div>
+
+    <!-- 游戏按钮容器（默认隐藏） -->
+    <div id="gameButtonsContainer" style="display: none;">
+        <button class="btn btn-new" id="newGameBtn">🆕 New Game</button>
+        <button class="btn btn-load" id="loadGameBtn">📂 Load Save</button>
+        <div id="permissionWarning" class="permission-hint" style="display: none;">⚠️ The admin has disabled saving for you</div>
+    </div>
+
+    <!-- 新手教程询问弹窗 -->
+    <div class="tutorial-modal" id="tutorialModal" role="dialog" aria-modal="true" aria-labelledby="tutorialModalTitle">
+        <div class="tutorial-modal-card">
+            <div class="tutorial-modal-icon">📖</div>
+            <h3 class="tutorial-modal-title" id="tutorialModalTitle">Run through the tutorial first?</h3>
+            <p class="tutorial-modal-text">One minute to learn the controls, then the beginner stage: clear obstacles and kill enemies.</p>
+            <div class="tutorial-modal-actions">
+                <button class="tm-btn tm-primary" id="tutorialYesBtn">Start Tutorial</button>
+                <button class="tm-btn tm-ghost" id="tutorialNoBtn">Start Now</button>
+            </div>
+            <div class="tutorial-modal-tip" id="tutorialModalTip"></div>
+        </div>
+    </div>
+
+    <input type="file" id="fileInput" accept=".json,application/json">
+    <input type="file" id="accountFileInput" accept=".json,application/json">
+
+    <div id="message" class="info-message"></div>
+    <div class="footer">By @ bean soil</div>
+</div>
+
+<script src="js/auth.js"></script>
+<script src="js/admin.js"></script>
+</body>
+</html>

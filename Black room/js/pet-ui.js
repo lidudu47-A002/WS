@@ -1,0 +1,342 @@
+// ---------- 宠物界面（左侧书签，右侧详情，点击书签不关闭面板）----------
+let petPanelOpen = false;
+let petPanelDiv = null;
+let currentSelectedPet = null;
+
+const PET_INFO = {
+    monkey: {
+        id: 'monkey',
+        name: 'Monkey',
+        icon: '../公用文件/图片/宠物/宠物样式/monkey.png',
+        attack: 'Telekinesis Lift',
+        damage: `10 + (Level-1)*10 damage`,
+        cooldown: '3s',
+        range: '400px each side',
+        special: 'Enemies cannot move and are damage-immune; they fall after 1s'
+    },
+    point618: {
+        id: 'point618',
+        name: '0.618',
+        icon: '../公用文件/图片/宠物/宠物样式/0.618.png',
+        attack: 'Triangle Spikes',
+        damage: '10 to the locked target, 5 to other enemies',
+        cooldown: '2s',
+        range: '400px each side',
+        special: 'Pierces all enemies; the triangle flies 800px then vanishes'
+    },
+    horror: {
+        id: 'horror',
+        name: 'Horror',
+        icon: '../公用文件/图片/宠物/宠物样式/horror.png',
+        attack: 'Full-screen Curse',
+        damage: `5 + (Level-1)×5 damage, once every 5s`,
+        cooldown: '5s',
+        range: 'Full screen',
+        special: 'Deals damage to all enemies and applies permanent Slow Lv.1 (no decay)'
+    },
+    xiaoe: {
+        id: 'xiaoe',
+        name: 'Little e',
+        icon: '../公用文件/图片/宠物/宠物样式/小e.png',
+        attack: 'Slash',
+        damage: `20 + (Level-1)×2 damage`,
+        cooldown: '3s',
+        range: '300x300px',
+        special: 'Floats toward the enemy, shows a slash effect, deals damage and returns'
+    }
+};
+
+function createPetPanel() {
+    if (petPanelDiv) return;
+    petPanelDiv = document.createElement('div');
+    petPanelDiv.id = 'petPanel';
+    petPanelDiv.style.position = 'fixed';
+    petPanelDiv.style.top = '50%';
+    petPanelDiv.style.left = '50%';
+    petPanelDiv.style.transform = 'translate(-50%, -50%)';
+    petPanelDiv.style.width = '700px';
+    petPanelDiv.style.height = '450px';
+    petPanelDiv.style.background = 'rgba(20, 20, 30, 0.95)';
+    petPanelDiv.style.border = '2px solid gold';
+    petPanelDiv.style.borderRadius = '16px';
+    petPanelDiv.style.zIndex = '10000';
+    petPanelDiv.style.display = 'none';
+    petPanelDiv.style.flexDirection = 'row';
+    petPanelDiv.style.backdropFilter = 'blur(8px)';
+    petPanelDiv.style.boxShadow = '0 0 30px rgba(0,0,0,0.8)';
+    petPanelDiv.style.overflow = 'hidden';
+    document.body.appendChild(petPanelDiv);
+
+    const sidebar = document.createElement('div');
+    sidebar.id = 'petSidebar';
+    sidebar.style.width = '100px';
+    sidebar.style.backgroundColor = '#1a1a2a';
+    sidebar.style.borderRight = '1px solid gold';
+    sidebar.style.display = 'flex';
+    sidebar.style.flexDirection = 'column';
+    sidebar.style.alignItems = 'center';
+    sidebar.style.padding = '10px 0';
+    sidebar.style.gap = '10px';
+    petPanelDiv.appendChild(sidebar);
+
+    const content = document.createElement('div');
+    content.id = 'petContent';
+    content.style.flex = '1';
+    content.style.display = 'flex';
+    content.style.flexDirection = 'column';
+    content.style.padding = '16px';
+    content.style.position = 'relative';
+    petPanelDiv.appendChild(content);
+
+    const closeBtn = document.createElement('div');
+    closeBtn.textContent = '✖';
+    closeBtn.style.position = 'absolute';
+    closeBtn.style.top = '10px';
+    closeBtn.style.right = '15px';
+    closeBtn.style.cursor = 'pointer';
+    closeBtn.style.fontSize = '20px';
+    closeBtn.style.color = '#aaa';
+    closeBtn.onclick = (e) => {
+        e.stopPropagation();
+        closePetPanel();
+    };
+    content.appendChild(closeBtn);
+}
+
+function buildSidebar() {
+    const sidebar = document.getElementById('petSidebar');
+    if (!sidebar) return;
+    while (sidebar.firstChild) sidebar.removeChild(sidebar.firstChild);
+
+    const owned = window.ownedPets || [];
+    if (owned.length === 0) {
+        const emptyMsg = document.createElement('div');
+        emptyMsg.textContent = 'No pets yet';
+        emptyMsg.style.color = '#aaa';
+        emptyMsg.style.fontSize = '14px';
+        emptyMsg.style.textAlign = 'center';
+        emptyMsg.style.marginTop = '20px';
+        sidebar.appendChild(emptyMsg);
+        return;
+    }
+
+    owned.forEach(petId => {
+        const pet = PET_INFO[petId];
+        if (!pet) return;
+        const btn = document.createElement('div');
+        btn.className = 'pet-tab';
+        btn.setAttribute('data-pet', petId);
+        btn.style.width = '64px';
+        btn.style.height = '64px';
+        btn.style.margin = '5px';
+        btn.style.borderRadius = '12px';
+        btn.style.backgroundColor = (currentSelectedPet === petId) ? '#3a3a4e' : '#2a2a3a';
+        btn.style.border = (currentSelectedPet === petId) ? '2px solid gold' : '1px solid #555';
+        btn.style.cursor = 'pointer';
+        btn.style.display = 'flex';
+        btn.style.alignItems = 'center';
+        btn.style.justifyContent = 'center';
+        const img = new Image();
+        img.src = pet.icon;
+        img.style.width = '48px';
+        img.style.height = '48px';
+        img.style.objectFit = 'contain';
+        btn.appendChild(img);
+        btn.onclick = (e) => {
+            e.stopPropagation();
+            if (currentSelectedPet === petId) return;
+            currentSelectedPet = petId;
+            document.querySelectorAll('.pet-tab').forEach(tab => {
+                const id = tab.getAttribute('data-pet');
+                if (id === petId) {
+                    tab.style.backgroundColor = '#3a3a4e';
+                    tab.style.border = '2px solid gold';
+                } else {
+                    tab.style.backgroundColor = '#2a2a3a';
+                    tab.style.border = '1px solid #555';
+                }
+            });
+            updatePetDetail();
+        };
+        sidebar.appendChild(btn);
+    });
+}
+
+function updatePetDetail() {
+    const contentDiv = document.getElementById('petContent');
+    if (!contentDiv) return;
+    while (contentDiv.children.length > 1) contentDiv.removeChild(contentDiv.lastChild);
+    if (!currentSelectedPet || !PET_INFO[currentSelectedPet]) {
+        const errorMsg = document.createElement('div');
+        errorMsg.textContent = 'Please select a pet';
+        errorMsg.style.padding = '20px';
+        errorMsg.style.textAlign = 'center';
+        contentDiv.appendChild(errorMsg);
+        return;
+    }
+    const pet = PET_INFO[currentSelectedPet];
+    const isActive = window.activePets && window.activePets.some(p => p.type === pet.id);
+    // 获取实际宠物对象（用于等级）
+    const actualPet = window.activePets ? window.activePets.find(p => p.type === pet.id) : null;
+    const level = actualPet ? actualPet.level : 1;
+    const maxLevel = window.MAX_PET_LEVEL || 20;
+    const cost = (typeof getPetUpgradeCost === 'function') ? getPetUpgradeCost(pet.id) : 5;
+    const itemType = window.PET_UPGRADE_MAP ? window.PET_UPGRADE_MAP[pet.id] : null;
+    const itemName = (itemType && window.ITEMS && window.ITEMS[itemType]) ? window.ITEMS[itemType].name : 'Unknown';
+    const isMaxLevel = level >= maxLevel;
+
+    const flexRow = document.createElement('div');
+    flexRow.style.display = 'flex';
+    flexRow.style.gap = '20px';
+    flexRow.style.marginTop = '20px';
+    contentDiv.appendChild(flexRow);
+
+    const leftCol = document.createElement('div');
+    leftCol.style.width = '150px';
+    leftCol.style.display = 'flex';
+    leftCol.style.flexDirection = 'column';
+    leftCol.style.alignItems = 'center';
+    const bigImg = new Image();
+    bigImg.src = pet.icon;
+    bigImg.style.width = '128px';
+    bigImg.style.height = '128px';
+    bigImg.style.objectFit = 'contain';
+    bigImg.style.backgroundColor = '#333';
+    bigImg.style.borderRadius = '16px';
+    bigImg.style.padding = '10px';
+    leftCol.appendChild(bigImg);
+    flexRow.appendChild(leftCol);
+
+    const rightCol = document.createElement('div');
+    rightCol.style.flex = '1';
+    const nameDiv = document.createElement('div');
+    nameDiv.textContent = pet.name;
+    nameDiv.style.fontSize = '28px';
+    nameDiv.style.fontWeight = 'bold';
+    nameDiv.style.color = '#ffd966';
+    nameDiv.style.marginBottom = '4px';
+    rightCol.appendChild(nameDiv);
+
+    // 等级显示
+    const levelDiv = document.createElement('div');
+    levelDiv.textContent = `Level: ${level} / ${maxLevel}`;
+    levelDiv.style.color = '#aaa';
+    levelDiv.style.marginBottom = '8px';
+    rightCol.appendChild(levelDiv);
+
+    // 召唤/收回按钮
+    const btn = document.createElement('button');
+    btn.textContent = isActive ? 'Recall Pet' : 'Summon Pet';
+    btn.style.padding = '8px 20px';
+    btn.style.borderRadius = '25px';
+    btn.style.border = 'none';
+    btn.style.cursor = 'pointer';
+    btn.style.fontWeight = 'bold';
+    btn.style.backgroundColor = isActive ? '#aa3333' : '#2a6d4c';
+    btn.style.color = 'white';
+    btn.style.marginBottom = '10px';
+    btn.onclick = (e) => {
+        e.stopPropagation();
+        if (isActive) removePet(pet.id);
+        else addPet(pet.id);
+        updatePetDetail();
+        if (window.panelVisible) updatePanelUI();
+    };
+    rightCol.appendChild(btn);
+
+    // 升级按钮
+    if (isActive && itemType) {
+        const upgradeBtn = document.createElement('button');
+        upgradeBtn.textContent = isMaxLevel ? 'Max level' : `Upgrade (costs ${cost} ${itemName})`;
+        upgradeBtn.style.padding = '6px 16px';
+        upgradeBtn.style.borderRadius = '20px';
+        upgradeBtn.style.border = 'none';
+        upgradeBtn.style.cursor = isMaxLevel ? 'default' : 'pointer';
+        upgradeBtn.style.backgroundColor = isMaxLevel ? '#555' : '#2a6d4c';
+        upgradeBtn.style.color = 'white';
+        upgradeBtn.style.marginBottom = '15px';
+        upgradeBtn.onclick = (e) => {
+            e.stopPropagation();
+            if (isMaxLevel) return;
+            if (typeof upgradePet === 'function') {
+                upgradePet(pet.id);
+                // 刷新详情
+                updatePetDetail();
+            }
+        };
+        rightCol.appendChild(upgradeBtn);
+    }
+
+    const table = document.createElement('table');
+    table.style.width = '100%';
+    table.style.borderCollapse = 'collapse';
+    const rows = [
+        ['Attack Type', pet.attack],
+        ['Damage', pet.damage],
+        ['Cooldown', pet.cooldown],
+        ['Range', pet.range],
+        ['Special Effect', pet.special]
+    ];
+    rows.forEach(row => {
+        const tr = document.createElement('tr');
+        const tdLabel = document.createElement('td');
+        tdLabel.textContent = row[0];
+        tdLabel.style.padding = '8px';
+        tdLabel.style.borderBottom = '1px solid #555';
+        tdLabel.style.fontWeight = 'bold';
+        tdLabel.style.width = '30%';
+        const tdValue = document.createElement('td');
+        tdValue.textContent = row[1];
+        tdValue.style.padding = '8px';
+        tdValue.style.borderBottom = '1px solid #555';
+        tr.appendChild(tdLabel);
+        tr.appendChild(tdValue);
+        table.appendChild(tr);
+    });
+    rightCol.appendChild(table);
+    flexRow.appendChild(rightCol);
+}
+
+function refreshPetPanel() {
+    buildSidebar();
+    updatePetDetail();
+}
+
+function openPetPanel() {
+    if (!petPanelDiv) createPetPanel();
+    const owned = window.ownedPets || [];
+    if (owned.length > 0 && (!currentSelectedPet || !owned.includes(currentSelectedPet))) {
+        currentSelectedPet = owned[0];
+    }
+    refreshPetPanel();
+    petPanelDiv.style.display = 'flex';
+    petPanelOpen = true;
+    window.petPanelOpen = true;
+}
+
+function closePetPanel() {
+    if (petPanelDiv) petPanelDiv.style.display = 'none';
+    petPanelOpen = false;
+    window.petPanelOpen = false;
+    canvas.focus();
+}
+
+function initPetUI() {
+    createPetPanel();
+    document.addEventListener('click', (e) => {
+        if (petPanelOpen && petPanelDiv && !petPanelDiv.contains(e.target)) {
+            closePetPanel();
+        }
+    });
+}
+
+window.openPetPanel = openPetPanel;
+window.closePetPanel = closePetPanel;
+window.petPanelOpen = petPanelOpen;
+window.refreshPetPanel = refreshPetPanel;
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initPetUI);
+} else {
+    initPetUI();
+}

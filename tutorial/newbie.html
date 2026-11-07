@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Beginner Stage · The Adventure of the White Square</title>
+<link rel="stylesheet" href="css/newbie.css">
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div class="nb-hud">
+    <div class="hud-left">
+        <div class="hearts" id="hearts"></div>
+        <div class="level-tag">Beginner Stage · First Adventure</div>
+    </div>
+    <div class="hud-right">
+        <div class="goal-chip" id="goalChip">Objective: defeat the enemies in your way and reach the goal</div>
+        <button class="exit-btn" id="exitBtn">Quit Level →</button>
+    </div>
+</div>
+
+<div class="nb-progress"><div class="nb-progress-fill" id="progFill"></div></div>
+
+<div class="nb-banner" id="banner"><span id="bannerText"></span></div>
+
+<div class="nb-keys">
+    <span><b>A / D</b> or <b>← →</b> Move</span>
+    <span><b>Space</b> Jump (hold to jump higher; jump again in mid-air)</span>
+    <span><b>Left Click / J</b> Melee Attack</span>
+    <span><b>Flag</b> is a checkpoint; respawn at the nearest one</span>
+    <span><b>R</b> Retry</span>
+</div>
+
+<div class="nb-win" id="winPanel">
+    <div class="nb-win-card">
+        <div class="nb-win-icon">🏁</div>
+        <h2>Beginner Stage Cleared</h2>
+        <p id="winText">You have mastered moving, jumping and attacking. The real adventure starts here.</p>
+        <div class="nb-win-actions">
+            <button class="nb-btn nb-primary" id="goGameBtn">Enter the Game</button>
+            <button class="nb-btn nb-ghost" id="replayBtn">Play Again</button>
+        </div>
+    </div>
+</div>
+
+<script src="js/newbie.js"></script>
+</body>
+</html>
