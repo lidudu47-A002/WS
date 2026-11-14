@@ -1,0 +1,44 @@
+.status-panel {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 300px;
+    background: rgba(20, 20, 20, 0.96);
+    border: 2px solid #aaa;
+    border-radius: 16px;
+    color: #fff;
+    padding: 1.5rem;
+    backdrop-filter: blur(4px);
+    box-shadow: 0 0 30px rgba(255, 215, 0, 0.3);
+    z-index: 30;
+    display: none;
+    font-size: 1.1rem;
+}
+.status-panel h2 {
+    text-align: center;
+    color: gold;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid #555;
+    padding-bottom: 0.5rem;
+}
+.status-row {
+    display: flex;
+    justify-content: space-between;
+    margin: 0.5rem 0;
+    padding: 0.2rem 0;
+    border-bottom: 1px dashed #333;
+}
+.status-label { color: #ccc; }
+.status-value {
+    font-weight: bold;
+    color: #ffd700;
+}
+.close-hint {
+    text-align: center;
+    margin-top: 1rem;
+    color: #888;
+    font-size: 0.9rem;
+    border-top: 1px solid #444;
+    padding-top: 0.5rem;
+}

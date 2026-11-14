@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>森林 - 建设中</title>
+<style>
+    * { box-sizing: border-box; }
+    html, body {
+        margin: 0; padding: 0; height: 100%;
+        background: radial-gradient(circle at 50% 30%, #16301c 0%, #0a0f0c 70%);
+        color: #dfe9e0;
+        font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+    }
+    .wrap {
+        height: 100%;
+        display: flex; flex-direction: column;
+        align-items: center; justify-content: center;
+        text-align: center; padding: 24px;
+    }
+    h1 {
+        font-size: 2.4rem; letter-spacing: 12px; margin: 0 0 18px;
+        color: #8fe6a0;
+        text-shadow: 0 0 18px rgba(143, 230, 160, 0.45);
+    }
+    p { margin: 6px 0; color: #a9b8ab; }
+    .hint { font-size: 0.9rem; color: #6d7f70; margin-bottom: 28px; }
+    .btns { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
+    .btn {
+        display: inline-block; padding: 10px 22px;
+        border: 1px solid rgba(143, 230, 160, 0.6);
+        border-radius: 8px; color: #8fe6a0;
+        text-decoration: none; font-size: 0.95rem;
+        transition: all 0.18s ease;
+    }
+    .btn:hover { background: rgba(143, 230, 160, 0.14); box-shadow: 0 0 14px rgba(143, 230, 160, 0.35); }
+    .btn.ghost { border-color: rgba(200, 200, 200, 0.35); color: #b8c2b9; }
+    .btn.ghost:hover { background: rgba(255, 255, 255, 0.08); box-shadow: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+    <h1>森林</h1>
+    <p>监狱已通关，森林区域尚未开放。</p>
+    <p class="hint">该关卡将在后续版本实装，敬请期待。</p>
+    <div class="btns">
+        <a class="btn" href="../Black room/Black room.html">返回黑屋</a>
+        <a class="btn ghost" href="../主页/index.html">返回主页</a>
+    </div>
+</div>
+</body>
+</html>

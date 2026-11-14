@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>白块0.1.1</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/状态面板.css">
+</head>
+<body>
+    <div class="game-wrapper">
+        <div class="status-panel" id="statusPanel">
+            <h2>角色状态</h2>
+            <div class="status-row"><span class="status-label">LV</span><span class="status-value" id="panelLevel">1</span></div>
+            <div class="status-row"><span class="status-label">EXP</span><span class="status-value" id="panelExp">0/100</span></div>
+            <div class="status-row"><span class="status-label">金币</span><span class="status-value" id="panelGold">0</span></div>
+            <div class="status-row"><span class="status-label">杀敌数</span><span class="status-value" id="panelKills">0</span></div>
+            <div class="status-row"><span class="status-label">当前区块</span><span class="status-value" id="panelChunk">0</span></div>
+            <div class="close-hint">松开 F 关闭</div>
+        </div>
+        <div class="victory-message" id="victoryMessage">胜利！</div>
+        <canvas id="gameCanvas" width="800" height="400"></canvas>
+    </div>
+
+    <!-- 引入JavaScript文件 -->
+    <script src="js/基础.js"></script>
+    <script src="js/玩家属性.js"></script>
+    <script src="js/动态.js"></script>
+    <script src="js/引擎.js"></script>
+    <script src="js/交互.js"></script>
+    <script src="js/视觉.js"></script>
+</body>
+</html>

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>新手教程 · 白色方块的冒险</title>
+<link rel="stylesheet" href="css/tutorial.css">
+</head>
+<body>
+<div class="bg"></div>
+<div class="bg-grid"></div>
+
+<div class="tutorial-shell">
+    <header class="tutorial-head">
+        <div class="brand">
+            <span class="brand-title">WHITE SQUARE</span>
+            <span class="brand-sub">新手教程</span>
+        </div>
+        <div class="head-actions">
+            <a class="back-home" id="backHome" href="../主页/index.html" style="display:none">← 返回主页</a>
+            <button class="skip-btn" id="skipBtn">跳过教程 →</button>
+        </div>
+    </header>
+
+    <div class="progress-track">
+        <div class="progress-bar" id="progressBar"></div>
+    </div>
+
+    <main class="tutorial-main">
+        <div class="stage">
+            <canvas id="demoCanvas" width="420" height="280"></canvas>
+            <div class="stage-caption" id="stageCaption">演示</div>
+        </div>
+
+        <section class="panel">
+            <div class="chapter-tag" id="chapterTag">第一章 · 基础操作</div>
+            <div class="step-index" id="stepIndex">01 / 13</div>
+            <h1 class="step-title" id="stepTitle">加载中</h1>
+            <p class="step-desc" id="stepDesc"></p>
+
+            <div class="key-row" id="keyRow"></div>
+
+            <ul class="point-list" id="pointList"></ul>
+
+            <div class="nav-row">
+                <button class="nav-btn ghost" id="prevBtn">上一步</button>
+                <button class="nav-btn primary" id="nextBtn">下一步</button>
+            </div>
+            <div class="hint-line">← → 切换　·　Enter 继续　·　Esc 跳过</div>
+        </section>
+    </main>
+
+    <div class="dots" id="dots"></div>
+    <footer class="tutorial-foot">@ bean soil 出品　·　教程结束后进入新手关实战</footer>
+</div>
+
+<script src="js/tutorial.js"></script>
+</body>
+</html>

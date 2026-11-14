@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>WS 管理器 · 增强版</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/modals.css">
+</head>
+<body>
+<div class="desktop" id="desktop"></div>
+<div class="status-bar">
+    <span>📁 项目</span>
+</div>
+
+<div class="toolbar" id="toolbar">
+    <div class="search-box">
+        <span style="margin-right:6px;">🔍</span>
+        <input type="text" id="searchInput" placeholder="搜索文件..." autocomplete="off">
+    </div>
+    <div class="sort-area">
+        <select id="sortSelect" class="sort-select">
+            <option value="name">名称</option>
+            <option value="type">类型</option>
+            <option value="size">大小</option>
+            <option value="modified">修改时间</option>
+        </select>
+        <button class="order-btn" id="orderBtn" title="升序/降序">⬆️</button>
+    </div>
+</div>
+
+<!-- 右键菜单 -->
+<div class="ctx-menu" id="desktopMenu">
+    <div class="ctx-menu-item" id="menuNew">📄 新建文本文档</div>
+    <div class="ctx-menu-item" id="menuNewFolder">📁 新建文件夹</div>
+    <div class="ctx-menu-divider"></div>
+    <div class="ctx-menu-item" id="menuImport">📥 导入 (JSON)</div>
+</div>
+<div class="ctx-menu" id="fileMenu">
+    <div class="ctx-menu-item" id="menuRename">✏️ 重命名</div>
+    <div class="ctx-menu-item" id="menuDelete">🗑️ 删除</div>
+    <div class="ctx-menu-divider"></div>
+    <div class="ctx-menu-item" id="menuProperties">⚙️ 属性</div>
+    <div class="ctx-menu-divider"></div>
+    <div class="ctx-menu-item" id="menuExport">📤 导出 (JSON)</div>
+</div>
+<div class="ctx-menu" id="multiFileMenu">
+    <div class="ctx-menu-item" id="multiDelete">🗑️ 删除选中项 (<span id="multiCount">0</span>)</div>
+    <div class="ctx-menu-item" id="multiProperties">⚙️ 属性</div>
+    <div class="ctx-menu-divider"></div>
+    <div class="ctx-menu-item" id="multiExport">📤 导出选中项 (JSON)</div>
+</div>
+<div class="ctx-menu" id="recycleMenu">
+    <div class="ctx-menu-item" id="menuOpenRecycle">🗑️ 打开回收站</div>
+</div>
+
+<!-- 模态框 -->
+<div id="fileEditor" class="editor-modal hidden">
+    <div class="modal-header">
+        <span class="modal-title" id="editorTitle">编辑文件</span>
+        <div class="editor-controls">
+            <button id="btnSave" class="btn">保存</button>
+            <button id="btnCancel" class="btn btn-secondary">取消</button>
+        </div>
+    </div>
+    <div class="editor-content-area">
+        <textarea id="editorContent" placeholder="在此输入内容..."></textarea>
+    </div>
+</div>
+
+<div id="propertiesModal" class="properties-modal hidden">
+    <div class="modal-header">
+        <span class="modal-title">📄 属性</span>
+        <button class="close-btn" id="closePropBtn">×</button>
+    </div>
+    <div class="prop-body">
+        <div class="prop-row"><span class="prop-label">名称:</span><span id="propName" class="prop-value">-</span></div>
+        <div class="prop-row"><span class="prop-label">类型:</span><span id="propType" class="prop-value">-</span></div>
+        <div class="prop-row"><span class="prop-label">大小:</span><span id="propSize" class="prop-value">0 字节</span></div>
+        <div class="prop-row"><span class="prop-label">位置:</span><span id="propPath" class="prop-value">-</span></div>
+    </div>
+    <div style="padding:10px; text-align:center; border-top:1px solid var(--border-light);">
+        <button id="okPropBtn" class="btn">确定</button>
+    </div>
+</div>
+
+<div id="recycleModal" class="recycle-modal hidden">
+    <div class="modal-header">
+        <span class="modal-title">🗑️ 回收站</span>
+        <button class="close-btn" id="closeRecycleBtn">×</button>
+    </div>
+    <div class="recycle-list" id="recycleList"></div>
+    <div class="recycle-footer">
+        <button id="clearRecycleBtn" class="btn btn-secondary">清空回收站</button>
+    </div>
+</div>
+
+<div id="settingsModal" class="settings-modal hidden">
+    <div class="modal-header">
+        <span class="modal-title">⚙️ 设置</span>
+        <button class="close-btn" id="closeSettingsBtn">×</button>
+    </div>
+    <div class="settings-body">
+        <div class="setting-group">
+            <div class="setting-group-title">外观</div>
+            <div class="setting-item">
+                <label>图标大小</label>
+                <select id="iconSizeSelect">
+                    <option value="small">小</option>
+                    <option value="standard">中</option>
+                    <option value="large">大</option>
+                </select>
+            </div>
+            <div class="setting-item">
+                <label>字体大小</label>
+                <select id="fontSizeSelect">
+                    <option value="small">小</option>
+                    <option value="standard">中</option>
+                    <option value="large">大</option>
+                </select>
+            </div>
+            <div class="setting-item">
+                <label>桌面网格间距</label>
+                <select id="gridGapSelect">
+                    <option value="compact">紧凑</option>
+                    <option value="standard">标准</option>
+                    <option value="loose">宽松</option>
+                </select>
+            </div>
+            <div class="setting-item">
+                <label>🌙 深色模式</label>
+                <input type="checkbox" id="darkModeCheckbox">
+            </div>
+            <div class="setting-item">
+                <label>显示文件扩展名 (.txt)</label>
+                <input type="checkbox" id="showExtensionCheckbox">
+            </div>
+        </div>
+        <div class="setting-group">
+            <div class="setting-group-title">确认对话框</div>
+            <div class="setting-item">
+                <label>删除文件前确认</label>
+                <input type="checkbox" id="confirmDeleteCheckbox" checked>
+            </div>
+            <div class="setting-item">
+                <label>移动文件夹到自身时警告</label>
+                <input type="checkbox" id="confirmMoveCheckbox" checked>
+            </div>
+            <div class="setting-item">
+                <label>关闭所有确认对话框 (覆盖以上)</label>
+                <input type="checkbox" id="disableAllConfirmCheckbox">
+            </div>
+        </div>
+        <div class="setting-group">
+            <div class="setting-group-title">自动保存编辑</div>
+            <div class="setting-item">
+                <label>启用自动保存</label>
+                <input type="checkbox" id="autoSaveEnableCheckbox">
+            </div>
+            <div class="setting-item">
+                <label>保存间隔</label>
+                <select id="autoSaveIntervalSelect" disabled>
+                    <option value="10">10秒</option>
+                    <option value="20">20秒</option>
+                    <option value="30">30秒</option>
+                    <option value="custom">自定义(秒)</option>
+                </select>
+            </div>
+            <div class="setting-item" id="customIntervalDiv" style="display:none;">
+                <label>自定义秒数 (1-120)</label>
+                <input type="number" id="customIntervalInput" min="1" max="120" value="30">
+            </div>
+        </div>
+        <div class="setting-group">
+            <div class="setting-group-title">回收站</div>
+            <div class="setting-item">
+                <label>保留天数</label>
+                <select id="retentionSelect">
+                    <option value="7">7天</option>
+                    <option value="30">30天</option>
+                    <option value="never">永不</option>
+                    <option value="custom">自定义(天)</option>
+                </select>
+            </div>
+            <div class="setting-item" id="customRetentionDiv" style="display:none;">
+                <label>自定义天数 (1-180)</label>
+                <input type="number" id="customRetentionInput" min="1" max="180" value="30">
+            </div>
+        </div>
+        <div class="setting-group">
+            <button id="resetSettingsBtn" class="reset-btn">重置所有设置</button>
+        </div>
+    </div>
+    <div style="padding:10px; text-align:center; border-top:1px solid var(--border-light);">
+        <button id="closeSettingsOkBtn" class="btn">完成</button>
+    </div>
+</div>
+
+<!-- 应用商店模态框 -->
+<div id="storeModal" class="store-modal hidden">
+    <div class="modal-header">
+        <span class="modal-title">🛒 应用商店</span>
+        <button class="close-btn" id="closeStoreBtn">×</button>
+    </div>
+    <div class="store-body" id="storeList"></div>
+    <div style="padding:10px; text-align:center; border-top:1px solid var(--border-light);">
+        <button id="closeStoreOkBtn" class="btn">关闭</button>
+    </div>
+</div>
+
+<!-- 命令提示符 模态框 -->
+<div id="cmdModal" class="cmd-modal hidden">
+    <div class="modal-header">
+        <span class="modal-title">📟 命令提示符</span>
+        <button class="close-btn" id="closeCmdBtn">×</button>
+    </div>
+    <div class="cmd-output" id="cmdOutput">
+        <!-- 初始为空 -->
+    </div>
+    <div class="cmd-input-line">
+        <span style="color:#0f0;">C:\&gt;</span>
+        <input type="text" id="cmdInput" class="cmd-input" autocomplete="off">
+    </div>
+</div>
+
+<!-- 我的电脑 模态框 -->
+<div id="computerModal" class="computer-modal hidden">
+    <div class="modal-header">
+        <span class="modal-title">💻 我的电脑</span>
+        <button class="close-btn" id="closeComputerBtn">×</button>
+    </div>
+    <div class="computer-content" id="computerContent"></div>
+    <div style="padding:10px; text-align:center; border-top:1px solid var(--border-light);">
+        <button id="computerBackBtn" class="btn" style="display:none;">⬅ 返回</button>
+        <button id="closeComputerOkBtn" class="btn">关闭</button>
+    </div>
+</div>
+
+<input type="file" id="importFileInput" accept=".json,application/json" style="display: none;">
+
+<script src="js/core.js"></script>
+<script src="js/store.js"></script>
+</body>
+</html>

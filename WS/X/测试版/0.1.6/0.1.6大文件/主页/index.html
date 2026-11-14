@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>WS启动器</title>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; user-select:none; }
+        body {
+            background: #0b0b0f;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+        .container {
+            text-align: center;
+            padding: 2rem;
+            border: 2px solid #3a3a5a;
+            border-radius: 40px;
+            background: rgba(10, 10, 20, 0.85);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 0 50px rgba(0, 0, 0, 0.7);
+            width: 90%;
+            max-width: 500px;
+        }
+        h1 {
+            color: #ffd966;
+            font-size: 3rem;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 0 15px #ffaa00;
+            letter-spacing: 4px;
+        }
+        .subtitle {
+            color: #aaa;
+            margin-bottom: 1.5rem;
+            font-style: italic;
+        }
+        .account-panel {
+            background: rgba(0,0,0,0.3);
+            border-radius: 20px;
+            padding: 1.2rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid #4a4a6a;
+        }
+        .input-group {
+            margin-bottom: 0.8rem;
+            text-align: left;
+        }
+        .input-group label {
+            display: block;
+            color: #ccc;
+            font-size: 0.9rem;
+            margin-bottom: 0.2rem;
+        }
+        .input-group input {
+            width: 100%;
+            padding: 0.6rem 1rem;
+            border-radius: 12px;
+            border: 1px solid #5a5a8a;
+            background: #1a1a2e;
+            color: white;
+            font-size: 1rem;
+            outline: none;
+        }
+        .input-group input:focus {
+            border-color: gold;
+        }
+        .account-actions {
+            display: flex;
+            gap: 0.8rem;
+            margin-top: 1rem;
+        }
+        .account-btn {
+            flex: 1;
+            padding: 0.5rem;
+            border-radius: 30px;
+            border: none;
+            background: #3d3d5c;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+            font-size: 1rem;
+        }
+        .account-btn.primary {
+            background: #2a6d4c;
+            border: 1px solid #5f9f7f;
+        }
+        .account-btn:hover {
+            filter: brightness(1.2);
+        }
+        .toggle-mode {
+            color: #aaa;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+            cursor: pointer;
+        }
+        .toggle-mode span {
+            color: #ffd966;
+            text-decoration: underline;
+        }
+        .welcome-text {
+            color: #8bc34a;
+            margin: 0.5rem 0;
+            font-weight: bold;
+            text-align: center;
+        }
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 1.2rem;
+            margin: 1rem 0;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.6rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 8px 0 #1a1a2a, 0 10px 20px rgba(0,0,0,0.3);
+            color: white;
+            background: #2d2d44;
+            border: 2px solid #5a5a8a;
+        }
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            box-shadow: 0 4px 0 #1a1a2a;
+            transform: translateY(4px);
+        }
+        .btn:hover:not(:disabled) {
+            transform: translateY(4px);
+            box-shadow: 0 4px 0 #1a1a2a, 0 8px 15px rgba(0,0,0,0.3);
+        }
+        .btn-new {
+            background: #1e3a5f;
+            border-color: #4a8bb3;
+            color: #e0f0ff;
+        }
+        .btn-load {
+            background: #3d2b4f;
+            border-color: #9b6bb7;
+            color: #f3e5ff;
+        }
+        .footer {
+            margin-top: 1rem;
+            color: #666;
+            font-size: 0.9rem;
+        }
+        #fileInput { display: none; }
+        .info-message {
+            color: #ffb347;
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+            min-height: 1.5rem;
+        }
+        /* 管理员面板 */
+        .admin-panel {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 420px;
+            max-height: 70vh;
+            overflow-y: auto;
+            background: rgba(20, 20, 40, 0.95);
+            border: 3px solid gold;
+            border-radius: 20px;
+            padding: 1.5rem;
+            color: white;
+            z-index: 1000;
+            display: none;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+        }
+        .admin-panel h3 {
+            color: gold;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+        .user-list {
+            margin: 1rem 0;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .user-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.5rem;
+            border-bottom: 1px solid #444;
+        }
+        .user-item label {
+            cursor: pointer;
+        }
+        .user-item input {
+            transform: scale(1.2);
+            cursor: pointer;
+        }
+        .admin-actions {
+            display: flex;
+            gap: 0.8rem;
+            margin: 1rem 0;
+        }
+        .admin-btn {
+            flex: 1;
+            padding: 0.5rem;
+            border-radius: 20px;
+            border: none;
+            background: #4a4a6a;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .admin-btn.export {
+            background: #2a5f6e;
+        }
+        .admin-btn.import {
+            background: #6e4a2a;
+        }
+        .admin-btn:hover {
+            filter: brightness(1.2);
+        }
+        .admin-close {
+            margin-top: 0.5rem;
+            text-align: center;
+            color: #ff8a8a;
+            cursor: pointer;
+        }
+        .permission-hint {
+            color: #ffaa00;
+            font-size: 0.9rem;
+            margin: 0.5rem 0;
+        }
+        #accountFileInput { display: none; }
+        /* 游戏按钮容器 */
+        .game-buttons {
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1 id="mainTitle">white square</h1>
+    <div class="subtitle">白色方块的冒险</div>
+
+    <!-- 账户面板 -->
+    <div class="account-panel" id="accountPanel">
+        <div id="loginForm">
+            <div class="input-group">
+                <label>👤 用户名</label>
+                <input type="text" id="loginUsername" placeholder="输入用户名" autocomplete="off">
+            </div>
+            <div class="input-group">
+                <label>🔒 密码</label>
+                <input type="password" id="loginPassword" placeholder="输入密码">
+            </div>
+            <div class="account-actions">
+                <button class="account-btn primary" id="loginBtn">登录</button>
+                <button class="account-btn" id="switchToRegisterBtn">去注册</button>
+            </div>
+        </div>
+        <div id="registerForm" style="display:none;">
+            <div class="input-group">
+                <label>👤 用户名</label>
+                <input type="text" id="regUsername" placeholder="输入用户名" autocomplete="off">
+            </div>
+            <div class="input-group">
+                <label>🔒 密码</label>
+                <input type="password" id="regPassword" placeholder="输入密码">
+            </div>
+            <div class="input-group">
+                <label>🔒 确认密码</label>
+                <input type="password" id="regPasswordConfirm" placeholder="再次输入密码">
+            </div>
+            <div class="account-actions">
+                <button class="account-btn primary" id="registerBtn">注册</button>
+                <button class="account-btn" id="switchToLoginBtn">返回登录</button>
+            </div>
+        </div>
+        <div id="loggedInPanel" style="display:none;">
+            <div class="welcome-text" id="welcomeMsg"></div>
+        </div>
+        <div id="accountMessage" class="info-message"></div>
+    </div>
+
+    <!-- 游戏按钮容器（默认隐藏） -->
+    <div id="gameButtonsContainer" style="display: none;">
+        <button class="btn btn-new" id="newGameBtn">🆕 开启新游戏</button>
+        <button class="btn btn-load" id="loadGameBtn">📂 加载旧存档</button>
+        <div id="permissionWarning" class="permission-hint" style="display: none;">⚠️ 管理员已禁止你使用存档功能</div>
+    </div>
+
+    <input type="file" id="fileInput" accept=".json,application/json">
+    <input type="file" id="accountFileInput" accept=".json,application/json">
+
+    <div id="message" class="info-message"></div>
+    <div class="footer">@ bean soil出品</div>
+</div>
+
+<!-- 管理员面板 -->
+<div id="adminPanel" class="admin-panel">
+    <h3>🛠️ 管理员面板</h3>
+    <p style="text-align:center; color:#ccc;">管理用户存档权限</p>
+    <div class="admin-actions">
+        <button class="admin-btn export" id="exportAccountsBtn">📤 导出账户库</button>
+        <button class="admin-btn import" id="importAccountsBtn">📥 导入账户库</button>
+    </div>
+    <div class="user-list" id="userListContainer"></div>
+    <div class="admin-close" id="closeAdminPanel">关闭</div>
+</div>
+
+<script>
+    (function(){
+        // ---------- 本地账户存储 ----------
+        const STORAGE_KEY = 'ws_accounts';
+        const ADMIN_USERNAME = '李嘟嘟';
+        const ADMIN_PASSWORD = 'lidudu47hao';
+        
+        function initAccounts() {
+            let accounts = getAccounts();
+            if (Object.keys(accounts).length === 0) {
+                accounts[ADMIN_USERNAME] = {
+                    password: encodePassword(ADMIN_PASSWORD),
+                    canSave: true
+                };
+                saveAccounts(accounts);
+            }
+            if (accounts[ADMIN_USERNAME] && typeof accounts[ADMIN_USERNAME] === 'string') {
+                accounts[ADMIN_USERNAME] = {
+                    password: accounts[ADMIN_USERNAME],
+                    canSave: true
+                };
+                saveAccounts(accounts);
+            }
+        }
+        
+        function getAccounts() {
+            const data = localStorage.getItem(STORAGE_KEY);
+            return data ? JSON.parse(data) : {};
+        }
+        
+        function saveAccounts(accounts) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(accounts));
+        }
+        
+        function encodePassword(pwd) {
+            return btoa(pwd + 'salt_ws');
+        }
+        
+        function verifyPassword(inputPwd, storedEncoded) {
+            return encodePassword(inputPwd) === storedEncoded;
+        }
+        
+        function isValidAccountData(data) {
+            if (typeof data !== 'object' || data === null) return false;
+            for (let username in data) {
+                const user = data[username];
+                if (!user || typeof user !== 'object' || typeof user.password !== 'string') {
+                    return false;
+                }
+            }
+            return true;
+        }
+        
+        initAccounts();
+        
+        let currentUser = null;
+        
+        const loginForm = document.getElementById('loginForm');
+        const registerForm = document.getElementById('registerForm');
+        const loggedInPanel = document.getElementById('loggedInPanel');
+        const welcomeMsg = document.getElementById('welcomeMsg');
+        const accountMessage = document.getElementById('accountMessage');
+        const gameButtonsContainer = document.getElementById('gameButtonsContainer');
+        const permissionWarning = document.getElementById('permissionWarning');
+        const adminPanel = document.getElementById('adminPanel');
+        const userListContainer = document.getElementById('userListContainer');
+        
+        const loginUsername = document.getElementById('loginUsername');
+        const loginPassword = document.getElementById('loginPassword');
+        const regUsername = document.getElementById('regUsername');
+        const regPassword = document.getElementById('regPassword');
+        const regPasswordConfirm = document.getElementById('regPasswordConfirm');
+        
+        const loginBtn = document.getElementById('loginBtn');
+        const registerBtn = document.getElementById('registerBtn');
+        const switchToRegisterBtn = document.getElementById('switchToRegisterBtn');
+        const switchToLoginBtn = document.getElementById('switchToLoginBtn');
+        
+        const newGameBtn = document.getElementById('newGameBtn');
+        const loadGameBtn = document.getElementById('loadGameBtn');
+        const fileInput = document.getElementById('fileInput');
+        const accountFileInput = document.getElementById('accountFileInput');
+        const msgDiv = document.getElementById('message');
+        
+        function showLoginForm() {
+            loginForm.style.display = 'block';
+            registerForm.style.display = 'none';
+            loggedInPanel.style.display = 'none';
+            gameButtonsContainer.style.display = 'none';
+            accountMessage.innerText = '';
+        }
+        
+        function showRegisterForm() {
+            loginForm.style.display = 'none';
+            registerForm.style.display = 'block';
+            loggedInPanel.style.display = 'none';
+            gameButtonsContainer.style.display = 'none';
+            accountMessage.innerText = '';
+        }
+        
+        function updateUIForCurrentUser() {
+            if (!currentUser) return;
+            const accounts = getAccounts();
+            const userData = accounts[currentUser];
+            const canSave = userData ? userData.canSave : true;
+            
+            const isAdmin = (currentUser === ADMIN_USERNAME);
+            welcomeMsg.innerText = `欢迎回来, ${currentUser}${isAdmin ? ' (管理员)' : ''}`;
+            
+            if (!canSave) {
+                loadGameBtn.disabled = true;
+                permissionWarning.style.display = 'block';
+            } else {
+                loadGameBtn.disabled = false;
+                permissionWarning.style.display = 'none';
+            }
+        }
+        
+        function showLoggedInPanel(username) {
+            currentUser = username;
+            loginForm.style.display = 'none';
+            registerForm.style.display = 'none';
+            loggedInPanel.style.display = 'block';
+            gameButtonsContainer.style.display = 'block';
+            updateUIForCurrentUser();
+            sessionStorage.setItem('ws_current_user', username);
+            accountMessage.innerText = '';
+        }
+        
+        // 登录
+        loginBtn.addEventListener('click', () => {
+            const username = loginUsername.value.trim();
+            const password = loginPassword.value;
+            if (!username || !password) {
+                accountMessage.innerText = '❌ 用户名和密码不能为空';
+                return;
+            }
+            const accounts = getAccounts();
+            const userData = accounts[username];
+            if (!userData) {
+                accountMessage.innerText = '❌ 用户名不存在';
+                return;
+            }
+            const storedPwd = typeof userData === 'string' ? userData : userData.password;
+            if (!verifyPassword(password, storedPwd)) {
+                accountMessage.innerText = '❌ 密码错误';
+                return;
+            }
+            showLoggedInPanel(username);
+        });
+        
+        // 注册
+        registerBtn.addEventListener('click', () => {
+            const username = regUsername.value.trim();
+            const password = regPassword.value;
+            const confirm = regPasswordConfirm.value;
+            if (!username || !password) {
+                accountMessage.innerText = '❌ 用户名和密码不能为空';
+                return;
+            }
+            if (password !== confirm) {
+                accountMessage.innerText = '❌ 两次密码不一致';
+                return;
+            }
+            const accounts = getAccounts();
+            if (accounts[username]) {
+                accountMessage.innerText = '❌ 用户名已存在';
+                return;
+            }
+            accounts[username] = {
+                password: encodePassword(password),
+                canSave: true
+            };
+            saveAccounts(accounts);
+            accountMessage.innerText = '✅ 注册成功，请登录';
+            showLoginForm();
+            loginUsername.value = username;
+            loginPassword.value = '';
+            regUsername.value = '';
+            regPassword.value = '';
+            regPasswordConfirm.value = '';
+        });
+        
+        switchToRegisterBtn.addEventListener('click', () => {
+            showRegisterForm();
+            regUsername.value = '';
+            regPassword.value = '';
+            regPasswordConfirm.value = '';
+        });
+        switchToLoginBtn.addEventListener('click', showLoginForm);
+        
+        // 检查是否已登录
+        const savedUser = sessionStorage.getItem('ws_current_user');
+        if (savedUser) {
+            const accounts = getAccounts();
+            if (accounts[savedUser]) {
+                showLoggedInPanel(savedUser);
+            } else {
+                sessionStorage.removeItem('ws_current_user');
+            }
+        }
+        
+        // ---------- 管理员面板功能 ----------
+        function renderAdminPanel() {
+            const accounts = getAccounts();
+            const users = Object.keys(accounts).filter(u => u !== ADMIN_USERNAME);
+            if (users.length === 0) {
+                userListContainer.innerHTML = '<p style="text-align:center; color:#888;">暂无其他注册用户</p>';
+                return;
+            }
+            let html = '';
+            users.forEach(user => {
+                const userData = accounts[user];
+                const canSave = userData.canSave;
+                html += `
+                    <div class="user-item">
+                        <label>👤 ${user}</label>
+                        <input type="checkbox" data-username="${user}" ${canSave ? 'checked' : ''}> 允许存档
+                    </div>
+                `;
+            });
+            userListContainer.innerHTML = html;
+            
+            document.querySelectorAll('.user-item input').forEach(cb => {
+                cb.addEventListener('change', (e) => {
+                    const username = cb.dataset.username;
+                    const accounts = getAccounts();
+                    if (accounts[username]) {
+                        accounts[username].canSave = cb.checked;
+                        saveAccounts(accounts);
+                        if (currentUser === username) {
+                            updateUIForCurrentUser();
+                        }
+                    }
+                });
+            });
+        }
+        
+        function openAdminPanel() {
+            if (currentUser !== ADMIN_USERNAME) return;
+            renderAdminPanel();
+            adminPanel.style.display = 'block';
+        }
+        
+        // 快捷键 ` (反引号) —— 唯一打开方式
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Backquote') {
+                e.preventDefault();
+                if (currentUser === ADMIN_USERNAME) {
+                    if (adminPanel.style.display === 'block') {
+                        adminPanel.style.display = 'none';
+                    } else {
+                        openAdminPanel();
+                    }
+                }
+            }
+        }, true);
+        
+        // 导出账户数据库
+        function exportAccounts() {
+            const accounts = getAccounts();
+            const jsonStr = JSON.stringify(accounts, null, 2);
+            const blob = new Blob([jsonStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'ws_accounts_backup.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            msgDiv.innerText = '✅ 账户数据库已导出';
+            setTimeout(() => msgDiv.innerText = '', 2000);
+        }
+        
+        // 导入账户数据库
+        function importAccounts(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    if (!isValidAccountData(importedData)) {
+                        alert('导入失败：文件不是有效的账户数据库。\n请确保导入的是通过"导出账户库"功能生成的文件。');
+                        return;
+                    }
+                    const currentAccounts = getAccounts();
+                    if (!importedData[ADMIN_USERNAME]) {
+                        importedData[ADMIN_USERNAME] = {
+                            password: encodePassword(ADMIN_PASSWORD),
+                            canSave: true
+                        };
+                    } else {
+                        importedData[ADMIN_USERNAME] = currentAccounts[ADMIN_USERNAME] || {
+                            password: encodePassword(ADMIN_PASSWORD),
+                            canSave: true
+                        };
+                    }
+                    saveAccounts(importedData);
+                    if (adminPanel.style.display === 'block') {
+                        renderAdminPanel();
+                    }
+                    if (currentUser) {
+                        updateUIForCurrentUser();
+                    }
+                    msgDiv.innerText = '✅ 账户数据库已导入';
+                    setTimeout(() => msgDiv.innerText = '', 2000);
+                } catch (err) {
+                    alert('导入失败：文件格式错误');
+                }
+            };
+            reader.readAsText(file);
+        }
+        
+        document.getElementById('exportAccountsBtn').addEventListener('click', exportAccounts);
+        document.getElementById('importAccountsBtn').addEventListener('click', () => {
+            accountFileInput.click();
+        });
+        accountFileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                importAccounts(file);
+                accountFileInput.value = '';
+            }
+        });
+        
+        document.getElementById('closeAdminPanel').addEventListener('click', () => {
+            adminPanel.style.display = 'none';
+        });
+        
+        adminPanel.addEventListener('click', (e) => e.stopPropagation());
+        document.addEventListener('click', () => {
+            if (adminPanel.style.display === 'block') adminPanel.style.display = 'none';
+        });
+        
+        // ---------- 游戏启动逻辑 ----------
+        newGameBtn.addEventListener('click', () => {
+            if (!currentUser) return;
+            window.location.href = 'black room/black room.html';
+        });
+
+        loadGameBtn.addEventListener('click', () => {
+            if (!currentUser) return;
+            const accounts = getAccounts();
+            const userData = accounts[currentUser];
+            if (!userData || !userData.canSave) {
+                msgDiv.innerText = '❌ 管理员已禁止你使用存档功能';
+                return;
+            }
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const saveObj = JSON.parse(e.target.result);
+                    
+                    let targetMap = saveObj.map;
+                    if (!targetMap) {
+                        if (saveObj.enemies && saveObj.enemies.length > 0) {
+                            const hasType = saveObj.enemies.some(en => en.type === 'red' || en.type === 'black');
+                            targetMap = hasType ? 'prison' : 'black';
+                        } else {
+                            targetMap = 'black';
+                        }
+                    }
+
+                    const jsonStr = JSON.stringify(saveObj);
+                    const encoded = btoa(unescape(encodeURIComponent(jsonStr)));
+                    
+                    let url;
+                    if (targetMap === 'prison') {
+                        url = 'prison/prison.html';
+                    } else {
+                        url = 'black room/black room.html';
+                    }
+                    const finalUrl = `${url}?load=${encoded}`;
+                    
+                    msgDiv.innerText = `正在加载存档，跳转到 ${targetMap === 'prison' ? '监狱' : '黑屋'}...`;
+                    setTimeout(() => {
+                        window.location.href = finalUrl;
+                    }, 300);
+
+                } catch (err) {
+                    console.error(err);
+                    msgDiv.innerText = '❌ 存档文件损坏或格式错误！';
+                }
+            };
+            reader.readAsText(file);
+            fileInput.value = '';
+        });
+        
+        // 回车快捷登录
+        loginPassword.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') loginBtn.click();
+        });
+        loginUsername.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') loginBtn.click();
+        });
+    })();
+</script>
+</body>
+</html>

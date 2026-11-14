@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>黑屋 · 从左到右</title>
+    <link rel="stylesheet" href="../公用文件/css/style.css">
+    <link rel="stylesheet" href="../公用文件/css/status-panel.css">
+    <link rel="stylesheet" href="../公用文件/css/shop.css">
+</head>
+<body>
+<div class="game-wrapper">
+    <div class="status-panel" id="statusPanel">
+        <h2>角色状态</h2>
+        <div class="status-row"><span class="status-label">LV</span><span class="status-value" id="panelLevel">1</span></div>
+        <div class="status-row"><span class="status-label">EXP</span><span class="status-value" id="panelExp">0/100</span></div>
+        <div class="status-row"><span class="status-label">金币</span><span class="status-value" id="panelGold">0</span></div>
+        <div class="status-row"><span class="status-label">杀敌数</span><span class="status-value" id="panelKills">0</span></div>
+        <div class="status-row"><span class="status-label">当前区块</span><span class="status-value" id="panelChunk">0</span></div>
+        <div class="status-row"><span class="status-label">攻击力(普攻)</span><span class="status-value" id="panelAtk">10</span></div>
+        <div class="status-row"><span class="status-label">技能倍率</span><span class="status-value" id="panelMult">x1.00</span></div>
+        <div class="close-hint">松开 F 关闭</div>
+    </div>
+
+    <div id="shopPanel" class="shop-panel">
+        <div class="shop-content">
+            <div class="boss-image"></div>
+            <h2>🛒 黑市商店</h2>
+            <div class="items-container">
+                <div class="shop-item-card" data-item="hp">
+                    <div class="shop-item-icon"><img src="../公用文件/图片/商店/HP药水.png" alt="HP药水"></div>
+                    <div class="shop-item-name">HP药水</div>
+                    <div class="shop-item-price">30 金币</div>
+                </div>
+                <div class="shop-item-card" data-item="normalAtk">
+                    <div class="shop-item-icon"><img src="../公用文件/图片/商店/normal attack药水.png" alt="普攻药水"></div>
+                    <div class="shop-item-name">普攻药水</div>
+                    <div class="shop-item-price">100 金币</div>
+                </div>
+                <div class="shop-item-card" data-item="skill">
+                    <div class="shop-item-icon"><img src="../公用文件/图片/商店/skill药水.png" alt="技能药水"></div>
+                    <div class="shop-item-name">技能药水</div>
+                    <div class="shop-item-price">50 金币</div>
+                </div>
+            </div>
+            <div class="close-shop"><div class="close-shop-btn" id="closeShopBtn">关闭商店</div></div>
+        </div>
+    </div>
+
+    <div id="confirmModal" class="confirm-modal">
+        <div class="confirm-content">
+            <div id="confirmIcon" class="confirm-icon"></div>
+            <div id="confirmText" class="confirm-text">购买 HP药水？</div>
+            <div class="confirm-buttons">
+                <div id="confirmBuy" class="confirm-buy">购买</div>
+                <div id="confirmCancel" class="confirm-cancel">取消</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="victory-message" id="victoryMessage">胜利！</div>
+    <div id="nextMapBtn" style="display: none;"></div>
+    <div class="save-message" id="saveMessage">✨ 游戏已保存 ✨</div>
+    <div class="respawn-message" id="respawnMessage">💀 从存档点复活 💀</div>
+    <div class="load-message" id="loadMessage">📂 存档加载成功 📂</div>
+    <canvas id="gameCanvas" width="800" height="400"></canvas>
+</div>
+
+<!-- ========== 黑屋装饰（纯视觉） ========== -->
+<script>
+    const DECOS = [];
+    for (let i = 0; i < 10; i++) {
+        let x = 100 + (i / 9) * (8000 - 200);
+        DECOS.push({ x, y: 200 - 15, w: 12, h: 30, color: '#ffaa00' });
+    }
+    const prisonCells = []; // 黑屋无牢房
+</script>
+
+<!-- ========== 脚本加载 ========== -->
+ <script src="../公用文件/js/image-helper.js"></script>
+<script src="js/constants.js"></script>
+<script src="js/player.js"></script>
+<script src="js/enemy.js"></script>
+<script src="../公用文件/js/combat.js"></script>
+<script src="js/ui-display.js"></script>
+<script src="../公用文件/js/inventory.js"></script>
+<script src="../公用文件/js/talent.js"></script>
+<script src="../公用文件/js/achievement.js"></script>
+<script src="js/game-state.js"></script>
+<script src="js/shop-system.js"></script>
+<script src="../公用文件/js/weapons.js"></script>
+<script src="js/pet.js"></script>
+<script src="js/pet-ui.js"></script>
+<script src="../公用文件/js/console-ui.js"></script>
+<script src="../公用文件/js/console-hijack.js"></script>
+<script src="../公用文件/js/gpu-compute.js"></script>
+<script src="../公用文件/js/gacha-panel.js"></script>
+<script src="../公用文件/js/command-system.js"></script>
+<script src="../公用文件/js/render-scene.js"></script>
+<script src="../公用文件/js/render.js"></script>
+<script src="js/game-loop.js"></script>
+
+<script>
+    // 黑屋专用初始化
+    MAP_CHUNKS = 20;
+    WORLD_W = MAP_CHUNKS * CHUNK_SIZE;
+    genSpawnPoints();
+
+    loadSaveStarImage();
+    initFromURL();
+
+    if (typeof initTalents === 'function') initTalents(learnedTalents, talentPoints);
+    if (typeof initAchievements === 'function') initAchievements(achievementsUnlocked, totalGoldEarned, bossDefeated);
+    if (typeof applyTalentEffects === 'function') applyTalentEffects();
+    if (typeof updatePlayerMaxHp === 'function') updatePlayerMaxHp();
+    requestAnimationFrame(loop);
+</script>
+</body>
+</html>

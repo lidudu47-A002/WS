@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>黑屋 · 从左到右</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+        body {
+            background: #000;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+        }
+        .game-wrapper {
+            position: relative;
+            margin-top: 0px;
+        }
+        canvas {
+            display: block;
+            width: min(95vw, 800px);
+            height: auto;
+            aspect-ratio: 800 / 400;
+            background: #000;
+            border: 1px solid #222;
+            box-shadow: 0 0 15px rgba(255,255,255,0.05);
+            cursor: crosshair;
+        }
+        .status-panel {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 280px;
+            background: rgba(20, 20, 20, 0.95);
+            border: 2px solid #aaa;
+            border-radius: 16px;
+            color: #fff;
+            padding: 1.5rem;
+            backdrop-filter: blur(4px);
+            box-shadow: 0 0 30px rgba(255,215,0,0.3);
+            z-index: 30;
+            display: none;
+            font-size: 1.2rem;
+        }
+        .status-panel h2 {
+            text-align: center;
+            color: gold;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid #555;
+            padding-bottom: 0.5rem;
+        }
+        .status-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 0.5rem 0;
+            padding: 0.2rem 0;
+            border-bottom: 1px dashed #333;
+        }
+        .status-label {
+            color: #ccc;
+        }
+        .status-value {
+            font-weight: bold;
+            color: #ffd700;
+        }
+        .close-hint {
+            text-align: center;
+            margin-top: 1rem;
+            color: #888;
+            font-size: 0.9rem;
+            border-top: 1px solid #444;
+            padding-top: 0.5rem;
+        }
+        .victory-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: gold;
+            font-size: 4rem;
+            font-weight: bold;
+            text-shadow: 0 0 20px orange;
+            z-index: 20;
+            pointer-events: none;
+            display: none;
+        }
+        #nextMapBtn {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 20px 40px;
+            background: #444;
+            color: gold;
+            border: 3px solid gold;
+            border-radius: 12px;
+            font-size: 28px;
+            cursor: pointer;
+            display: none;
+            z-index: 100;
+            font-weight: bold;
+            box-shadow: 0 0 20px rgba(255,215,0,0.5);
+        }
+    </style>
+</head>
+<body>
+    <div class="game-wrapper">
+        <div class="status-panel" id="statusPanel">
+            <h2>角色状态</h2>
+            <div class="status-row"><span class="status-label">LV</span><span class="status-value" id="panelLevel">1</span></div>
+            <div class="status-row"><span class="status-label">EXP</span><span class="status-value" id="panelExp">0/100</span></div>
+            <div class="status-row"><span class="status-label">金币</span><span class="status-value" id="panelGold">0</span></div>
+            <div class="status-row"><span class="status-label">杀敌数</span><span class="status-value" id="panelKills">0</span></div>
+            <div class="status-row"><span class="status-label">当前区块</span><span class="status-value" id="panelChunk">0</span></div>
+            <div class="close-hint">松开 F 关闭</div>
+        </div>
+        <div class="victory-message" id="victoryMessage">胜利！</div>
+        <div id="nextMapBtn">下一站：监狱</div>
+        <canvas id="gameCanvas" width="800" height="400"></canvas>
+    </div>
+
+    <script>
+        // ---------- 基础常量 ----------
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const victoryMessage = document.getElementById('victoryMessage');
+        const nextMapBtn = document.getElementById('nextMapBtn');
+
+        const statusPanel = document.getElementById('statusPanel');
+        const panelLevel = document.getElementById('panelLevel');
+        const panelExp = document.getElementById('panelExp');
+        const panelGold = document.getElementById('panelGold');
+        const panelKills = document.getElementById('panelKills');
+        const panelChunk = document.getElementById('panelChunk');
+
+        const CHUNK_SIZE = 400;
+        const VIEW_WIDTH = 800;
+        const VIEW_HEIGHT = 400;
+        const WORLD_HEIGHT = 400;
+
+        // 黑屋地图配置
+        const MAP_CHUNKS = 20;
+        const WORLD_WIDTH = MAP_CHUNKS * CHUNK_SIZE;
+
+        const DEAD_ZONE_LEFT = VIEW_WIDTH / 3;
+        const DEAD_ZONE_RIGHT = VIEW_WIDTH * 2 / 3;
+
+        const GRAVITY = 0.4;
+        const JUMP_STRENGTH = -8;
+        const GROUND_OFFSET = 10;
+        const STANDING_HEIGHT = 30;
+        const DUCKING_HEIGHT = 15;
+
+        const MAX_ENEMIES_TOTAL = 15;
+        const ENEMY_SIZE = 30;
+        const ENEMY_SPEED = 1.2;
+        const ENEMY_MAX_HP = 50;
+
+        const ATTACK_DAMAGE = 10;
+        const ATTACK_DURATION = 200;
+        const ATTACK_RANGE = 20;
+        const STUN_DURATION = 12;
+
+        const BRICK_WIDTH = 20;
+        const BRICK_HEIGHT = 12;
+        const BRICK_SPEED = 6;
+        const BRICK_DAMAGE = 50;
+        const BRICK_BACK_OFFSET = 30;
+        const BRICK_GRAVITY = 0.05;
+
+        let gold = 0, exp = 0, level = 1, killCount = 0;
+        const EXP_PER_LEVEL = 100;
+
+        let victory = false, gameOver = false, panelVisible = false;
+        let cameraX = 0;
+
+        let player = {};
+        let enemies = [];
+        let projectiles = [];
+
+        let charging = false;
+        let previewBrick = { worldX: 0, worldY: 0, angle: 0, active: false };
+        let mouseScreenX = 0, mouseScreenY = 0;
+
+        let leftPressed = false, rightPressed = false, jumpUsed = false, shiftPressed = false, downPressed = false;
+
+        const DECORATIONS = [];
+        // 黑屋的黄色壁灯
+        const LAMP_COUNT = 10;
+        const LAMP_WIDTH = 12;
+        const LAMP_HEIGHT = 30;
+        const LAMP_Y = WORLD_HEIGHT / 2 - LAMP_HEIGHT / 2;
+        const MARGIN = 100;
+        for (let i = 0; i < LAMP_COUNT; i++) {
+            const x = MARGIN + (i / (LAMP_COUNT - 1)) * (WORLD_WIDTH - 2 * MARGIN);
+            DECORATIONS.push({ x, y: LAMP_Y, width: LAMP_WIDTH, height: LAMP_HEIGHT, color: '#ffaa00' });
+        }
+
+        // 刷新点
+        let SPAWN_POINTS = [];
+        let chunkSpawnPoints;
+        let chunkLastSpawn;
+
+        // 右键砖头CD
+        const BRICK_CD = 5000;
+        let lastBrickTime = 0;
+
+        // 穿刺技能
+        const PIERCE_CD = 15000;
+        const PIERCE_BASE_COUNT = 3;
+        const PIERCE_MAX_COUNT = 8;
+        const PIERCE_CHARGE_RATE = 1;
+        const PIERCE_FINAL_DAMAGE = 200;
+        const PIERCE_PASS_DAMAGE = 20;
+        const PIERCE_WIDTH = 5;
+        const PIERCE_HEIGHT = 8;
+        const PIERCE_SPEED = 10;
+
+        let lastPierceTime = 0;
+        let pierceCharging = false;
+        let pierceStartTime = 0;
+        let pierceProjectile = null;
+
+        // BOSS
+        const BOSS_SIZE = 200;
+        const BOSS_HP = 1000;
+        let BOSS_X = WORLD_WIDTH - BOSS_SIZE;
+        let BOSS_Y = WORLD_HEIGHT - BOSS_SIZE - GROUND_OFFSET;
+
+        const PLAYER_MAX_HP = 100;
+        let playerHP = PLAYER_MAX_HP;
+
+        const LASER_DAMAGE = 10;
+        const LASER_WARNING_TIME = 1000;
+        const LASER_ACTIVE_TIME = 500;
+        const LASER_COOLDOWN = 5000;
+        const LASER_DAMAGE_INTERVAL = 100;
+
+        let boss = null;
+        let laser = {
+            state: 'idle', x: 0, startTime: 0, heightFactor: 0, lastDamageTime: 0
+        };
+        let lastLaserTime = 0;
+
+        let showBossDialog = false;
+        let bossDialogContent = '';
+        let bossDialogEndTime = 0;
+        const BOSS_DIALOG_DURATION = 3000;
+
+        // ---------- 玩家初始化 ----------
+        player = {
+            width: 30, height: STANDING_HEIGHT, worldX: 0, worldY: 0,
+            speed: 2.8, vy: 0, facing: 1,
+            isAttacking: false, attackStartTime: 0, attackHitEnemies: new Set(),
+            visualOffsetX: 0, jumpsLeft: 2
+        };
+        function getGroundY() { return WORLD_HEIGHT - player.height - GROUND_OFFSET; }
+        player.worldY = getGroundY();
+
+        function updatePanel() {
+            const currentChunk = Math.floor((player.worldX + player.width/2) / CHUNK_SIZE);
+            panelLevel.textContent = level;
+            panelExp.textContent = `${exp}/${EXP_PER_LEVEL}`;
+            panelGold.textContent = gold;
+            panelKills.textContent = killCount;
+            panelChunk.textContent = currentChunk;
+        }
+
+        function addResourcesFromKill() {
+            gold += Math.floor(Math.random() * 5) + 1;
+            exp += Math.floor(Math.random() * 5) + 1;
+            while (exp >= EXP_PER_LEVEL) { exp -= EXP_PER_LEVEL; level++; }
+            if (panelVisible) updatePanel();
+        }
+
+        // ---------- 刷新点生成 ----------
+        function generateSpawnPoints() {
+            SPAWN_POINTS = [];
+            const padding = 100;
+            for (let i = 0; i < MAP_CHUNKS; i++) {
+                const x = padding + (i / (MAP_CHUNKS - 1)) * (WORLD_WIDTH - 2 * padding);
+                SPAWN_POINTS.push(Math.floor(x));
+            }
+            chunkSpawnPoints = Array.from({ length: MAP_CHUNKS }, () => []);
+            SPAWN_POINTS.forEach((x, index) => {
+                const chunkIndex = Math.floor(x / CHUNK_SIZE);
+                chunkSpawnPoints[chunkIndex].push(x);
+            });
+            chunkLastSpawn = Array.from({ length: MAP_CHUNKS }, () => performance.now() - Math.random() * 10000);
+        }
+        generateSpawnPoints();
+
+        function spawnEnemyInChunk(chunkIndex) {
+            const points = chunkSpawnPoints[chunkIndex];
+            if (!points.length) return;
+            const spawnX = points[Math.floor(Math.random() * points.length)];
+            const enemyY = WORLD_HEIGHT - ENEMY_SIZE - GROUND_OFFSET;
+            enemies.push({
+                worldX: spawnX, worldY: enemyY, width: ENEMY_SIZE, height: ENEMY_SIZE,
+                color: '#ff0000', hp: ENEMY_MAX_HP, stunTimer: 0
+            });
+        }
+
+        // ---------- 创建BOSS ----------
+        function createBoss() {
+            boss = {
+                worldX: WORLD_WIDTH - BOSS_SIZE, worldY: WORLD_HEIGHT - BOSS_SIZE - GROUND_OFFSET,
+                width: BOSS_SIZE, height: BOSS_SIZE, hp: BOSS_HP, maxHp: BOSS_HP,
+                gridColors: Array(16).fill('#ff0000'), colorIndex: 0,
+                nextColorTime: 0, colorChangeInterval: 100
+            };
+        }
+        createBoss();
+
+        // ---------- 碰撞检测 ----------
+        function rectCollide(r1, r2) {
+            return !(r2.worldX >= r1.worldX + r1.width ||
+                     r2.worldX + r2.width <= r1.worldX ||
+                     r2.worldY >= r1.worldY + r1.height ||
+                     r2.worldY + r2.height <= r1.worldY);
+        }
+
+        function brickCollideWithEnemy(brick, enemy) {
+            const brickCenterX = brick.worldX + brick.width/2;
+            const brickCenterY = brick.worldY + brick.height/2;
+            const radius = Math.hypot(brick.width, brick.height) / 2;
+            const closestX = Math.max(enemy.worldX, Math.min(brickCenterX, enemy.worldX + enemy.width));
+            const closestY = Math.max(enemy.worldY, Math.min(brickCenterY, enemy.worldY + enemy.height));
+            const dx = brickCenterX - closestX;
+            const dy = brickCenterY - closestY;
+            return (dx * dx + dy * dy) < radius * radius;
+        }
+
+        // ---------- 摄像机 ----------
+        function updateCamera() {
+            let targetCameraX = cameraX;
+            const playerScreenX = player.worldX - cameraX;
+            if (playerScreenX < DEAD_ZONE_LEFT) targetCameraX = player.worldX - DEAD_ZONE_LEFT;
+            else if (playerScreenX > DEAD_ZONE_RIGHT) targetCameraX = player.worldX - DEAD_ZONE_RIGHT;
+            targetCameraX = Math.max(0, Math.min(targetCameraX, WORLD_WIDTH - VIEW_WIDTH));
+            cameraX += (targetCameraX - cameraX) * 0.1;
+            cameraX = Math.max(0, Math.min(cameraX, WORLD_WIDTH - VIEW_WIDTH));
+        }
+
+        // ---------- 穿刺更新 ----------
+        function updatePierceProjectile(now) {
+            if (!pierceProjectile) return;
+            const p = pierceProjectile;
+            p.x += p.vx; p.y += p.vy;
+            if (p.x < -50 || p.x > WORLD_WIDTH + 50 || p.y < -50 || p.y > WORLD_HEIGHT + 50) {
+                pierceProjectile = null; return;
+            }
+            for (let i = 0; i < enemies.length; i++) {
+                const enemy = enemies[i];
+                if (p.hitEnemies.has(enemy)) continue;
+                if (rectCollide({worldX: p.x, worldY: p.y, width: p.width, height: p.height}, enemy)) {
+                    enemy.hp -= PIERCE_PASS_DAMAGE;
+                    enemy.stunTimer = STUN_DURATION;
+                    p.hitEnemies.add(enemy);
+                    p.penetrationsLeft--;
+                    p.lastEnemy = enemy;
+                    if (p.penetrationsLeft <= 0) {
+                        if (p.lastEnemy) p.lastEnemy.hp -= (PIERCE_FINAL_DAMAGE - PIERCE_PASS_DAMAGE);
+                        pierceProjectile = null; return;
+                    }
+                }
+            }
+        }
+
+        // ---------- BOSS颜色 ----------
+        function updateBossColors(now) {
+            if (!boss) return;
+            if (now < boss.nextColorTime) return;
+            boss.nextColorTime = now + boss.colorChangeInterval;
+            const colors = ['#ff0000','#ff7f00','#ffff00','#00ff00','#0000ff','#4b0082','#8f00ff','#ffffff','#ff69b4','#00ffff'];
+            boss.gridColors[boss.colorIndex] = colors[Math.floor(Math.random() * colors.length)];
+            boss.colorIndex = (boss.colorIndex + 1) % 16;
+        }
+
+        // ---------- 激光 ----------
+        function updateLaser(now) {
+            if (!boss) return;
+            switch (laser.state) {
+                case 'idle':
+                    if (now - lastLaserTime >= LASER_COOLDOWN) {
+                        laser.state = 'warning';
+                        laser.startTime = now;
+                        const targetX = player.worldX + player.width/2;
+                        const minX = Math.max(0, boss.worldX - 400);
+                        const maxX = boss.worldX;
+                        laser.x = Math.min(maxX, Math.max(minX, targetX));
+                        laser.lastDamageTime = 0;
+                    }
+                    break;
+                case 'warning':
+                    if (now - laser.startTime >= LASER_WARNING_TIME) {
+                        laser.state = 'active';
+                        laser.startTime = now;
+                        laser.heightFactor = 0;
+                    }
+                    break;
+                case 'active':
+                    const elapsed = now - laser.startTime;
+                    if (elapsed >= LASER_ACTIVE_TIME) {
+                        laser.state = 'idle';
+                        lastLaserTime = now;
+                        return;
+                    }
+                    laser.heightFactor = Math.min(1, elapsed / LASER_ACTIVE_TIME);
+                    if (now - laser.lastDamageTime >= LASER_DAMAGE_INTERVAL) {
+                        const laserRect = { worldX: laser.x - 10, worldY: 0, width: 20, height: WORLD_HEIGHT * laser.heightFactor };
+                        if (rectCollide(player, laserRect)) {
+                            playerHP = Math.max(0, playerHP - LASER_DAMAGE);
+                            laser.lastDamageTime = now;
+                        }
+                    }
+                    break;
+            }
+        }
+
+        // ---------- 检查游戏结束 ----------
+        function checkGameOver() {
+            if (playerHP <= 0) { gameOver = true; gameOverMessage = '游戏结束'; }
+        }
+
+        // ---------- 胜利/跳转 ----------
+        function checkVictory(now) {
+            if (boss && boss.hp <= 0 && !victory) {
+                showBossDialog = true;
+                bossDialogContent = 'BOSS: *恭喜';
+                bossDialogEndTime = now + BOSS_DIALOG_DURATION;
+                // 黑屋：显示下一关按钮（不显示胜利图标）
+                nextMapBtn.style.display = 'block';
+                boss = null; // 移除BOSS
+            }
+        }
+
+        // ---------- 主更新 ----------
+        function update(now) {
+            if (victory || gameOver) return;
+
+            if (leftPressed && !rightPressed) player.facing = -1;
+            else if (rightPressed && !leftPressed) player.facing = 1;
+
+            let deltaX = 0;
+            if (leftPressed) deltaX -= player.speed;
+            if (rightPressed) deltaX += player.speed;
+            player.worldX = Math.max(0, Math.min(player.worldX + deltaX, WORLD_WIDTH - player.width));
+
+            player.vy += GRAVITY;
+            player.worldY += player.vy;
+
+            let isGrounded = false;
+            if (player.worldY > getGroundY()) {
+                player.worldY = getGroundY();
+                player.vy = 0;
+                isGrounded = true;
+            }
+            if (player.worldY < 0) { player.worldY = 0; player.vy = 0; }
+            isGrounded = isGrounded || (player.worldY >= getGroundY() - 0.001);
+            if (isGrounded) {
+                jumpUsed = false;
+                player.jumpsLeft = 2;
+            }
+
+            const duckRequested = shiftPressed || downPressed;
+            const targetHeight = (isGrounded && duckRequested) ? DUCKING_HEIGHT : STANDING_HEIGHT;
+            if (targetHeight !== player.height) {
+                const oldBottom = player.worldY + player.height;
+                player.height = targetHeight;
+                if (isGrounded) player.worldY = getGroundY();
+                else player.worldY = oldBottom - player.height;
+            }
+
+            // 区块生成
+            const playerCenterX = player.worldX + player.width / 2;
+            const currentChunk = Math.floor(playerCenterX / CHUNK_SIZE);
+            for (let chunk = 0; chunk < MAP_CHUNKS; chunk++) {
+                const distance = Math.abs(chunk - currentChunk);
+                let interval;
+                if (distance === 0) interval = 4000;
+                else if (distance === 1) interval = 8000;
+                else if (distance === 2) interval = 10000;
+                else continue;
+                if (enemies.length < MAX_ENEMIES_TOTAL && now - chunkLastSpawn[chunk] >= interval) {
+                    spawnEnemyInChunk(chunk);
+                    chunkLastSpawn[chunk] = now;
+                }
+            }
+
+            // 左键攻击
+            if (player.isAttacking) {
+                const elapsed = now - player.attackStartTime;
+                const progress = Math.min(elapsed / ATTACK_DURATION, 1.0);
+                const maxOffset = player.width * 0.5;
+                const offsetFactor = Math.sin(progress * Math.PI);
+                player.visualOffsetX = player.facing * maxOffset * offsetFactor;
+
+                const attackRect = {
+                    worldX: player.facing === 1 ? player.worldX + player.width : player.worldX - ATTACK_RANGE,
+                    worldY: player.worldY, width: ATTACK_RANGE, height: player.height
+                };
+                for (let enemy of enemies) {
+                    if (player.attackHitEnemies.has(enemy)) continue;
+                    if (rectCollide(attackRect, enemy)) {
+                        enemy.hp -= ATTACK_DAMAGE;
+                        enemy.stunTimer = STUN_DURATION;
+                        player.attackHitEnemies.add(enemy);
+                    }
+                }
+                if (boss && !player.attackHitEnemies.has(boss) && rectCollide(attackRect, boss)) {
+                    boss.hp -= ATTACK_DAMAGE;
+                    player.attackHitEnemies.add(boss);
+                }
+                if (progress >= 1.0) {
+                    player.isAttacking = false;
+                    player.visualOffsetX = 0;
+                    player.attackHitEnemies.clear();
+                }
+            } else player.visualOffsetX = 0;
+
+            // 砖头更新
+            for (let i = projectiles.length - 1; i >= 0; i--) {
+                const b = projectiles[i];
+                b.vy += BRICK_GRAVITY;
+                b.worldX += b.vx;
+                b.worldY += b.vy;
+                if (b.worldX < -50 || b.worldX > WORLD_WIDTH + 50 || b.worldY < -50 || b.worldY > WORLD_HEIGHT + 50) {
+                    projectiles.splice(i, 1); continue;
+                }
+                let hit = false;
+                for (let j = 0; j < enemies.length; j++) {
+                    const enemy = enemies[j];
+                    if (brickCollideWithEnemy(b, enemy)) {
+                        enemy.hp -= b.damage;
+                        enemy.stunTimer = STUN_DURATION;
+                        hit = true; break;
+                    }
+                }
+                if (boss && !hit && brickCollideWithEnemy(b, boss)) {
+                    boss.hp -= b.damage;
+                    hit = true;
+                }
+                if (hit) projectiles.splice(i, 1);
+            }
+
+            updatePierceProjectile(now);
+            updateBossColors(now);
+            updateLaser(now);
+
+            // 敌人移动
+            for (let enemy of enemies) {
+                if (enemy.stunTimer > 0) { enemy.stunTimer--; continue; }
+                const playerCenterX = player.worldX + player.width / 2;
+                const enemyCenterX = enemy.worldX + enemy.width / 2;
+                if (playerCenterX > enemyCenterX) enemy.worldX += ENEMY_SPEED;
+                else if (playerCenterX < enemyCenterX) enemy.worldX -= ENEMY_SPEED;
+                enemy.worldX = Math.max(0, Math.min(enemy.worldX, WORLD_WIDTH - enemy.width));
+            }
+
+            // 移除死亡敌人
+            const oldCount = enemies.length;
+            enemies = enemies.filter(e => e.hp > 0);
+            const killed = oldCount - enemies.length;
+            if (killed > 0) {
+                killCount += killed;
+                for (let i = 0; i < killed; i++) addResourcesFromKill();
+            }
+
+            // 碰撞分离
+            const entities = [player, ...enemies];
+            if (boss) entities.push(boss);
+            for (let iter = 0; iter < 10; iter++) {
+                for (let i = 0; i < entities.length; i++) {
+                    for (let j = i+1; j < entities.length; j++) {
+                        const a = entities[i], b = entities[j];
+                        const overlapX = Math.min(a.worldX + a.width, b.worldX + b.width) - Math.max(a.worldX, b.worldX);
+                        const overlapY = Math.min(a.worldY + a.height, b.worldY + b.height) - Math.max(a.worldY, b.worldY);
+                        if (overlapX > 0 && overlapY > 0) {
+                            const dx = overlapX / 2;
+                            if (a.worldX < b.worldX) { a.worldX -= dx; b.worldX += dx; }
+                            else { a.worldX += dx; b.worldX -= dx; }
+                        }
+                    }
+                }
+                for (let entity of entities) entity.worldX = Math.max(0, Math.min(entity.worldX, WORLD_WIDTH - entity.width));
+            }
+
+            updateCamera();
+            checkGameOver();
+            checkVictory(now);
+            if (panelVisible) updatePanel();
+        }
+
+        // ---------- 绘制 ----------
+        function draw() {
+            ctx.fillStyle = '#000'; ctx.fillRect(0, 0, VIEW_WIDTH, VIEW_HEIGHT);
+            DECORATIONS.forEach(dec => {
+                const screenX = dec.x - cameraX;
+                if (screenX + dec.width < 0 || screenX > VIEW_WIDTH) return;
+                ctx.fillStyle = dec.color;
+                ctx.fillRect(screenX, dec.y, dec.width, dec.height);
+            });
+
+            enemies.forEach(enemy => {
+                const screenX = enemy.worldX - cameraX;
+                if (screenX + enemy.width < 0 || screenX > VIEW_WIDTH) return;
+                ctx.fillStyle = enemy.color;
+                ctx.fillRect(screenX, enemy.worldY, enemy.width, enemy.height);
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 14px monospace';
+                ctx.shadowColor = '#000'; ctx.shadowBlur = 4; ctx.shadowOffsetX = 1; ctx.shadowOffsetY = 1;
+                ctx.fillText(enemy.hp, screenX + 6, enemy.worldY - 8);
+            });
+
+            projectiles.forEach(b => {
+                const screenX = b.worldX - cameraX;
+                const screenY = b.worldY;
+                ctx.save();
+                ctx.translate(screenX + b.width/2, screenY + b.height/2);
+                ctx.rotate(b.angle);
+                ctx.fillStyle = '#b8860b';
+                ctx.fillRect(-b.width/2, -b.height/2, b.width, b.height);
+                ctx.restore();
+            });
+
+            if (pierceProjectile) {
+                ctx.save();
+                const screenX = pierceProjectile.x - cameraX;
+                const screenY = pierceProjectile.y;
+                const angle = Math.atan2(pierceProjectile.vy, pierceProjectile.vx);
+                ctx.translate(screenX + pierceProjectile.width/2, screenY + pierceProjectile.height/2);
+                ctx.rotate(angle);
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(-pierceProjectile.width/2, -pierceProjectile.height/2, pierceProjectile.width, pierceProjectile.height);
+                ctx.restore();
+            }
+
+            if (laser.state !== 'idle') {
+                const screenX = laser.x - cameraX;
+                if (laser.state === 'warning')
+                    ctx.fillStyle = 'rgba(255,0,0,0.3)';
+                else
+                    ctx.fillStyle = 'rgba(255,0,0,0.8)';
+                ctx.fillRect(screenX - 10, 0, 20, WORLD_HEIGHT * (laser.state==='active'?laser.heightFactor:1));
+            }
+
+            if (charging && previewBrick.active) {
+                const previewScreenX = previewBrick.worldX - cameraX;
+                const previewScreenY = previewBrick.worldY;
+                ctx.save();
+                ctx.translate(previewScreenX + BRICK_WIDTH/2, previewScreenY + BRICK_HEIGHT/2);
+                ctx.rotate(previewBrick.angle);
+                ctx.globalAlpha = 0.6;
+                ctx.fillStyle = '#cd853f';
+                ctx.fillRect(-BRICK_WIDTH/2, -BRICK_HEIGHT/2, BRICK_WIDTH, BRICK_HEIGHT);
+                ctx.restore();
+
+                const playerCenterX = player.worldX;
+                const playerCenterY = player.worldY + player.height/2;
+                const targetWorldX = mouseScreenX + cameraX;
+                const targetWorldY = mouseScreenY;
+                const dx = targetWorldX - playerCenterX;
+                const dy = targetWorldY - playerCenterY;
+                const len = Math.hypot(dx, dy);
+                if (len > 0.001) {
+                    const normX = dx / len, normY = dy / len;
+                    const startX = previewBrick.worldX + BRICK_WIDTH/2;
+                    const startY = previewBrick.worldY + BRICK_HEIGHT/2;
+                    const vx = normX * BRICK_SPEED, vy = normY * BRICK_SPEED;
+                    ctx.beginPath();
+                    ctx.strokeStyle = '#aaa';
+                    ctx.setLineDash([4,4]);
+                    ctx.lineWidth = 1.5;
+                    let x = startX, y = startY;
+                    let vxSim = vx, vySim = vy;
+                    ctx.moveTo(x - cameraX, y);
+                    for (let t = 0.1; t <= 2.0; t += 0.1) {
+                        vySim += BRICK_GRAVITY * 0.1;
+                        x += vxSim * 0.1;
+                        y += vySim * 0.1;
+                        ctx.lineTo(x - cameraX, y);
+                    }
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                    ctx.fillStyle = '#fff';
+                    ctx.beginPath();
+                    ctx.arc(x - cameraX, y, 3, 0, 2*Math.PI);
+                    ctx.fill();
+                }
+            }
+
+            if (boss) {
+                const screenX = boss.worldX - cameraX;
+                const screenY = boss.worldY;
+                if (!(screenX + boss.width < 0 || screenX > VIEW_WIDTH)) {
+                    const cellW = boss.width / 4, cellH = boss.height / 4;
+                    for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) {
+                        const index = i * 4 + j;
+                        ctx.fillStyle = boss.gridColors[index];
+                        ctx.fillRect(screenX + j * cellW, screenY + i * cellH, cellW, cellH);
+                    }
+                    ctx.fillStyle = '#ff0000';
+                    ctx.fillRect(screenX, screenY - 15, boss.width, 8);
+                    ctx.fillStyle = '#00ff00';
+                    ctx.fillRect(screenX, screenY - 15, boss.width * (boss.hp / boss.maxHp), 8);
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(screenX, screenY - 15, boss.width, 8);
+                }
+            }
+
+            const playerScreenX = player.worldX - cameraX + player.visualOffsetX;
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(playerScreenX, player.worldY, player.width, player.height);
+
+            const arrowCenterX = playerScreenX + player.width/2;
+            const arrowBaseY = player.worldY - 20;
+            ctx.fillStyle = '#333';
+            ctx.shadowColor = '#aaa'; ctx.shadowBlur = 4; ctx.shadowOffsetY = 2;
+            ctx.beginPath();
+            ctx.roundRect(arrowCenterX - 14, arrowBaseY - 12, 28, 20, 6);
+            ctx.fill();
+            ctx.shadowColor = 'transparent';
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 18px "Segoe UI", "Arial Unicode MS", Arial, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(player.facing === 1 ? '→' : '←', arrowCenterX, arrowBaseY);
+            ctx.font = 'bold 14px monospace';
+            ctx.fillStyle = '#ff0';
+            ctx.fillText('⤴' + player.jumpsLeft, arrowCenterX, arrowBaseY - 15);
+
+            const barWidth = 200, barHeight = 20;
+            ctx.fillStyle = '#333';
+            ctx.fillRect(10, 10, barWidth, barHeight);
+            ctx.fillStyle = '#f00';
+            ctx.fillRect(10, 10, barWidth * (playerHP / PLAYER_MAX_HP), barHeight);
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(10, 10, barWidth, barHeight);
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 14px monospace';
+            ctx.fillText(`HP: ${playerHP}/${PLAYER_MAX_HP}`, 15, 25);
+
+            if (gameOver) {
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 48px monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText('游戏结束', VIEW_WIDTH/2, VIEW_HEIGHT/2);
+            }
+
+            if (showBossDialog) {
+                const now = performance.now();
+                if (now >= bossDialogEndTime) showBossDialog = false;
+                else {
+                    const dialogWidth = 300, dialogHeight = 80;
+                    const dialogX = (VIEW_WIDTH - dialogWidth)/2, dialogY = 50;
+                    ctx.strokeStyle = '#fff'; ctx.lineWidth = 3;
+                    ctx.strokeRect(dialogX, dialogY, dialogWidth, dialogHeight);
+                    ctx.fillStyle = '#000';
+                    ctx.fillRect(dialogX, dialogY, dialogWidth, dialogHeight);
+                    ctx.fillStyle = '#fff';
+                    ctx.font = '20px monospace';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(bossDialogContent, dialogX + dialogWidth/2, dialogY + dialogHeight/2);
+                }
+            }
+        }
+
+        // ---------- 交互 ----------
+        function updatePreviewBrick() {
+            const playerCenterX = player.worldX;
+            const playerCenterY = player.worldY + player.height/2;
+            const targetWorldX = mouseScreenX + cameraX;
+            const targetWorldY = mouseScreenY;
+            const dx = targetWorldX - playerCenterX, dy = targetWorldY - playerCenterY, len = Math.hypot(dx, dy);
+            if (len > 0.001) {
+                const normX = dx / len, normY = dy / len;
+                previewBrick.worldX = playerCenterX - normX * BRICK_BACK_OFFSET;
+                previewBrick.worldY = playerCenterY - normY * BRICK_BACK_OFFSET;
+                previewBrick.angle = Math.atan2(dy, dx);
+                previewBrick.active = true;
+            } else previewBrick.active = false;
+        }
+
+        function handleKeyDown(e) {
+            if (victory || gameOver) return;
+            const code = e.code;
+            if (code === 'KeyF') {
+                e.preventDefault();
+                if (!panelVisible) { panelVisible = true; statusPanel.style.display = 'block'; updatePanel(); }
+                return;
+            }
+            if (code === 'KeyA' || code === 'ArrowLeft') { leftPressed = true; e.preventDefault(); }
+            else if (code === 'KeyD' || code === 'ArrowRight') { rightPressed = true; e.preventDefault(); }
+            else if (code === 'Space' || code === 'ArrowUp') {
+                if (!jumpUsed) {
+                    const onGround = player.worldY >= getGroundY() - 0.001;
+                    if (onGround || player.jumpsLeft > 0) {
+                        player.vy = JUMP_STRENGTH;
+                        jumpUsed = true;
+                        player.jumpsLeft = onGround ? 1 : player.jumpsLeft - 1;
+                    }
+                }
+                e.preventDefault();
+            }
+            else if (code === 'ShiftLeft' || code === 'ShiftRight' || code === 'ArrowDown') {
+                if (code.startsWith('Shift')) shiftPressed = true;
+                else if (code === 'ArrowDown') downPressed = true;
+                e.preventDefault();
+            }
+            else if (code === 'KeyC') {
+                e.preventDefault();
+                const now = performance.now();
+                if (now - lastPierceTime >= PIERCE_CD && !pierceCharging && !pierceProjectile) {
+                    pierceCharging = true;
+                    pierceStartTime = now;
+                }
+            }
+        }
+
+        function handleKeyUp(e) {
+            if (victory || gameOver) return;
+            const code = e.code;
+            if (code === 'KeyF') {
+                e.preventDefault();
+                if (panelVisible) { panelVisible = false; statusPanel.style.display = 'none'; }
+                return;
+            }
+            if (code === 'KeyA' || code === 'ArrowLeft') { leftPressed = false; e.preventDefault(); }
+            else if (code === 'KeyD' || code === 'ArrowRight') { rightPressed = false; e.preventDefault(); }
+            else if (code === 'Space' || code === 'ArrowUp') { jumpUsed = false; e.preventDefault(); }
+            else if (code === 'ShiftLeft' || code === 'ShiftRight' || code === 'ArrowDown') {
+                if (code.startsWith('Shift')) shiftPressed = false;
+                else if (code === 'ArrowDown') downPressed = false;
+                e.preventDefault();
+            }
+            else if (code === 'KeyC') {
+                e.preventDefault();
+                if (pierceCharging) {
+                    const now = performance.now();
+                    const chargeTime = (now - pierceStartTime) / 1000;
+                    let penetrations = PIERCE_BASE_COUNT + Math.floor(chargeTime * PIERCE_CHARGE_RATE);
+                    penetrations = Math.min(penetrations, PIERCE_MAX_COUNT);
+                    const playerCenterX = player.worldX + player.width/2;
+                    const playerCenterY = player.worldY + player.height/2;
+                    const targetWorldX = mouseScreenX + cameraX;
+                    const targetWorldY = mouseScreenY;
+                    const dx = targetWorldX - playerCenterX, dy = targetWorldY - playerCenterY, len = Math.hypot(dx, dy);
+                    if (len > 0.001) {
+                        const normX = dx / len, normY = dy / len;
+                        pierceProjectile = {
+                            x: playerCenterX - PIERCE_WIDTH/2, y: playerCenterY - PIERCE_HEIGHT/2,
+                            vx: normX * PIERCE_SPEED, vy: normY * PIERCE_SPEED,
+                            width: PIERCE_WIDTH, height: PIERCE_HEIGHT,
+                            penetrationsLeft: penetrations, hitEnemies: new Set(), lastEnemy: null
+                        };
+                    }
+                    lastPierceTime = now;
+                    pierceCharging = false;
+                }
+            }
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            if (victory || gameOver) return;
+            if (e.button === 0) {
+                e.preventDefault();
+                if (!player.isAttacking) {
+                    player.isAttacking = true;
+                    player.attackStartTime = performance.now();
+                    player.attackHitEnemies.clear();
+                }
+            } else if (e.button === 2) {
+                e.preventDefault();
+                charging = true;
+                updatePreviewBrick();
+            }
+        });
+
+        canvas.addEventListener('mouseup', (e) => {
+            if (victory || gameOver) return;
+            if (e.button === 2 && charging) {
+                e.preventDefault();
+                const now = performance.now();
+                if (now - lastBrickTime < BRICK_CD) { charging = false; return; }
+                lastBrickTime = now;
+                const playerCenterX = player.worldX;
+                const playerCenterY = player.worldY + player.height/2;
+                const targetWorldX = mouseScreenX + cameraX;
+                const targetWorldY = mouseScreenY;
+                const dx = targetWorldX - playerCenterX, dy = targetWorldY - playerCenterY, len = Math.hypot(dx, dy);
+                if (len > 0.001) {
+                    const normX = dx / len, normY = dy / len;
+                    projectiles.push({
+                        worldX: previewBrick.worldX, worldY: previewBrick.worldY,
+                        vx: normX * BRICK_SPEED, vy: normY * BRICK_SPEED,
+                        angle: previewBrick.angle, width: BRICK_WIDTH, height: BRICK_HEIGHT, damage: BRICK_DAMAGE
+                    });
+                }
+                charging = false;
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (victory || gameOver) return;
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width, scaleY = canvas.height / rect.height;
+            mouseScreenX = (e.clientX - rect.left) * scaleX;
+            mouseScreenY = (e.clientY - rect.top) * scaleY;
+            mouseScreenX = Math.max(0, Math.min(mouseScreenX, VIEW_WIDTH));
+            mouseScreenY = Math.max(0, Math.min(mouseScreenY, VIEW_HEIGHT));
+            if (charging) updatePreviewBrick();
+        });
+
+        canvas.addEventListener('contextmenu', e => e.preventDefault());
+        canvas.addEventListener('mouseleave', () => { charging = false; });
+
+        function handleBlur() {
+            leftPressed = rightPressed = shiftPressed = downPressed = jumpUsed = false;
+            charging = false;
+            if (panelVisible) { panelVisible = false; statusPanel.style.display = 'none'; }
+        }
+        window.addEventListener('blur', handleBlur);
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) handleBlur();
+        });
+
+        nextMapBtn.addEventListener('click', () => {
+            const playerData = {
+                hp: playerHP, gold: gold, level: level, exp: exp, kills: killCount
+            };
+            const encoded = btoa(JSON.stringify(playerData));
+            window.location.href = `prison.html?data=${encoded}`;
+        });
+
+        window.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('keyup', handleKeyUp);
+
+        // ---------- 游戏循环 ----------
+        function gameLoop(now) {
+            update(now);
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+        gameLoop(performance.now());
+    </script>
+</body>
+</html>

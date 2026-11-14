@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>新手关 · 白色方块的冒险</title>
+<link rel="stylesheet" href="css/newbie.css">
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div class="nb-hud">
+    <div class="hud-left">
+        <div class="hearts" id="hearts"></div>
+        <div class="level-tag">新手关 · 第一次冒险</div>
+    </div>
+    <div class="hud-right">
+        <div class="goal-chip" id="goalChip">目标：击败拦路敌人，抵达终点</div>
+        <button class="exit-btn" id="exitBtn">退出关卡 →</button>
+    </div>
+</div>
+
+<div class="nb-progress"><div class="nb-progress-fill" id="progFill"></div></div>
+
+<div class="nb-banner" id="banner"><span id="bannerText"></span></div>
+
+<div class="nb-keys">
+    <span><b>A / D</b> 或 <b>← →</b> 移动</span>
+    <span><b>空格</b> 跳跃（长按跳更高，空中可再跳一次）</span>
+    <span><b>鼠标左键 / J</b> 近战攻击</span>
+    <span><b>旗子</b> 是存档点，阵亡从最近一面重来</span>
+    <span><b>R</b> 重来</span>
+</div>
+
+<div class="nb-win" id="winPanel">
+    <div class="nb-win-card">
+        <div class="nb-win-icon">🏁</div>
+        <h2>新手关通过</h2>
+        <p id="winText">移动、跳跃、攻击都掌握了。真正的冒险从这里开始。</p>
+        <div class="nb-win-actions">
+            <button class="nb-btn nb-primary" id="goGameBtn">进入游戏</button>
+            <button class="nb-btn nb-ghost" id="replayBtn">再玩一次</button>
+        </div>
+    </div>
+</div>
+
+<script src="js/newbie.js"></script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+{
+	"folders": [
+		{
+			"path": "../白块/0.1.2/测试"
+		},
+		{
+			"path": "../白块/0.1.2/黑屋"
+		},
+		{
+			"path": "../白块/0.1.2/监狱"
+		}
+	],
+	"settings": {
+		"liveServer.settings.multiRootWorkspaceName": "测试"
+	}
+}

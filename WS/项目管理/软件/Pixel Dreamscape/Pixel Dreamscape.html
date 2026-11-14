@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>像素梦境 - 像素画编辑器</title>
+    <style>
+        * {
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background: linear-gradient(145deg, #1a2a3a 0%, #0f1a24 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', 'Courier New', 'Monaco', 'Monospace', system-ui, -apple-system;
+            margin: 0;
+            padding: 20px;
+        }
+
+        /* 主容器 */
+        .pixel-studio {
+            background: rgba(30, 40, 50, 0.75);
+            backdrop-filter: blur(2px);
+            border-radius: 2.5rem;
+            padding: 1.5rem;
+            box-shadow: 0 25px 45px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .app-container {
+            background: #1e2a32;
+            border-radius: 1.8rem;
+            overflow: hidden;
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05), 0 10px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        /* 工具栏区域 */
+        .toolbar {
+            background: #10181f;
+            padding: 0.8rem 1.2rem;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 1rem;
+            border-bottom: 2px solid #2d3e4b;
+            backdrop-filter: blur(4px);
+        }
+
+        .tool-group {
+            display: flex;
+            gap: 0.5rem;
+            background: #1e2e38;
+            padding: 0.3rem 0.8rem;
+            border-radius: 3rem;
+            align-items: center;
+        }
+
+        .tool-btn {
+            background: #2a3c48;
+            border: none;
+            color: #c0e0ff;
+            font-size: 1.3rem;
+            width: 2.4rem;
+            height: 2.4rem;
+            border-radius: 1.2rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s ease;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), 0 2px 4px rgba(0,0,0,0.2);
+            font-weight: bold;
+        }
+
+        .tool-btn.active {
+            background: #5f9ea0;
+            color: white;
+            box-shadow: inset 0 0 0 1px #9fd3d6, 0 0 8px #6bc7c9;
+            transform: scale(0.96);
+        }
+
+        .tool-btn:active {
+            transform: scale(0.94);
+        }
+
+        .color-preview {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            background: #0b141a;
+            padding: 0.2rem 0.9rem;
+            border-radius: 2rem;
+        }
+
+        .current-color-box {
+            width: 2.4rem;
+            height: 2.4rem;
+            border-radius: 0.6rem;
+            border: 2px solid #f0f0f0;
+            box-shadow: 0 0 0 1px #0a0e12;
+            background: #ffffff;
+        }
+
+        .bg-color-box {
+            width: 2rem;
+            height: 2rem;
+            border-radius: 0.5rem;
+            border: 1px solid #ccc;
+            background: white;
+            cursor: pointer;
+        }
+
+        .color-label {
+            font-size: 0.7rem;
+            color: #9ab3c5;
+            letter-spacing: 1px;
+        }
+
+        button {
+            background: #253b46;
+            border: none;
+            color: #eaf4ff;
+            font-family: monospace;
+            font-weight: bold;
+            padding: 0.4rem 1rem;
+            border-radius: 2rem;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.1s ease;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), 0 1px 2px black;
+        }
+
+        button:active {
+            transform: translateY(1px);
+        }
+
+        .preset-colors {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-left: auto;
+        }
+
+        .preset-swatch {
+            width: 1.8rem;
+            height: 1.8rem;
+            border-radius: 0.4rem;
+            cursor: pointer;
+            transition: 0.1s linear;
+            border: 1px solid #5f7f8f;
+            box-shadow: inset 0 1px 1px rgba(0,0,0,0.2);
+        }
+
+        .preset-swatch:hover {
+            transform: scale(1.1);
+            border-color: white;
+        }
+
+        /* 画板区域 */
+        .canvas-wrapper {
+            display: flex;
+            justify-content: center;
+            padding: 1.5rem;
+            background: #0f171e;
+            overflow-x: auto;
+        }
+
+        canvas {
+            display: block;
+            margin: 0 auto;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+            cursor: crosshair;
+            image-rendering: crisp-edges;
+            image-rendering: pixelated;
+            image-rendering: pixelated;
+            border-radius: 0.6rem;
+            background-color: #ddd;
+        }
+
+        /* 状态栏 */
+        .status-bar {
+            background: #0e181f;
+            padding: 0.6rem 1.2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-family: monospace;
+            font-size: 0.8rem;
+            color: #b3d9ff;
+            border-top: 1px solid #2b414f;
+        }
+
+        .coords {
+            background: #00000044;
+            padding: 0.2rem 0.8rem;
+            border-radius: 1rem;
+        }
+
+        .grid-toggle {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .toggle-switch {
+            width: 34px;
+            height: 18px;
+            background: #2e4a5c;
+            border-radius: 20px;
+            position: relative;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .toggle-switch.active {
+            background: #5fa7a3;
+        }
+
+        .toggle-switch::after {
+            content: "";
+            width: 14px;
+            height: 14px;
+            background: white;
+            border-radius: 50%;
+            position: absolute;
+            top: 2px;
+            left: 3px;
+            transition: 0.2s;
+        }
+
+        .toggle-switch.active::after {
+            left: 17px;
+        }
+
+        @media (max-width: 720px) {
+            .toolbar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .preset-colors {
+                justify-content: center;
+                margin-left: 0;
+            }
+            .tool-group {
+                justify-content: center;
+            }
+            .canvas-wrapper {
+                padding: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="pixel-studio">
+    <div class="app-container">
+        <!-- 工具栏 -->
+        <div class="toolbar">
+            <div class="tool-group">
+                <button class="tool-btn" id="penBtn" title="画笔">✏️</button>
+                <button class="tool-btn" id="eraserBtn" title="橡皮">🧽</button>
+                <button class="tool-btn" id="eyedropperBtn" title="吸管">🔍</button>
+                <button class="tool-btn" id="clearBtn" title="全部清空">🗑️</button>
+                <button class="tool-btn" id="exportBtn" title="导出PNG">💾</button>
+            </div>
+            <div class="color-preview">
+                <div>
+                    <div class="color-label">前景</div>
+                    <div class="current-color-box" id="currentColorPreview" style="background: #ff3366;"></div>
+                </div>
+                <div>
+                    <div class="color-label">背景/橡皮</div>
+                    <div class="bg-color-box" id="bgColorPreview" style="background: #f0f0f0;"></div>
+                </div>
+                <input type="color" id="colorPicker" value="#ff3366" style="width: 2.2rem; height: 2rem; border-radius: 0.5rem; border: none; background: #1f2e36;">
+                <input type="color" id="bgColorPicker" value="#f0f0f0" style="width: 2rem; height: 2rem; border-radius: 0.5rem;">
+            </div>
+            <div class="preset-colors" id="presetPalette">
+                <!-- 预设颜色块 动态生成 -->
+            </div>
+        </div>
+
+        <!-- 画布区 -->
+        <div class="canvas-wrapper">
+            <canvas id="pixelCanvas" width="768" height="768"></canvas>
+        </div>
+
+        <!-- 状态栏 -->
+        <div class="status-bar">
+            <div class="coords" id="coordDisplay">📍 坐标: - , -</div>
+            <div class="grid-toggle">
+                <span>🔲 显示网格</span>
+                <div id="gridToggleBtn" class="toggle-switch active"></div>
+            </div>
+            <div id="toolStatus">✏️ 画笔模式</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function(){
+        // ---------- 配置 ----------
+        const COLS = 32;          // 32x32 经典像素画
+        const ROWS = 32;
+        const CELL_SIZE = 24;     // 每个像素 24px, 总画布 768x768
+        
+        // 默认颜色
+        let grid = [];            // 二维数组存储颜色值 (hex格式)
+        let currentColor = "#ff3366";    // 前景色
+        let bgColor = "#f0f0f0";         // 背景色 (橡皮擦填充色)
+        let currentMode = "pen";          // 'pen', 'eraser', 'eyedropper'
+        let showGrid = true;              // 显示网格线
+        
+        // 绘图标志 (拖拽绘制)
+        let drawing = false;
+        
+        // DOM 元素
+        const canvas = document.getElementById('pixelCanvas');
+        const ctx = canvas.getContext('2d');
+        const currentColorPreview = document.getElementById('currentColorPreview');
+        const bgColorPreview = document.getElementById('bgColorPreview');
+        const colorPicker = document.getElementById('colorPicker');
+        const bgColorPicker = document.getElementById('bgColorPicker');
+        const penBtn = document.getElementById('penBtn');
+        const eraserBtn = document.getElementById('eraserBtn');
+        const eyedropperBtn = document.getElementById('eyedropperBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const exportBtn = document.getElementById('exportBtn');
+        const coordDisplay = document.getElementById('coordDisplay');
+        const toolStatusSpan = document.getElementById('toolStatus');
+        const gridToggleBtn = document.getElementById('gridToggleBtn');
+        
+        // 预设调色板 (经典像素色)
+        const presetColors = [
+            "#000000", "#ffffff", "#ff3366", "#33ff66", "#3399ff", "#ffcc33", "#cc33ff", "#ff9933",
+            "#6699cc", "#996633", "#66cc99", "#ff6699", "#99cc00", "#ff99cc", "#33cccc", "#b3b3b3"
+        ];
+        
+        // ---------- 初始化网格 (全部填充背景色) ----------
+        function initGrid() {
+            grid = Array(ROWS).fill().map(() => Array(COLS).fill(bgColor));
+        }
+        
+        // 重绘整个画板 (根据grid和网格线设置)
+        function drawCanvas() {
+            if (!ctx) return;
+            // 绘制每个像素块
+            for (let row = 0; row < ROWS; row++) {
+                for (let col = 0; col < COLS; col++) {
+                    const color = grid[row][col];
+                    ctx.fillStyle = color;
+                    ctx.fillRect(col * CELL_SIZE, row * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                }
+            }
+            // 绘制网格线 (如果开启)
+            if (showGrid) {
+                ctx.beginPath();
+                ctx.strokeStyle = "#8ba0aa";
+                ctx.lineWidth = 0.8;
+                // 垂直线
+                for (let x = 0; x <= COLS; x++) {
+                    ctx.moveTo(x * CELL_SIZE, 0);
+                    ctx.lineTo(x * CELL_SIZE, ROWS * CELL_SIZE);
+                    ctx.stroke();
+                }
+                // 水平线
+                for (let y = 0; y <= ROWS; y++) {
+                    ctx.moveTo(0, y * CELL_SIZE);
+                    ctx.lineTo(COLS * CELL_SIZE, y * CELL_SIZE);
+                    ctx.stroke();
+                }
+            }
+        }
+        
+        // 更新单个像素 (变更数组并重绘)
+        function setPixel(row, col, color) {
+            if (row < 0 || row >= ROWS || col < 0 || col >= COLS) return false;
+            if (grid[row][col] === color) return false;
+            grid[row][col] = color;
+            // 增量绘制小区域 (为了性能也OK，直接重绘整个画板)
+            drawCanvas();
+            return true;
+        }
+        
+        // 根据鼠标/触摸坐标获取网格索引
+        function getGridFromCoord(clientX, clientY) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;   // 由于 canvas 物理尺寸 = 768, rect 宽度一般也是768或者缩放时比率1:1
+            const scaleY = canvas.height / rect.height;
+            const canvasX = (clientX - rect.left) * scaleX;
+            const canvasY = (clientY - rect.top) * scaleY;
+            if (canvasX < 0 || canvasX >= canvas.width || canvasY < 0 || canvasY >= canvas.height) return null;
+            const col = Math.floor(canvasX / CELL_SIZE);
+            const row = Math.floor(canvasY / CELL_SIZE);
+            if (row >= 0 && row < ROWS && col >= 0 && col < COLS) return { row, col };
+            return null;
+        }
+        
+        // 执行绘图动作 (取决于当前模式)
+        function applyDrawAt(row, col) {
+            if (row === undefined || col === undefined) return;
+            if (currentMode === "pen") {
+                setPixel(row, col, currentColor);
+            } 
+            else if (currentMode === "eraser") {
+                setPixel(row, col, bgColor);
+            }
+            else if (currentMode === "eyedropper") {
+                // 吸管: 提取颜色并设置为前景色，同时自动切换回画笔模式 (用户体验)
+                const pickedColor = grid[row][col];
+                if (pickedColor) {
+                    currentColor = pickedColor;
+                    updateColorUI();
+                    // 切换至画笔模式方便绘制
+                    setActiveMode("pen");
+                }
+            }
+        }
+        
+        // 拖拽绘制事件 (连续)
+        function handleDrawStart(e) {
+            e.preventDefault();
+            drawing = true;
+            // 获取坐标进行第一次绘制
+            let clientX, clientY;
+            if (e.touches) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+            const coord = getGridFromCoord(clientX, clientY);
+            if (coord) {
+                if (currentMode === "eyedropper") {
+                    // 吸管模式下，单击吸色后自动转为画笔，不连续绘制拖拽保持画笔
+                    const pickColor = grid[coord.row][coord.col];
+                    if(pickColor){
+                        currentColor = pickColor;
+                        updateColorUI();
+                        setActiveMode("pen");
+                        applyDrawAt(coord.row, coord.col); // 实际上采用新画笔绘制一笔? 但用户体验合理: 吸色后立刻绘制, 也可避免直接画。为了更清晰，吸管后只改变颜色，不会破坏原像素。改成标准吸管行为：只吸取，不绘制。
+                        // 但是上面applyDrawAt 会绘制（如果是pen模式, 会覆盖像素）不合理, 重写逻辑防止吸管误画
+                        // 修正: 吸管不应该绘图，只取色，所以单独处理
+                        if(currentMode !== "pen"){
+                            // 重新设置为pen后，不能触发绘图，避免单击就画
+                            return;
+                        }
+                    }
+                } else {
+                    applyDrawAt(coord.row, coord.col);
+                }
+            }
+        }
+        
+        function handleDrawMove(e) {
+            if (!drawing) return;
+            e.preventDefault();
+            let clientX, clientY;
+            if (e.touches) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+            const coord = getGridFromCoord(clientX, clientY);
+            if (coord) {
+                if (currentMode === "eyedropper") {
+                    // 吸管模式拖拽时不做绘制，防止误操作，但为了流畅，直接返回 (避免连续吸)
+                    return;
+                }
+                applyDrawAt(coord.row, coord.col);
+            }
+        }
+        
+        function handleDrawEnd(e) {
+            drawing = false;
+            e.preventDefault();
+        }
+        
+        // 鼠标悬浮显示坐标
+        function handleMouseMove(e) {
+            let clientX, clientY;
+            if (e.touches) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+            const coord = getGridFromCoord(clientX, clientY);
+            if (coord) {
+                coordDisplay.innerText = `📍 坐标: (${coord.col}, ${coord.row})`;
+            } else {
+                coordDisplay.innerText = `📍 坐标: 外部`;
+            }
+        }
+        
+        // ----- UI 更新前景/背景展示 -----
+        function updateColorUI() {
+            currentColorPreview.style.backgroundColor = currentColor;
+            colorPicker.value = currentColor;
+            bgColorPreview.style.backgroundColor = bgColor;
+            bgColorPicker.value = bgColor;
+        }
+        
+        // 改变面板背景色并同步
+        function setBackgroundColor(newBg) {
+            bgColor = newBg;
+            bgColorPreview.style.backgroundColor = bgColor;
+            bgColorPicker.value = bgColor;
+        }
+        
+        // 设置当前模式及按钮样式
+        function setActiveMode(mode) {
+            currentMode = mode;
+            penBtn.classList.remove('active');
+            eraserBtn.classList.remove('active');
+            eyedropperBtn.classList.remove('active');
+            if (mode === 'pen') {
+                penBtn.classList.add('active');
+                toolStatusSpan.innerText = '✏️ 画笔模式';
+                canvas.style.cursor = 'crosshair';
+            } else if (mode === 'eraser') {
+                eraserBtn.classList.add('active');
+                toolStatusSpan.innerText = '🧽 橡皮模式 (背景)';
+                canvas.style.cursor = 'cell';
+            } else if (mode === 'eyedropper') {
+                eyedropperBtn.classList.add('active');
+                toolStatusSpan.innerText = '🔍 吸管模式 (单击取色)';
+                canvas.style.cursor = 'copy';
+            }
+        }
+        
+        // 清除所有像素用背景色填充
+        function clearAllWithBg() {
+            for (let i = 0; i < ROWS; i++) {
+                for (let j = 0; j < COLS; j++) {
+                    grid[i][j] = bgColor;
+                }
+            }
+            drawCanvas();
+        }
+        
+        // 导出为 PNG (无网格纯净版)
+        function exportAsPNG() {
+            // 创建一个离屏canvas 不绘制网格
+            const exportCanvas = document.createElement('canvas');
+            exportCanvas.width = COLS * CELL_SIZE;
+            exportCanvas.height = ROWS * CELL_SIZE;
+            const exportCtx = exportCanvas.getContext('2d');
+            for (let row = 0; row < ROWS; row++) {
+                for (let col = 0; col < COLS; col++) {
+                    exportCtx.fillStyle = grid[row][col];
+                    exportCtx.fillRect(col * CELL_SIZE, row * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                }
+            }
+            const link = document.createElement('a');
+            link.download = `pixel_dream_${Date.now()}.png`;
+            link.href = exportCanvas.toDataURL();
+            link.click();
+        }
+        
+        // 切换网格显示
+        function toggleGrid() {
+            showGrid = !showGrid;
+            if (showGrid) {
+                gridToggleBtn.classList.add('active');
+            } else {
+                gridToggleBtn.classList.remove('active');
+            }
+            drawCanvas();  // 重绘更新网格显示状态
+        }
+        
+        // 预设调色板生成
+        function buildPresetPalette() {
+            const container = document.getElementById('presetPalette');
+            container.innerHTML = '';
+            presetColors.forEach(color => {
+                const swatch = document.createElement('div');
+                swatch.className = 'preset-swatch';
+                swatch.style.backgroundColor = color;
+                swatch.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    currentColor = color;
+                    updateColorUI();
+                    // 如果当前模式是橡皮擦，没必要自动切，但用户可以方便切换
+                    if (currentMode !== 'pen') {
+                        setActiveMode('pen');
+                    }
+                });
+                container.appendChild(swatch);
+            });
+        }
+        
+        // 重置画板尺寸及所有监听 (因为画板大小固定)
+        function resizeAndReset() {
+            canvas.width = COLS * CELL_SIZE;
+            canvas.height = ROWS * CELL_SIZE;
+            initGrid();
+            drawCanvas();
+        }
+        
+        // ---------- 全部事件绑定 ----------
+        function bindEvents() {
+            // 鼠标/指针绘图
+            canvas.addEventListener('mousedown', handleDrawStart);
+            window.addEventListener('mousemove', (e) => {
+                handleMouseMove(e);
+                if (drawing) handleDrawMove(e);
+            });
+            window.addEventListener('mouseup', handleDrawEnd);
+            
+            // 触摸事件移动端
+            canvas.addEventListener('touchstart', handleDrawStart, { passive: false });
+            canvas.addEventListener('touchmove', (e) => {
+                handleMouseMove(e);
+                if (drawing) handleDrawMove(e);
+            }, { passive: false });
+            canvas.addEventListener('touchend', handleDrawEnd);
+            canvas.addEventListener('touchcancel', handleDrawEnd);
+            
+            // 显示坐标 (无绘图时移动也显示)
+            canvas.addEventListener('mousemove', handleMouseMove);
+            canvas.addEventListener('mouseleave', () => {
+                coordDisplay.innerText = '📍 坐标: 离开画板';
+                if (drawing) drawing = false;
+            });
+            
+            // 工具按钮
+            penBtn.addEventListener('click', () => setActiveMode('pen'));
+            eraserBtn.addEventListener('click', () => setActiveMode('eraser'));
+            eyedropperBtn.addEventListener('click', () => setActiveMode('eyedropper'));
+            clearBtn.addEventListener('click', () => clearAllWithBg());
+            exportBtn.addEventListener('click', () => exportAsPNG());
+            
+            // 颜色选择器
+            colorPicker.addEventListener('input', (e) => {
+                currentColor = e.target.value;
+                updateColorUI();
+                if (currentMode !== 'pen') setActiveMode('pen');
+            });
+            bgColorPicker.addEventListener('input', (e) => {
+                setBackgroundColor(e.target.value);
+                // 注意: 不改变现有像素，只改变后续橡皮和清除行为
+            });
+            // 背景预览点击也可以快速选择 (与拾色器同步)
+            bgColorPreview.addEventListener('click', () => {
+                bgColorPicker.click();
+            });
+            
+            // 网格切换
+            gridToggleBtn.addEventListener('click', toggleGrid);
+        }
+        
+        // 附加: 修正吸管模式 由于applyDrawAt在pen模式会画，吸管应该只取色不绘画，在handleDrawStart特殊避开
+        // 为了体验，重写覆盖吸管时绘制逻辑防止误触:
+        const originalApply = applyDrawAt;
+        window.applyDrawAt = function(row,col){
+            if(currentMode === "eyedropper"){
+                const picked = grid[row][col];
+                if(picked){
+                    currentColor = picked;
+                    updateColorUI();
+                    setActiveMode("pen");
+                }
+                return;
+            }
+            if(currentMode === "pen"){
+                setPixel(row,col,currentColor);
+            } else if(currentMode === "eraser"){
+                setPixel(row,col,bgColor);
+            }
+        };
+        // 替换引用
+        window.applyDrawAt = window.applyDrawAt;
+        // 但是上面定义的 applyDrawAt 需要重新关联到闭包？ 直接覆盖函数声明
+        // 更简单: 重写 function 替换实现 由于作用域, 将全局的applyDrawAt绑定。确保最终调用新版。
+        // 重新定义方法使其生效
+        const safeApply = function(row, col){
+            if(currentMode === "eyedropper"){
+                const picked = grid[row][col];
+                if(picked){
+                    currentColor = picked;
+                    updateColorUI();
+                    setActiveMode("pen");
+                }
+                return;
+            }
+            if(currentMode === "pen"){
+                setPixel(row, col, currentColor);
+            } else if(currentMode === "eraser"){
+                setPixel(row, col, bgColor);
+            }
+        };
+        // 替换全局
+        window.applyDrawAt = safeApply;
+        // 修改 handleDrawStart & handleDrawMove 中调用的 applyDrawAt
+        // 但我们直接将原来的函数替换为新的
+        const originalStart = handleDrawStart;
+        const originalMove = handleDrawMove;
+        // 重新绑定事件时确保调用新版, 但为了简单，在初始化后修改。
+        // 由于事件内部调用 applyDrawAt, 现在 applyDrawAt 已更新, 完美.
+        
+        // 重新挂载一下 (确保全局)
+        function finalInit() {
+            buildPresetPalette();
+            resizeAndReset();
+            bindEvents();
+            setActiveMode('pen');
+            updateColorUI();
+            // 额外示例绘制一点简易像素演示? 可选，绘制一个小图案? 不用，留空白让用户创作
+            // 在旁边加一个小笑脸demo? 可选项加一个示例，但是不强制保持完全干净背景。为了友好，画一个很小的初始图案?: 加一点可爱的轮廓 (可选)
+            // (可选, 演示像素画, 绘制一个简单星星)
+            // 为了让开屏不单调，加一些引导像素 (随意)
+            // 绘制一个简单爱心轮廓?
+            if(grid[5][5] === bgColor){
+                // 简单加一个小红心示意 (演示)
+                const heartCoords = [[4,10],[5,9],[5,11],[6,8],[6,12],[7,9],[7,11],[8,10]];
+                heartCoords.forEach(([r,c]) => {
+                    if(r<ROWS && c<COLS) grid[r][c] = "#ff3366";
+                });
+                drawCanvas();
+            }
+        }
+        
+        finalInit();
+    })();
+</script>
+</body>
+</html>

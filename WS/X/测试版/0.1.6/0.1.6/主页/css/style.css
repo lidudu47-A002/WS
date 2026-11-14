@@ -1,0 +1,304 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    user-select: none;
+}
+
+body {
+    background: #0b0b0f;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+}
+
+.container {
+    text-align: center;
+    padding: 2rem;
+    border: 2px solid #3a3a5a;
+    border-radius: 40px;
+    background: rgba(10, 10, 20, 0.85);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 0 50px rgba(0, 0, 0, 0.7);
+    width: 90%;
+    max-width: 500px;
+}
+
+h1 {
+    color: #ffd966;
+    font-size: 3rem;
+    margin-bottom: 0.5rem;
+    text-shadow: 0 0 15px #ffaa00;
+    letter-spacing: 4px;
+}
+
+.subtitle {
+    color: #aaa;
+    margin-bottom: 1.5rem;
+    font-style: italic;
+}
+
+.account-panel {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 20px;
+    padding: 1.2rem;
+    margin-bottom: 1.5rem;
+    border: 1px solid #4a4a6a;
+}
+
+.input-group {
+    margin-bottom: 0.8rem;
+    text-align: left;
+}
+
+.input-group label {
+    display: block;
+    color: #ccc;
+    font-size: 0.9rem;
+    margin-bottom: 0.2rem;
+}
+
+.input-group input {
+    width: 100%;
+    padding: 0.6rem 1rem;
+    border-radius: 12px;
+    border: 1px solid #5a5a8a;
+    background: #1a1a2e;
+    color: white;
+    font-size: 1rem;
+    outline: none;
+}
+
+.input-group input:focus {
+    border-color: gold;
+}
+
+.account-actions {
+    display: flex;
+    gap: 0.8rem;
+    margin-top: 1rem;
+}
+
+.account-btn {
+    flex: 1;
+    padding: 0.5rem;
+    border-radius: 30px;
+    border: none;
+    background: #3d3d5c;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.2s;
+    font-size: 1rem;
+}
+
+.account-btn.primary {
+    background: #2a6d4c;
+    border: 1px solid #5f9f7f;
+}
+
+.account-btn:hover {
+    filter: brightness(1.2);
+}
+
+.toggle-mode {
+    color: #aaa;
+    font-size: 0.9rem;
+    margin-top: 0.5rem;
+    cursor: pointer;
+}
+
+.toggle-mode span {
+    color: #ffd966;
+    text-decoration: underline;
+}
+
+.welcome-text {
+    color: #8bc34a;
+    margin: 0.5rem 0;
+    font-weight: bold;
+    text-align: center;
+}
+
+.btn {
+    display: block;
+    width: 100%;
+    padding: 1.2rem;
+    margin: 1rem 0;
+    border: none;
+    border-radius: 12px;
+    font-size: 1.6rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 8px 0 #1a1a2a, 0 10px 20px rgba(0, 0, 0, 0.3);
+    color: white;
+    background: #2d2d44;
+    border: 2px solid #5a5a8a;
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    box-shadow: 0 4px 0 #1a1a2a;
+    transform: translateY(4px);
+}
+
+.btn:hover:not(:disabled) {
+    transform: translateY(4px);
+    box-shadow: 0 4px 0 #1a1a2a, 0 8px 15px rgba(0, 0, 0, 0.3);
+}
+
+.btn-new {
+    background: #1e3a5f;
+    border-color: #4a8bb3;
+    color: #e0f0ff;
+}
+
+.btn-load {
+    background: #3d2b4f;
+    border-color: #9b6bb7;
+    color: #f3e5ff;
+}
+
+.footer {
+    margin-top: 1rem;
+    color: #666;
+    font-size: 0.9rem;
+}
+
+#fileInput {
+    display: none;
+}
+
+.info-message {
+    color: #ffb347;
+    margin-top: 0.5rem;
+    font-size: 0.9rem;
+    min-height: 1.5rem;
+}
+
+/* 管理员面板 */
+.admin-panel {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 460px;
+    max-height: 70vh;
+    overflow-y: auto;
+    background: rgba(20, 20, 40, 0.95);
+    border: 3px solid gold;
+    border-radius: 20px;
+    padding: 1.5rem;
+    color: white;
+    z-index: 1000;
+    display: none;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+}
+
+.admin-panel h3 {
+    color: gold;
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+.user-list {
+    margin: 1rem 0;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.user-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem;
+    border-bottom: 1px solid #444;
+    gap: 0.5rem;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1;
+}
+
+.user-info label {
+    cursor: pointer;
+}
+
+.user-info input {
+    transform: scale(1.2);
+    cursor: pointer;
+}
+
+.reset-pwd-btn {
+    padding: 0.2rem 0.6rem;
+    border-radius: 12px;
+    border: none;
+    background: #5a3a6e;
+    color: white;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.reset-pwd-btn:hover {
+    background: #7a4a9e;
+}
+
+.admin-actions {
+    display: flex;
+    gap: 0.8rem;
+    margin: 1rem 0;
+}
+
+.admin-btn {
+    flex: 1;
+    padding: 0.5rem;
+    border-radius: 20px;
+    border: none;
+    background: #4a4a6a;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.admin-btn.export {
+    background: #2a5f6e;
+}
+
+.admin-btn.import {
+    background: #6e4a2a;
+}
+
+.admin-btn:hover {
+    filter: brightness(1.2);
+}
+
+.admin-close {
+    margin-top: 0.5rem;
+    text-align: center;
+    color: #ff8a8a;
+    cursor: pointer;
+}
+
+.permission-hint {
+    color: #ffaa00;
+    font-size: 0.9rem;
+    margin: 0.5rem 0;
+}
+
+#accountFileInput {
+    display: none;
+}
+
+.game-buttons {
+    margin-top: 1rem;
+}

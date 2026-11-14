@@ -1,0 +1,453 @@
+/* ============ 新手教程 · 样式 ============ */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    min-height: 100%;
+    font-family: "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+    background: #07080f;
+    color: #e8e8f0;
+    overflow-x: hidden;
+}
+
+/* ---------- 背景 ---------- */
+.bg {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    background:
+        radial-gradient(ellipse 55% 45% at 18% 12%, rgba(96, 130, 255, 0.16), transparent 62%),
+        radial-gradient(ellipse 50% 45% at 84% 82%, rgba(160, 100, 255, 0.14), transparent 62%),
+        radial-gradient(ellipse 40% 35% at 72% 18%, rgba(40, 200, 220, 0.09), transparent 62%),
+        linear-gradient(160deg, #0b0e1a 0%, #08090f 55%, #05060b 100%);
+}
+
+.bg-grid {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-image:
+        linear-gradient(rgba(255, 255, 255, 0.022) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.022) 1px, transparent 1px);
+    background-size: 46px 46px;
+    -webkit-mask-image: radial-gradient(ellipse 78% 68% at 50% 42%, #000 0%, transparent 76%);
+    mask-image: radial-gradient(ellipse 78% 68% at 50% 42%, #000 0%, transparent 76%);
+}
+
+/* ---------- 外壳 ---------- */
+.tutorial-shell {
+    position: relative;
+    z-index: 2;
+    width: min(1080px, 94vw);
+    margin: 0 auto;
+    padding: 26px 0 30px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.tutorial-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.brand {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+}
+
+.brand-title {
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: 4px;
+    color: #ffd966;
+    text-shadow: 0 0 18px rgba(255, 200, 60, 0.32);
+}
+
+.brand-sub {
+    font-size: 12px;
+    letter-spacing: 4px;
+    color: rgba(255, 255, 255, 0.42);
+}
+
+.skip-btn {
+    padding: 9px 18px;
+    font-size: 13px;
+    letter-spacing: 1px;
+    color: rgba(255, 255, 255, 0.6);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: color 0.2s, background 0.2s, border-color 0.2s;
+}
+
+.skip-btn:hover {
+    color: #ffd966;
+    border-color: rgba(255, 215, 0, 0.45);
+    background: rgba(255, 215, 0, 0.08);
+}
+
+/* ---------- 进度条 ---------- */
+.progress-track {
+    height: 3px;
+    margin: 16px 0 22px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.07);
+    overflow: hidden;
+}
+
+.progress-bar {
+    width: 0;
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, rgba(255, 205, 60, 0.85), rgba(255, 140, 60, 0.85));
+    box-shadow: 0 0 14px rgba(255, 190, 60, 0.45);
+    transition: width 0.45s cubic-bezier(0.22, 0.9, 0.3, 1);
+}
+
+/* ---------- 主体 ---------- */
+.tutorial-main {
+    flex: 1;
+    display: grid;
+    grid-template-columns: minmax(320px, 1fr) minmax(340px, 1.05fr);
+    gap: 22px;
+    align-items: stretch;
+}
+
+/* 演示舞台 */
+.stage {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    border-radius: 22px;
+    background: linear-gradient(160deg, rgba(22, 24, 38, 0.92), rgba(12, 13, 22, 0.94));
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.08),
+        0 20px 50px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+}
+
+#demoCanvas {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.stage-caption {
+    padding: 10px 16px 12px;
+    font-size: 12px;
+    letter-spacing: 1.5px;
+    color: rgba(255, 255, 255, 0.45);
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+    background: rgba(0, 0, 0, 0.28);
+}
+
+/* 文本面板 */
+.panel {
+    display: flex;
+    flex-direction: column;
+    padding: 24px 26px 20px;
+    border-radius: 22px;
+    background: linear-gradient(160deg, rgba(24, 26, 40, 0.92), rgba(14, 15, 24, 0.94));
+    border: 1px solid rgba(255, 255, 255, 0.11);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.07),
+        0 20px 50px rgba(0, 0, 0, 0.45);
+}
+
+.chapter-tag {
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+    padding: 4px 12px;
+    margin-bottom: 8px;
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: #ffe9a8;
+    background: linear-gradient(180deg, rgba(255, 215, 0, 0.14), rgba(255, 215, 0, 0.04));
+    border: 1px solid rgba(255, 215, 0, 0.32);
+    border-radius: 999px;
+    transition: color 0.25s ease, border-color 0.25s ease;
+}
+
+.chapter-tag.adv {
+    color: #bfe6ff;
+    background: linear-gradient(180deg, rgba(120, 190, 255, 0.14), rgba(120, 190, 255, 0.04));
+    border-color: rgba(120, 190, 255, 0.34);
+}
+
+.step-index {
+    font-family: Consolas, monospace;
+    font-size: 12px;
+    letter-spacing: 3px;
+    color: rgba(255, 215, 0, 0.75);
+    margin-bottom: 10px;
+}
+
+.step-title {
+    font-size: 25px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: #fff;
+    line-height: 1.35;
+    text-shadow: 0 0 22px rgba(140, 180, 255, 0.18);
+}
+
+.step-desc {
+    margin-top: 10px;
+    font-size: 14px;
+    line-height: 1.75;
+    color: rgba(232, 232, 240, 0.72);
+}
+
+/* 按键提示 */
+.key-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 16px 0 4px;
+    min-height: 0;
+}
+
+.key-row:empty {
+    margin: 8px 0 0;
+}
+
+.keycap {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 30px;
+    padding: 6px 11px;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: #ffe9a8;
+    background: linear-gradient(180deg, rgba(255, 215, 0, 0.16), rgba(255, 215, 0, 0.05));
+    border: 1px solid rgba(255, 215, 0, 0.42);
+    border-bottom-width: 3px;
+    border-radius: 9px;
+    box-shadow: 0 3px 0 rgba(0, 0, 0, 0.35);
+    animation: keyPop 0.32s cubic-bezier(0.22, 1.2, 0.4, 1) both;
+}
+
+@keyframes keyPop {
+    0% { opacity: 0; transform: translateY(6px) scale(0.92); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* 要点列表 */
+.point-list {
+    list-style: none;
+    margin: 14px 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+}
+
+.point-list li {
+    position: relative;
+    padding-left: 20px;
+    font-size: 13.5px;
+    line-height: 1.7;
+    color: rgba(232, 232, 240, 0.86);
+}
+
+.point-list li::before {
+    content: "";
+    position: absolute;
+    left: 4px;
+    top: 9px;
+    width: 6px;
+    height: 6px;
+    border-radius: 2px;
+    background: #ffd966;
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.55);
+}
+
+/* 导航按钮 */
+.nav-row {
+    display: flex;
+    gap: 12px;
+    margin-top: auto;
+    padding-top: 22px;
+}
+
+.nav-btn {
+    flex: 1;
+    padding: 13px 0;
+    font-size: 14.5px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    font-family: inherit;
+    border-radius: 13px;
+    cursor: pointer;
+    transition: transform 0.16s ease, box-shadow 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+
+.nav-btn:active {
+    transform: translateY(1px);
+}
+
+.nav-btn.primary {
+    color: #1b1400;
+    background: linear-gradient(135deg, #ffe184, #ffbe3d);
+    border: 1px solid rgba(255, 215, 0, 0.7);
+    box-shadow: 0 8px 22px rgba(255, 180, 40, 0.28);
+}
+
+.nav-btn.primary:hover {
+    box-shadow: 0 10px 28px rgba(255, 180, 40, 0.42);
+}
+
+.nav-btn.ghost {
+    color: rgba(255, 255, 255, 0.72);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.nav-btn.ghost:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.nav-btn:disabled {
+    opacity: 0.34;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+.hint-line {
+    margin-top: 12px;
+    text-align: center;
+    font-size: 11.5px;
+    letter-spacing: 1.2px;
+    color: rgba(255, 255, 255, 0.28);
+}
+
+/* ---------- 步骤圆点 ---------- */
+.dots {
+    display: flex;
+    justify-content: center;
+    gap: 9px;
+    margin-top: 20px;
+}
+
+.dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.16);
+    cursor: pointer;
+    transition: width 0.28s ease, background 0.28s ease;
+}
+
+.dot:hover {
+    background: rgba(255, 255, 255, 0.4);
+}
+
+.dot.active {
+    width: 24px;
+    background: linear-gradient(90deg, #ffe184, #ffbe3d);
+    box-shadow: 0 0 12px rgba(255, 200, 60, 0.5);
+}
+
+.tutorial-foot {
+    margin-top: 14px;
+    text-align: center;
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: rgba(255, 255, 255, 0.24);
+}
+
+/* ---------- 步骤切换动画 ---------- */
+.fade-swap {
+    animation: fadeSwap 0.34s ease both;
+}
+
+@keyframes fadeSwap {
+    0% { opacity: 0; transform: translateY(8px); }
+    100% { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------- 响应式 ---------- */
+@media (max-width: 860px) {
+    .tutorial-main {
+        grid-template-columns: 1fr;
+    }
+
+    .stage {
+        order: 1;
+    }
+
+    .panel {
+        order: 2;
+        padding: 20px 18px 18px;
+    }
+
+    .step-title {
+        font-size: 21px;
+    }
+
+    .tutorial-shell {
+        padding: 18px 0 22px;
+    }
+}
+
+@media (max-width: 520px) {
+    .brand-title {
+        font-size: 14px;
+        letter-spacing: 2px;
+    }
+
+    .brand-sub {
+        display: none;
+    }
+
+    .skip-btn {
+        padding: 7px 13px;
+        font-size: 12px;
+    }
+
+    .point-list li {
+        font-size: 13px;
+    }
+
+    .hint-line {
+        display: none;
+    }
+}
+
+.head-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.back-home {
+    font-size: 0.8rem;
+    letter-spacing: 1px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    color: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: rgba(255, 255, 255, 0.04);
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.back-home:hover {
+    color: #ffd966;
+    border-color: rgba(255, 215, 0, 0.5);
+    background: rgba(255, 215, 0, 0.08);
+}

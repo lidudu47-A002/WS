@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>WS启动器</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="container">
+    <h1>white square</h1>
+    <div class="subtitle">白色方块的冒险</div>
+
+    <!-- 账户面板 -->
+    <div class="account-panel" id="accountPanel">
+        <div id="loginForm">
+            <div class="input-group">
+                <label>👤 用户名</label>
+                <input type="text" id="loginUsername" placeholder="输入用户名" autocomplete="off">
+            </div>
+            <div class="input-group">
+                <label>🔒 密码</label>
+                <input type="password" id="loginPassword" placeholder="输入密码">
+            </div>
+            <div class="account-actions">
+                <button class="account-btn primary" id="loginBtn">登录</button>
+                <button class="account-btn" id="switchToRegisterBtn">去注册</button>
+            </div>
+        </div>
+        <div id="registerForm" style="display:none;">
+            <div class="input-group">
+                <label>👤 用户名</label>
+                <input type="text" id="regUsername" placeholder="输入用户名" autocomplete="off">
+            </div>
+            <div class="input-group">
+                <label>🔒 密码</label>
+                <input type="password" id="regPassword" placeholder="输入密码">
+            </div>
+            <div class="input-group">
+                <label>🔒 确认密码</label>
+                <input type="password" id="regPasswordConfirm" placeholder="再次输入密码">
+            </div>
+            <div class="account-actions">
+                <button class="account-btn primary" id="registerBtn">注册</button>
+                <button class="account-btn" id="switchToLoginBtn">返回登录</button>
+            </div>
+        </div>
+        <div id="loggedInPanel" style="display:none;">
+            <div class="welcome-text" id="welcomeMsg"></div>
+        </div>
+        <div id="accountMessage" class="info-message"></div>
+    </div>
+
+    <!-- 游戏按钮容器（默认隐藏） -->
+    <div id="gameButtonsContainer" style="display: none;">
+        <button class="btn btn-new" id="newGameBtn">🆕 开启新游戏</button>
+        <button class="btn btn-load" id="loadGameBtn">📂 加载旧存档</button>
+        <div id="permissionWarning" class="permission-hint" style="display: none;">⚠️ 管理员已禁止你使用存档功能</div>
+    </div>
+
+    <input type="file" id="fileInput" accept=".json,application/json">
+    <input type="file" id="accountFileInput" accept=".json,application/json">
+
+    <div id="message" class="info-message"></div>
+    <div class="footer">@ bean soil出品</div>
+</div>
+
+<!-- 注意：管理面板已从静态 HTML 移除，完全由 admin.js 动态创建 -->
+<script src="js/auth.js"></script>
+<script src="js/admin.js"></script>
+</body>
+</html>

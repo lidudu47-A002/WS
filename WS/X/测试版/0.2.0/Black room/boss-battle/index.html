@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>BOSS战</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <div id="victoryMsg" class="message victory">胜利！</div>
+    <div id="gameOverMsg" class="message gameover">Game Over</div>
+    <div id="returnBtn">返回黑屋</div>
+    <script src="js/config.js"></script>
+    <script src="js/enemy-attacks.js"></script>
+    <script src="js/game.js"></script>
+    <script src="js/music.js"></script>
+    <script src="js/settings.js"></script>
+    <script>
+        // 等待用户首次交互后启动音乐
+        function startMusicOnFirstInteraction() {
+            Music.play();
+            window.removeEventListener('keydown', startMusicOnFirstInteraction);
+            window.removeEventListener('mousedown', startMusicOnFirstInteraction);
+            canvas.removeEventListener('click', startMusicOnFirstInteraction);
+        }
+        window.addEventListener('keydown', startMusicOnFirstInteraction);
+        window.addEventListener('mousedown', startMusicOnFirstInteraction);
+        canvas.addEventListener('click', startMusicOnFirstInteraction);
+    </script>
+</body>
+</html>

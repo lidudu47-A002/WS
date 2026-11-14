@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BOSS 战 · 入口</title>
+<script>
+(function () {
+    var q = new URLSearchParams(window.location.search);
+    var s = String(q.get('scene') || 'blackroom').toLowerCase();
+    var dir = s === 'prison' ? 'prison/' : 'black%20room/';
+    window.location.replace(dir + 'index.html' + window.location.search);
+})();
+</script>
+</head>
+<body>
+<p>正在进入 BOSS 战…</p>
+</body>
+</html>

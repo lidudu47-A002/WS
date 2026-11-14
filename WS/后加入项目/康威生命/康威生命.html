@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>双层康威生命游戏 · 外世界放置蛇</title>
+    <style>
+        :root {
+            --bg: #06060f;
+            --panel: #0d0d22;
+            --text: #d0d0d0;
+            --accent: #f0c040;
+            --accent2: #4ecdc4;
+            --danger: #e74c3c;
+            --player: #5b9cf5;
+            --cell-outer: #5dfcd4;
+            --cell-inner: #ffb347;
+            --snake-head: #2ecc71;
+            --snake-body: #27ae60;
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            background: var(--bg);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            user-select: none;
+            padding: 8px;
+            overflow-y: auto;
+        }
+        .game-container {
+            background: var(--panel);
+            border-radius: 18px;
+            padding: 14px 18px;
+            box-shadow: 0 0 80px rgba(78,205,196,0.08), 0 20px 50px rgba(0,0,0,0.6);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            max-width: 98vw;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .game-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .game-title { font-size:1.2rem; font-weight:700; color:var(--accent2); }
+        .world-indicator {
+            font-size:0.75rem; padding:5px 12px; border-radius:14px;
+            background:rgba(255,255,255,0.06); color:#aaa; transition:0.3s;
+        }
+        .world-indicator.inner { color:#ffb347; border:1px solid rgba(255,179,71,0.4); background:rgba(255,179,71,0.08); }
+        .points-display {
+            display:flex; align-items:center; gap:8px; background:rgba(0,0,0,0.3);
+            border-radius:22px; padding:8px 14px; border:2px solid rgba(240,192,64,0.35);
+            font-size:0.85rem; color:#ccc;
+        }
+        .points-value { font-size:1.3rem; font-weight:800; color:var(--accent); }
+        .canvas-wrapper {
+            border-radius:12px; overflow:hidden; position:relative;
+            box-shadow: 0 0 30px rgba(0,0,0,0.5), 0 0 0 2px rgba(255,255,255,0.04);
+            transition: box-shadow 0.15s;
+        }
+        .canvas-wrapper.snake-spawn-flash {
+            box-shadow: 0 0 30px rgba(46,204,113,0.9), 0 0 0 4px rgba(46,204,113,0.8);
+        }
+        canvas { display:block; background:#08081a; border-radius:10px; }
+        .game-info {
+            display:flex; gap:10px; flex-wrap:wrap; justify-content:center;
+            font-size:0.7rem; color:#999;
+        }
+        .info-item {
+            display:flex; align-items:center; gap:5px;
+            background:rgba(255,255,255,0.025); padding:5px 10px; border-radius:12px;
+        }
+        .info-dot { width:8px; height:8px; border-radius:50%; display:inline-block; }
+        .info-dot.outer { background:var(--cell-outer); }
+        .info-dot.inner { background:var(--cell-inner); }
+        .info-dot.player { background:var(--player); }
+        .info-dot.snake-dot { background:var(--snake-head); }
+        .btn-row { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
+        .btn {
+            padding:8px 16px; border-radius:20px; border:1px solid rgba(255,255,255,0.18);
+            background:rgba(255,255,255,0.05); color:#bbb; cursor:pointer;
+            font-size:0.78rem; font-weight:600; transition:0.25s; font-family:inherit;
+        }
+        .btn:hover { background:rgba(255,255,255,0.12); border-color:rgba(255,255,255,0.35); color:#fff; }
+        .btn.accent { background:rgba(240,192,64,0.12); border-color:rgba(240,192,64,0.45); color:var(--accent); }
+        .btn.highlight {
+            background:rgba(78,205,196,0.12); border-color:rgba(78,205,196,0.5); color:var(--accent2);
+        }
+        .snake-spawn-toast {
+            position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.8); color: #2ecc71; padding: 6px 14px;
+            border-radius: 16px; font-size: 0.75rem; font-weight: bold;
+            pointer-events: none; opacity: 0; transition: opacity 0.2s;
+            z-index: 10;
+        }
+        .snake-spawn-toast.show { opacity: 1; }
+        .game-over-overlay {
+            position:fixed; top:0; left:0; width:100%; height:100%;
+            background:rgba(0,0,0,0.75); display:flex; justify-content:center;
+            align-items:center; z-index:200;
+        }
+        .game-over-box {
+            background:#111128; border:2px solid rgba(231,76,60,0.5);
+            border-radius:20px; padding:30px 36px; text-align:center; color:#fff;
+        }
+        .game-over-box h2 { color:#e74c3c; }
+        @media (max-width:750px) {
+            .game-container { padding:8px 6px; gap:8px; }
+            .btn { padding:6px 10px; font-size:0.68rem; }
+            .game-title { font-size:1rem; }
+        }
+    </style>
+</head>
+<body>
+<div class="game-container" id="gameContainer">
+    <div class="game-header">
+        <div class="game-title">🧬 双层生命游戏</div>
+        <span class="world-indicator" id="worldIndicator">🌍 外世界视口</span>
+        <div class="points-display">
+            💎 <span class="points-value" id="pointsValue">10</span> 点
+        </div>
+    </div>
+
+    <div class="canvas-wrapper" id="canvasWrapper">
+        <canvas id="gameCanvas"></canvas>
+        <div class="snake-spawn-toast" id="snakeToast">🐍 外世界蛇 +1</div>
+    </div>
+
+    <div class="game-info">
+        <span class="info-item"><span class="info-dot outer"></span> 外世界细胞: <strong id="outerAlive">0</strong></span>
+        <span class="info-item"><span class="info-dot inner"></span> 里世界细胞: <strong id="innerAlive">0</strong></span>
+        <span class="info-item"><span class="info-dot player"></span> 位置: <strong id="playerPos">--</strong></span>
+        <span class="info-item"><span class="info-dot snake-dot"></span> 外世界蛇: <strong id="outerSnakeCount">0</strong></span>
+    </div>
+
+    <div class="btn-row">
+        <button class="btn" id="btnPause">⏯ 暂停</button>
+        <button class="btn highlight" id="btnToggleWorld">🔮 切换里世界 (V)</button>
+        <button class="btn accent" id="btnReset">🔄 重置</button>
+        <button class="btn" id="btnSpeedDown">🐢 减速</button>
+        <button class="btn" id="btnSpeedUp">🐇 加速</button>
+    </div>
+    <div style="font-size:0.65rem;color:#555;text-align:center;line-height:1.5;">
+        🎮 <b>WASD</b> 移动 | <b>V</b> 切换视图 | 🖱️ 点击空位放蛇(外)/放细胞(里)<br>
+        💰 外世界蛇吃细胞+1点 | ⚠️ 里世界细胞归零→死亡
+    </div>
+</div>
+
+<script>
+(function() {
+    // DOM
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const canvasWrapper = document.getElementById('canvasWrapper');
+    const snakeToast = document.getElementById('snakeToast');
+    const worldIndicator = document.getElementById('worldIndicator');
+    const pointsValueEl = document.getElementById('pointsValue');
+    const outerAliveEl = document.getElementById('outerAlive');
+    const innerAliveEl = document.getElementById('innerAlive');
+    const playerPosEl = document.getElementById('playerPos');
+    const outerSnakeCountEl = document.getElementById('outerSnakeCount');
+    const btnPause = document.getElementById('btnPause');
+    const btnToggleWorld = document.getElementById('btnToggleWorld');
+    const btnReset = document.getElementById('btnReset');
+    const btnSpeedDown = document.getElementById('btnSpeedDown');
+    const btnSpeedUp = document.getElementById('btnSpeedUp');
+
+    // 常量
+    const CELL_SIZE = 12;
+    const OUTER_COLS = 200, OUTER_ROWS = 200;
+    const INNER_COLS = 40, INNER_ROWS = 40;
+    const VIEWPORT_SIZE = 50;
+    const CANVAS_SIZE = VIEWPORT_SIZE * CELL_SIZE;
+    const INNER_DISPLAY_SIZE = INNER_COLS * CELL_SIZE;
+    const INNER_OFFSET_X = (CANVAS_SIZE - INNER_DISPLAY_SIZE) / 2;
+    const INNER_OFFSET_Y = (CANVAS_SIZE - INNER_DISPLAY_SIZE) / 2;
+    canvas.width = CANVAS_SIZE;
+    canvas.height = CANVAS_SIZE;
+
+    const SNAKE_COST = 3;           // 放蛇消耗
+    const CELL_COST = 1;           // 里世界放置细胞消耗
+    const SNAKE_LIFESPAN = 10000;
+    const SNAKE_INIT_LEN = 3;
+    const SNAKE_MOVE_MS = 110;
+    const MAX_OUTER_SNAKES = 8;
+    const MAX_SNAKE_LEN = 55;
+    const MIN_INNER_ALIVE = 12;
+    const INNER_REPLENISH = 20;
+    const OUTER_RATIO = 0.26;
+    const INNER_RATIO = 0.38;
+    const OUTER_UPDATE_MS = 550;
+    const INNER_UPDATE_MS = 320;
+    const INIT_POINTS = 10;
+
+    // 状态
+    let points = INIT_POINTS;
+    let outerGrid, outerNext, innerGrid, innerNext;
+    let outerSnakes = [];
+    let playerX = 99, playerY = 99;
+    let showInner = false, paused = false, gameOver = false;
+    let outerInterval = OUTER_UPDATE_MS, innerInterval = INNER_UPDATE_MS;
+    let lastOuter = 0, lastInner = 0, lastSnakeMove = 0;
+    let toastTimer = null;
+    let animFrame;
+
+    // 网格工具
+    function makeGrid(c, r) { const g=[]; for(let i=0;i<r;i++) g[i]=new Array(c).fill(0); return g; }
+    function randGrid(g, ratio) { for(let r=0;r<g.length;r++) for(let c=0;c<g[0].length;c++) g[r][c]=Math.random()<ratio?1:0; }
+    function aliveCount(g) { let n=0; for(let r=0;r<g.length;r++) for(let c=0;c<g[0].length;c++) n+=g[r][c]; return n; }
+    function neighbors(g, r, c) {
+        let cnt=0; const rows=g.length, cols=g[0].length;
+        for(let dr=-1;dr<=1;dr++) for(let dc=-1;dc<=1;dc++) {
+            if(dr===0&&dc===0) continue;
+            const nr=r+dr, nc=c+dc;
+            if(nr>=0&&nr<rows&&nc>=0&&nc<cols) cnt+=g[nr][nc];
+        }
+        return cnt;
+    }
+    function updateGrid(grid, next) {
+        const rows=grid.length, cols=grid[0].length;
+        for(let r=0;r<rows;r++) for(let c=0;c<cols;c++) {
+            const n=neighbors(grid,r,c);
+            next[r][c] = (grid[r][c]===1) ? (n===2||n===3?1:0) : (n===3?1:0);
+        }
+    }
+
+    // 颜色工具
+    function lerpCol(c1,c2,t) {
+        const r1=parseInt(c1.slice(1,3),16),g1=parseInt(c1.slice(3,5),16),b1=parseInt(c1.slice(5,7),16);
+        const r2=parseInt(c2.slice(1,3),16),g2=parseInt(c2.slice(3,5),16),b2=parseInt(c2.slice(5,7),16);
+        const cl=v=>Math.min(255,Math.max(0,Math.round(v)));
+        return '#'+[cl(r1+(r2-r1)*t),cl(g1+(g2-g1)*t),cl(b1+(b2-b1)*t)].map(v=>v.toString(16).padStart(2,'0')).join('');
+    }
+    function lighten(hex,amt) {
+        let r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+        const cl=v=>Math.min(255,Math.max(0,Math.round(v)));
+        return '#'+[cl(r+255*amt),cl(g+255*amt),cl(b+255*amt)].map(v=>v.toString(16).padStart(2,'0')).join('');
+    }
+
+    // 外世界蛇类
+    class OuterSnake {
+        constructor(x,y) {
+            this.body=[];
+            const dirs=[{dx:0,dy:-1},{dx:1,dy:0},{dx:0,dy:1},{dx:-1,dy:0}];
+            const sh=[...dirs].sort(()=>Math.random()-0.5);
+            let vd=null;
+            for(const d of sh) {
+                const pos=[]; let ok=true;
+                for(let i=0;i<SNAKE_INIT_LEN;i++) {
+                    const bx=x-d.dx*i, by=y-d.dy*i;
+                    if(bx<0||bx>=OUTER_COLS||by<0||by>=OUTER_ROWS){ok=false;break;}
+                    pos.push({x:bx,y:by});
+                }
+                if(ok){vd=d;this.body=pos;break;}
+            }
+            if(!vd){this.body=[{x,y}];vd={dx:1,dy:0};}
+            this.dir=vd; this.birth=performance.now(); this.alive=true;
+        }
+        head(){return this.body[0];}
+        expired(now){return (now-this.birth)>=SNAKE_LIFESPAN;}
+        occup(x,y){for(const s of this.body)if(s.x===x&&s.y===y)return true;return false;}
+        move(grid,all) {
+            if(!this.alive)return;
+            const h=this.head();
+            const occ=new Set();
+            for(const s of all){
+                if(!s.alive)continue;
+                for(const seg of s.body){
+                    if(s===this&&seg===this.body[this.body.length-1])continue;
+                    occ.add(`${seg.x},${seg.y}`);
+                }
+            }
+            let tdir=null, min=Infinity;
+            for(let dr=-8;dr<=8;dr++)for(let dc=-8;dc<=8;dc++){
+                const nx=h.x+dc, ny=h.y+dr;
+                if(nx>=0&&nx<OUTER_COLS&&ny>=0&&ny<OUTER_ROWS&&grid[ny][nx]===1){
+                    const d=Math.abs(dr)+Math.abs(dc);
+                    if(d<min){min=d; if(dr<0)tdir={dx:0,dy:-1};else if(dr>0)tdir={dx:0,dy:1};else if(dc<0)tdir={dx:-1,dy:0};else tdir={dx:1,dy:0};}
+                }
+            }
+            const dirs=[{dx:0,dy:-1},{dx:1,dy:0},{dx:0,dy:1},{dx:-1,dy:0}];
+            const pref=[];
+            if(tdir){pref.push(tdir); dirs.forEach(d=>{if(d.dx!==tdir.dx||d.dy!==tdir.dy)pref.push(d);});}
+            else{ pref.push(this.dir); dirs.forEach(d=>{if(d.dx!==this.dir.dx||d.dy!==this.dir.dy)pref.push(d);}); for(let i=pref.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pref[i],pref[j]]=[pref[j],pref[i]];} }
+            let np=null;
+            for(const d of pref){
+                const nx=h.x+d.dx, ny=h.y+d.dy;
+                if(nx>=0&&nx<OUTER_COLS&&ny>=0&&ny<OUTER_ROWS&&!occ.has(`${nx},${ny}`)){
+                    np={x:nx,y:ny};this.dir=d;break;
+                }
+            }
+            if(!np){this.alive=false;return;}
+            const eat=grid[np.y][np.x]===1;
+            this.body.unshift(np);
+            if(eat){grid[np.y][np.x]=0;points++;updatePoints();}
+            else this.body.pop();
+            if(this.body.length>MAX_SNAKE_LEN){this.alive=false;return;}
+            const nh=this.body[0];
+            for(let i=1;i<this.body.length;i++)if(this.body[i].x===nh.x&&this.body[i].y===nh.y){this.alive=false;return;}
+            for(const s of all){if(s===this||!s.alive)continue; for(const seg of s.body)if(seg.x===nh.x&&seg.y===nh.y){this.alive=false;return;}}
+        }
+    }
+
+    function outerSnakeOccupied(x,y){for(const s of outerSnakes)if(s.alive&&s.occup(x,y))return true;return false;}
+    function isPlayerCell(x,y){return x>=playerX&&x<playerX+2&&y>=playerY&&y<playerY+2;}
+
+    // 放置外世界蛇
+    function placeOuterSnake(gridX, gridY) {
+        if(points < SNAKE_COST) return false;
+        if(outerSnakes.filter(s=>s.alive).length >= MAX_OUTER_SNAKES) return false;
+        if(gridX<0||gridX>=OUTER_COLS||gridY<0||gridY>=OUTER_ROWS) return false;
+        if(outerSnakeOccupied(gridX,gridY) || isPlayerCell(gridX,gridY)) return false;
+
+        const snake = new OuterSnake(gridX, gridY);
+        if(snake.body.length===0) return false;
+        for(const seg of snake.body) if(outerSnakeOccupied(seg.x,seg.y) || isPlayerCell(seg.x,seg.y)) return false;
+        outerSnakes.push(snake);
+        points -= SNAKE_COST;
+        updatePoints();
+        flashSnakeSpawn();
+        return true;
+    }
+
+    // 放置里世界细胞
+    function placeInnerCell(gridX, gridY) {
+        if(points < CELL_COST) return false;
+        if(gridX<0||gridX>=INNER_COLS||gridY<0||gridY>=INNER_ROWS) return false;
+        if(innerGrid[gridY][gridX] !== 0) return false;
+        innerGrid[gridY][gridX] = 1;
+        points -= CELL_COST;
+        updatePoints();
+        return true;
+    }
+
+    function flashSnakeSpawn() {
+        canvasWrapper.classList.add('snake-spawn-flash');
+        snakeToast.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => {
+            canvasWrapper.classList.remove('snake-spawn-flash');
+            snakeToast.classList.remove('show');
+        }, 800);
+    }
+
+    // UI更新
+    function updatePoints() { pointsValueEl.textContent = points; }
+    function updateInfo() {
+        outerAliveEl.textContent = aliveCount(outerGrid);
+        innerAliveEl.textContent = aliveCount(innerGrid);
+        playerPosEl.textContent = `(${playerX},${playerY})`;
+        outerSnakeCountEl.textContent = outerSnakes.filter(s=>s.alive).length;
+    }
+    function updateWorldInd() {
+        worldIndicator.textContent = showInner ? '🔮 里世界视图' : '🌍 外世界视口';
+        worldIndicator.classList.toggle('inner', showInner);
+    }
+
+    // 里世界自动补充
+    function replenishInner() {
+        if(aliveCount(innerGrid) >= MIN_INNER_ALIVE) return;
+        const candidates = [];
+        for(let r=0;r<INNER_ROWS;r++) for(let c=0;c<INNER_COLS;c++)
+            if(innerGrid[r][c]===0) candidates.push({r,c});
+        for(let i=candidates.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[candidates[i],candidates[j]]=[candidates[j],candidates[i]];}
+        const toAdd = Math.min(INNER_REPLENISH, candidates.length);
+        for(let i=0;i<toAdd;i++) innerGrid[candidates[i].r][candidates[i].c]=1;
+    }
+
+    // 游戏结束检测
+    function checkGameOver() {
+        if(gameOver) return;
+        if(aliveCount(innerGrid) === 0) {
+            gameOver = true;
+            paused = true;
+            showGameOver();
+        }
+    }
+
+    function showGameOver() {
+        const ov = document.createElement('div');
+        ov.className = 'game-over-overlay';
+        ov.innerHTML = `<div class="game-over-box"><h2>💀 里世界毁灭</h2><p>里世界细胞全部消亡…</p><p>最终得分: <b style="color:#f0c040;">${points}</b></p><button class="btn accent" id="btnRestart">🔄 重新开始</button></div>`;
+        document.body.appendChild(ov);
+        document.getElementById('btnRestart').onclick = () => { ov.remove(); resetGame(); };
+    }
+
+    function resetGame() {
+        gameOver=false; paused=false; points=INIT_POINTS; playerX=99; playerY=99; showInner=false;
+        lastOuter=lastInner=lastSnakeMove=0;
+        outerGrid=makeGrid(OUTER_COLS,OUTER_ROWS); outerNext=makeGrid(OUTER_COLS,OUTER_ROWS); randGrid(outerGrid,OUTER_RATIO);
+        innerGrid=makeGrid(INNER_COLS,INNER_ROWS); innerNext=makeGrid(INNER_COLS,INNER_ROWS); randGrid(innerGrid,INNER_RATIO);
+        outerSnakes=[];
+        updatePoints(); updateInfo(); updateWorldInd(); updateSpeedLabels();
+        btnPause.textContent='⏯ 暂停'; btnPause.classList.remove('accent');
+        document.getElementById('gameOverOverlay')?.remove();
+    }
+
+    // 渲染
+    function draw(now) {
+        ctx.fillStyle='#08081a'; ctx.fillRect(0,0,CANVAS_SIZE,CANVAS_SIZE);
+        if(showInner) drawInner(now); else drawOuter(now);
+    }
+
+    function drawOuter(now) {
+        const vl=Math.max(0,Math.min(playerX-Math.floor(VIEWPORT_SIZE/2)+1,OUTER_COLS-VIEWPORT_SIZE));
+        const vt=Math.max(0,Math.min(playerY-Math.floor(VIEWPORT_SIZE/2)+1,OUTER_ROWS-VIEWPORT_SIZE));
+        ctx.strokeStyle='rgba(255,255,255,0.025)'; ctx.lineWidth=0.5;
+        for(let r=0;r<=VIEWPORT_SIZE;r++){ctx.beginPath();ctx.moveTo(0,r*CELL_SIZE);ctx.lineTo(CANVAS_SIZE,r*CELL_SIZE);ctx.stroke();}
+        for(let c=0;c<=VIEWPORT_SIZE;c++){ctx.beginPath();ctx.moveTo(c*CELL_SIZE,0);ctx.lineTo(c*CELL_SIZE,CANVAS_SIZE);ctx.stroke();}
+        // 细胞
+        for(let vy=0;vy<VIEWPORT_SIZE;vy++)for(let vx=0;vx<VIEWPORT_SIZE;vx++){
+            const gx=vl+vx, gy=vt+vy;
+            if(gx>=0&&gx<OUTER_COLS&&gy>=0&&gy<OUTER_ROWS&&outerGrid[gy][gx]===1){
+                const playerCell = isPlayerCell(gx,gy);
+                const snakeCell = outerSnakeOccupied(gx,gy);
+                if(!playerCell && !snakeCell){
+                    const cx=(vx+0.5)*CELL_SIZE, cy=(vy+0.5)*CELL_SIZE, rad=CELL_SIZE*0.38;
+                    const grd=ctx.createRadialGradient(cx,cy,rad*0.2,cx,cy,rad*1.5);
+                    grd.addColorStop(0,'rgba(93,252,212,0.85)'); grd.addColorStop(0.5,'rgba(93,252,212,0.3)'); grd.addColorStop(1,'rgba(93,252,212,0)');
+                    ctx.fillStyle=grd; ctx.beginPath(); ctx.arc(cx,cy,rad*1.5,0,Math.PI*2); ctx.fill();
+                    ctx.fillStyle='#5dfcd4'; ctx.beginPath(); ctx.arc(cx,cy,rad,0,Math.PI*2); ctx.fill();
+                }
+            }
+        }
+        // 蛇
+        for(const sn of outerSnakes){
+            if(!sn.alive)continue;
+            const rem=Math.max(0,1-(now-sn.birth)/SNAKE_LIFESPAN);
+            let hc,bc;
+            if(rem>0.55){hc='#2ecc71';bc='#27ae60';}else if(rem>0.2){const t=(0.55-rem)/0.35;hc=lerpCol('#2ecc71','#e67e22',t);bc=lerpCol('#27ae60','#d35400',t);}
+            else{const t=(0.2-rem)/0.2;hc=lerpCol('#e67e22','#e74c3c',Math.min(t,1));bc=lerpCol('#d35400','#c0392b',Math.min(t,1));}
+            for(let i=sn.body.length-1;i>=0;i--){
+                const seg=sn.body[i];
+                const vx=seg.x-vl, vy=seg.y-vt;
+                if(vx<0||vx>=VIEWPORT_SIZE||vy<0||vy>=VIEWPORT_SIZE) continue;
+                const sx=vx*CELL_SIZE, sy=vy*CELL_SIZE;
+                const isHead=i===0, pad=isHead?1:2, rad=isHead?CELL_SIZE*0.43:CELL_SIZE*0.36;
+                ctx.fillStyle='rgba(0,0,0,0.35)'; ctx.fillRect(sx+pad+1,sy+pad+1,CELL_SIZE-pad*2,CELL_SIZE-pad*2);
+                const col=isHead?hc:bc, grd=ctx.createLinearGradient(sx,sy,sx+CELL_SIZE,sy+CELL_SIZE);
+                grd.addColorStop(0,col); grd.addColorStop(1,isHead?lighten(col,0.3):col);
+                ctx.fillStyle=grd; ctx.beginPath(); ctx.roundRect(sx+pad,sy+pad,CELL_SIZE-pad*2,CELL_SIZE-pad*2,rad); ctx.fill();
+                if(isHead){ctx.fillStyle='rgba(255,255,255,0.35)';ctx.beginPath();ctx.arc(sx+CELL_SIZE*0.35,sy+CELL_SIZE*0.3,CELL_SIZE*0.14,0,Math.PI*2);ctx.fill();}
+            }
+        }
+        // 玩家
+        for(let dy=0;dy<2;dy++)for(let dx=0;dx<2;dx++){
+            const gx=playerX+dx, gy=playerY+dy, vx=gx-vl, vy=gy-vt;
+            if(vx>=0&&vx<VIEWPORT_SIZE&&vy>=0&&vy<VIEWPORT_SIZE){
+                const cx=(vx+0.5)*CELL_SIZE, cy=(vy+0.5)*CELL_SIZE, rad=CELL_SIZE*0.44;
+                const grd=ctx.createRadialGradient(cx,cy,rad*0.15,cx,cy,rad*1.8);
+                grd.addColorStop(0,'rgba(91,156,245,0.95)'); grd.addColorStop(0.4,'rgba(139,184,255,0.5)'); grd.addColorStop(1,'rgba(91,156,245,0)');
+                ctx.fillStyle=grd; ctx.beginPath(); ctx.arc(cx,cy,rad*1.8,0,Math.PI*2); ctx.fill();
+                ctx.fillStyle='#5b9cf5'; ctx.beginPath(); ctx.arc(cx,cy,rad,0,Math.PI*2); ctx.fill();
+                ctx.fillStyle='rgba(255,255,255,0.4)'; ctx.beginPath(); ctx.arc(cx-rad*0.25,cy-rad*0.25,rad*0.35,0,Math.PI*2); ctx.fill();
+            }
+        }
+        ctx.strokeStyle='rgba(255,255,255,0.08)'; ctx.lineWidth=1.5; ctx.strokeRect(0.5,0.5,CANVAS_SIZE-1,CANVAS_SIZE-1);
+    }
+
+    function drawInner(now) {
+        ctx.fillStyle='#0a0a1e'; ctx.fillRect(INNER_OFFSET_X,INNER_OFFSET_Y,INNER_DISPLAY_SIZE,INNER_DISPLAY_SIZE);
+        ctx.strokeStyle='rgba(255,255,255,0.04)'; ctx.lineWidth=0.5;
+        for(let r=0;r<=INNER_ROWS;r++){ctx.beginPath();ctx.moveTo(INNER_OFFSET_X,INNER_OFFSET_Y+r*CELL_SIZE);ctx.lineTo(INNER_OFFSET_X+INNER_DISPLAY_SIZE,INNER_OFFSET_Y+r*CELL_SIZE);ctx.stroke();}
+        for(let c=0;c<=INNER_COLS;c++){ctx.beginPath();ctx.moveTo(INNER_OFFSET_X+c*CELL_SIZE,INNER_OFFSET_Y);ctx.lineTo(INNER_OFFSET_X+c*CELL_SIZE,INNER_OFFSET_Y+INNER_DISPLAY_SIZE);ctx.stroke();}
+        for(let r=0;r<INNER_ROWS;r++)for(let c=0;c<INNER_COLS;c++){
+            if(innerGrid[r][c]===1){
+                const cx=INNER_OFFSET_X+(c+0.5)*CELL_SIZE, cy=INNER_OFFSET_Y+(r+0.5)*CELL_SIZE, rad=CELL_SIZE*0.4;
+                const grd=ctx.createRadialGradient(cx,cy,rad*0.2,cx,cy,rad*1.6);
+                grd.addColorStop(0,'rgba(255,179,71,0.9)'); grd.addColorStop(0.5,'rgba(255,179,71,0.35)'); grd.addColorStop(1,'rgba(255,179,71,0)');
+                ctx.fillStyle=grd; ctx.beginPath(); ctx.arc(cx,cy,rad*1.6,0,Math.PI*2); ctx.fill();
+                ctx.fillStyle='#ffb347'; ctx.beginPath(); ctx.arc(cx,cy,rad,0,Math.PI*2); ctx.fill();
+            }
+        }
+        ctx.strokeStyle='rgba(255,179,71,0.35)';ctx.lineWidth=2;ctx.strokeRect(INNER_OFFSET_X-1,INNER_OFFSET_Y-1,INNER_DISPLAY_SIZE+2,INNER_DISPLAY_SIZE+2);
+    }
+
+    // 主循环
+    function loop(ts) {
+        if(gameOver){ draw(ts); animFrame=requestAnimationFrame(loop); return; }
+        if(!lastOuter) lastOuter=ts; if(!lastInner) lastInner=ts; if(!lastSnakeMove) lastSnakeMove=ts;
+
+        if(!paused && ts-lastOuter>=outerInterval){
+            updateGrid(outerGrid,outerNext); [outerGrid,outerNext]=[outerNext,outerGrid];
+            lastOuter=ts;
+        }
+        if(!paused && ts-lastInner>=innerInterval){
+            updateGrid(innerGrid,innerNext); [innerGrid,innerNext]=[innerNext,innerGrid];
+            replenishInner();
+            checkGameOver();
+            lastInner=ts;
+        }
+        if(!paused && ts-lastSnakeMove>=SNAKE_MOVE_MS){
+            const active = outerSnakes.filter(s=>s.alive);
+            for(let i=active.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[active[i],active[j]]=[active[j],active[i]];}
+            for(const s of active) if(s.alive) s.move(outerGrid, outerSnakes);
+            for(const s of outerSnakes) if(s.alive && s.expired(ts)) s.alive=false;
+            outerSnakes = outerSnakes.filter(s=>s.alive);
+            lastSnakeMove=ts;
+        }
+        if(!paused){
+            for(const s of outerSnakes) if(s.alive && s.expired(ts)) s.alive=false;
+            outerSnakes = outerSnakes.filter(s=>s.alive);
+        }
+
+        if(Math.floor(ts/600)!==Math.floor((ts-16)/600)) updateInfo();
+        draw(ts);
+        animFrame = requestAnimationFrame(loop);
+    }
+
+    // 输入
+    const keys={};
+    document.addEventListener('keydown',e=>{
+        keys[e.key.toLowerCase()]=true;
+        if(e.key.toLowerCase()==='v'){e.preventDefault(); showInner=!showInner; updateWorldInd();}
+        if(e.key===' '){e.preventDefault(); if(!gameOver){paused=!paused; btnPause.textContent=paused?'▶ 继续':'⏯ 暂停'; btnPause.classList.toggle('accent',paused);}}
+        movePlayer();
+    });
+    document.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
+    function movePlayer(){
+        if(gameOver||showInner)return;
+        let nx=playerX, ny=playerY, moved=false;
+        if(keys['w']||keys['arrowup']){ny--;moved=true;}
+        if(keys['s']||keys['arrowdown']){ny++;moved=true;}
+        if(keys['a']||keys['arrowleft']){nx--;moved=true;}
+        if(keys['d']||keys['arrowright']){nx++;moved=true;}
+        if(moved){
+            nx=Math.max(0,Math.min(OUTER_COLS-2,nx));
+            ny=Math.max(0,Math.min(OUTER_ROWS-2,ny));
+            if(nx!==playerX||ny!==playerY){ playerX=nx; playerY=ny; }
+        }
+    }
+    setInterval(()=>{ if(!gameOver&&!showInner&&!paused) movePlayer(); }, 80);
+
+    // 画布点击：外世界放蛇，里世界放细胞
+    canvas.addEventListener('click', e => {
+        if(gameOver || paused) return;
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = CANVAS_SIZE / rect.width;
+        const scaleY = CANVAS_SIZE / rect.height;
+        const mx = (e.clientX - rect.left) * scaleX;
+        const my = (e.clientY - rect.top) * scaleY;
+
+        if(showInner){
+            const gx = Math.floor((mx - INNER_OFFSET_X) / CELL_SIZE);
+            const gy = Math.floor((my - INNER_OFFSET_Y) / CELL_SIZE);
+            if(gx>=0&&gx<INNER_COLS&&gy>=0&&gy<INNER_ROWS){
+                if(innerGrid[gy][gx]===0 && points>=CELL_COST){
+                    placeInnerCell(gx, gy);
+                }
+            }
+        } else {
+            const vl = Math.max(0,Math.min(playerX-Math.floor(VIEWPORT_SIZE/2)+1,OUTER_COLS-VIEWPORT_SIZE));
+            const vt = Math.max(0,Math.min(playerY-Math.floor(VIEWPORT_SIZE/2)+1,OUTER_ROWS-VIEWPORT_SIZE));
+            const gx = vl + Math.floor(mx / CELL_SIZE);
+            const gy = vt + Math.floor(my / CELL_SIZE);
+            if(gx>=0&&gx<OUTER_COLS&&gy>=0&&gy<OUTER_ROWS){
+                if(points >= SNAKE_COST && !outerSnakeOccupied(gx,gy) && !isPlayerCell(gx,gy)){
+                    placeOuterSnake(gx, gy);
+                }
+            }
+        }
+    });
+
+    // 按钮事件
+    btnPause.onclick = ()=>{
+        if(gameOver)return;
+        paused=!paused; btnPause.textContent=paused?'▶ 继续':'⏯ 暂停';
+        btnPause.classList.toggle('accent',paused);
+    };
+    btnToggleWorld.onclick = ()=>{ showInner=!showInner; updateWorldInd(); };
+    btnReset.onclick = ()=>{ resetGame(); lastOuter=lastInner=lastSnakeMove=0; };
+    btnSpeedDown.onclick = ()=>{
+        outerInterval=Math.min(2000,outerInterval+150); innerInterval=Math.min(1500,innerInterval+100);
+        updateSpeedLabels();
+    };
+    btnSpeedUp.onclick = ()=>{
+        outerInterval=Math.max(150,outerInterval-150); innerInterval=Math.max(100,innerInterval-100);
+        updateSpeedLabels();
+    };
+    function updateSpeedLabels(){
+        const o=Math.round(1000/outerInterval*10)/10, i=Math.round(1000/innerInterval*10)/10;
+        btnSpeedDown.textContent=`🐢 减速 (外${o}/内${i})`;
+        btnSpeedUp.textContent=`🐇 加速 (外${o}/内${i})`;
+    }
+
+    function resize(){
+        const mw=Math.min(window.innerWidth-20,620), mh=Math.min(window.innerHeight-340,620);
+        const sc=Math.min(mw/CANVAS_SIZE, mh/CANVAS_SIZE, 1);
+        canvas.style.width = CANVAS_SIZE*sc+'px';
+        canvas.style.height = CANVAS_SIZE*sc+'px';
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    function init(){
+        outerGrid=makeGrid(OUTER_COLS,OUTER_ROWS);outerNext=makeGrid(OUTER_COLS,OUTER_ROWS);randGrid(outerGrid,OUTER_RATIO);
+        innerGrid=makeGrid(INNER_COLS,INNER_ROWS);innerNext=makeGrid(INNER_COLS,INNER_ROWS);randGrid(innerGrid,INNER_RATIO);
+        points=INIT_POINTS; playerX=99; playerY=99; outerSnakes=[]; gameOver=paused=showInner=false;
+        updatePoints(); updateInfo(); updateWorldInd(); updateSpeedLabels();
+        btnPause.textContent='⏯ 暂停';
+        if(animFrame) cancelAnimationFrame(animFrame);
+        animFrame = requestAnimationFrame(loop);
+    }
+    init();
+})();
+</script>
+</body>
+</html>

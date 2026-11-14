@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-ready="0">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>白色方块的冒险 · 思维导图</title>
+<style>
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0;padding:0;height:100%;overflow:hidden;background:#0a0a12;color:#e6edf3;
+    font-family:"Microsoft YaHei","PingFang SC","Hiragino Sans GB","Segoe UI",sans-serif;
+  }
+  body::before{
+    content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+    background:
+      radial-gradient(900px 520px at 12% 6%, rgba(126,231,135,.10), transparent 62%),
+      radial-gradient(900px 520px at 88% 94%, rgba(121,192,255,.10), transparent 62%),
+      radial-gradient(720px 420px at 62% 18%, rgba(167,139,250,.09), transparent 60%),
+      radial-gradient(600px 360px at 40% 88%, rgba(247,143,179,.07), transparent 62%);
+  }
+  #app{position:relative;z-index:1;display:flex;flex-direction:column;height:100%;}
+
+  /* 顶部标题区 */
+  .topbar{
+    flex:0 0 auto;display:flex;align-items:center;gap:18px;
+    padding:12px 22px;border-bottom:1px solid rgba(255,255,255,.08);
+    background:rgba(12,12,20,.62);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  }
+  .brand h1{margin:0;font-size:20px;font-weight:700;letter-spacing:.6px;line-height:1.2;
+    background:linear-gradient(90deg,#ffffff,#c9d1d9 60%,#8bd450);-webkit-background-clip:text;background-clip:text;color:transparent;}
+  .brand .sub{margin:3px 0 0;font-size:11.5px;color:rgba(230,237,243,.52);letter-spacing:.3px;}
+  .stats{display:flex;gap:8px;align-items:center;}
+  .pill{
+    font-size:11.5px;color:rgba(230,237,243,.72);padding:5px 11px;border-radius:999px;
+    background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.1);white-space:nowrap;
+  }
+  .pill b{color:#fff;font-weight:600;}
+  .tools{margin-left:auto;display:flex;gap:8px;align-items:center;}
+  #search{
+    width:214px;height:32px;padding:0 12px;border-radius:9px;font-size:12.5px;
+    background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.13);
+    color:#e6edf3;outline:none;font-family:inherit;transition:border-color .15s,box-shadow .15s;
+  }
+  #search::placeholder{color:rgba(230,237,243,.38);}
+  #search:focus{border-color:rgba(121,192,255,.65);box-shadow:0 0 0 3px rgba(121,192,255,.14);}
+  .tools button{
+    height:32px;padding:0 12px;border-radius:9px;font-size:12px;font-family:inherit;cursor:pointer;
+    background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.13);color:rgba(230,237,243,.86);
+    transition:background .15s,border-color .15s,color .15s,transform .1s;white-space:nowrap;
+  }
+  .tools button:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.26);color:#fff;}
+  .tools button:active{transform:translateY(1px);}
+
+  /* 画布 */
+  #viewport{position:relative;flex:1 1 auto;overflow:hidden;cursor:grab;touch-action:none;}
+  #viewport.grabbing{cursor:grabbing;}
+  #stage{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform;}
+  #links{position:absolute;left:0;top:0;overflow:visible;pointer-events:none;}
+  #nodes{position:absolute;left:0;top:0;}
+
+  /* 节点 */
+  .node{
+    position:absolute;display:flex;flex-direction:column;justify-content:center;
+    padding:0 12px 0 11px;border-radius:10px;
+    background:linear-gradient(180deg,rgba(255,255,255,.075),rgba(255,255,255,.032));
+    border:1px solid rgba(255,255,255,.10);border-left:3px solid var(--c,#8b949e);
+    box-shadow:0 6px 18px rgba(0,0,0,.34);
+    backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+    color:#e6edf3;font-size:12.5px;line-height:1.28;overflow:hidden;
+    user-select:none;-webkit-user-select:none;
+    transition:box-shadow .15s ease,border-color .15s ease,opacity .18s ease;
+  }
+  .node .nm{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .node .ds{margin-top:3px;font-size:10.5px;color:rgba(230,237,243,.60);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .node.d0{
+    border-left-width:4px;border-color:rgba(255,255,255,.26);border-left-color:var(--c,#fff);
+    background:linear-gradient(135deg,rgba(255,255,255,.15),rgba(255,255,255,.045));
+  }
+  .node.d0 .nm{font-size:16px;font-weight:700;letter-spacing:.5px;}
+  .node.d1 .nm{font-size:13px;color:var(--c,#e6edf3);}
+  .node.d2 .nm{font-size:12.5px;}
+  .node.d3 .nm{font-size:12px;color:rgba(230,237,243,.9);}
+  .node.has-children{cursor:pointer;}
+  .node.has-children:hover{box-shadow:0 0 0 1px var(--c,#fff),0 10px 26px rgba(0,0,0,.46);}
+  .node.dim{opacity:.20;}
+  .node.match{border-color:#ffd166;box-shadow:0 0 0 2px rgba(255,209,102,.9),0 0 26px rgba(255,209,102,.45);}
+  .node.match .nm{color:#ffd166;}
+  .node .cnt{
+    position:absolute;right:6px;top:5px;padding:1px 4px;border-radius:6px;
+    font-size:9px;line-height:1.3;color:rgba(230,237,243,.55);background:rgba(255,255,255,.08);
+  }
+  .hint{
+    position:absolute;left:16px;bottom:11px;z-index:2;pointer-events:none;
+    font-size:11px;color:rgba(230,237,243,.34);letter-spacing:.3px;
+  }
+
+  /* 打印 / 截图友好 */
+  @media print{
+    @page{size:A3 landscape;margin:6mm;}
+    html,body{background:#0a0a12 !important;color:#fff !important;
+      -webkit-print-color-adjust:exact;print-color-adjust:exact;height:auto;overflow:visible;}
+    body::before{display:none;}
+    #app{height:auto;break-inside:avoid;page-break-inside:avoid;}
+    .topbar{background:#0a0a12 !important;backdrop-filter:none;}
+    .tools,.hint{display:none !important;}
+    #viewport{overflow:visible !important;height:auto;}
+    .node{backdrop-filter:none;box-shadow:none;}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="topbar">
+    <div class="brand">
+      <h1>白色方块的冒险</h1>
+      <p class="sub">面向玩家 · 玩法思维导图　|　V0.0.04-A0.4　出品 @bean soil</p>
+    </div>
+    <div class="stats">
+      <span class="pill" id="statTotal">节点 <b>0</b></span>
+      <span class="pill" id="statVisible">可见 <b>0</b></span>
+    </div>
+    <div class="tools">
+      <input id="search" type="text" placeholder="搜索节点 / 说明…" autocomplete="off" spellcheck="false">
+      <button type="button" data-act="expand">全部展开</button>
+      <button type="button" data-act="collapse">全部折叠</button>
+      <button type="button" data-act="reset">复位</button>
+      <button type="button" data-act="fit">适应屏幕</button>
+    </div>
+  </header>
+  <main id="viewport">
+    <div id="stage">
+      <svg id="links" xmlns="http://www.w3.org/2000/svg"></svg>
+      <div id="nodes"></div>
+    </div>
+  </main>
+  <div class="hint">滚轮缩放 · 拖拽平移 · 点击节点展开 / 折叠</div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  var DATA = {
+  "name": "白色方块的冒险",
+  "sub": "V0.0.04-A0.4　出品 @bean soil",
+  "children": [
+    {
+      "name": "开始游戏",
+      "color": "#7ee787",
+      "children": [
+        {
+          "name": "入口页",
+          "children": [
+            {
+              "name": "游客模式",
+              "desc": "直接进入黑屋"
+            },
+            {
+              "name": "登录账号",
+              "desc": "进入主页，可存档"
+            }
+          ]
+        },
+        {
+          "name": "世界区域",
+          "children": [
+            {
+              "name": "黑屋",
+              "desc": "主世界 · 完整流程"
+            },
+            {
+              "name": "监狱",
+              "desc": "独立章节 · 独立 BOSS"
+            }
+          ]
+        },
+        {
+          "name": "存档机制",
+          "children": [
+            {
+              "name": "S 存档 / L 读档"
+            },
+            {
+              "name": "存档点自动存档",
+              "desc": "离开存档区冷却 5 秒"
+            },
+            {
+              "name": "游客模式禁存档"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "操作键位",
+      "color": "#79c0ff",
+      "children": [
+        {
+          "name": "移动 / 跳跃",
+          "children": [
+            {
+              "name": "A / D 或 ← →",
+              "desc": "左右移动"
+            },
+            {
+              "name": "空格 / ↑",
+              "desc": "跳跃，空中可再跳"
+            },
+            {
+              "name": "Shift",
+              "desc": "冲刺；装备冰霜之翼后在空下滑翔"
+            }
+          ]
+        },
+        {
+          "name": "战斗操作",
+          "children": [
+            {
+              "name": "左键",
+              "desc": "普通攻击；持复合弓时蓄力射箭"
+            },
+            {
+              "name": "右键",
+              "desc": "蓄力投掷方块（冷却 5 秒）"
+            },
+            {
+              "name": "数字键 1-9",
+              "desc": "使用快捷栏物品"
+            },
+            {
+              "name": "V",
+              "desc": "护盾满时释放科技护盾"
+            }
+          ]
+        },
+        {
+          "name": "功能面板",
+          "children": [
+            {
+              "name": "E 背包"
+            },
+            {
+              "name": "P 角色面板",
+              "desc": "切角色 / Q 基础经验 / R 中等经验"
+            },
+            {
+              "name": "R 抽卡"
+            },
+            {
+              "name": "V 宠物面板"
+            },
+            {
+              "name": "H 商店"
+            },
+            {
+              "name": "Z 天赋树"
+            },
+            {
+              "name": "X 成就"
+            },
+            {
+              "name": "T 指令台"
+            }
+          ]
+        },
+        {
+          "name": "Shift + 数字",
+          "desc": "快速卸下：1 面具 / 2 十字架 / 3 武器 / 4 神父服"
+        }
+      ]
+    },
+    {
+      "name": "角色成长",
+      "color": "#ffd166",
+      "children": [
+        {
+          "name": "双角色",
+          "children": [
+            {
+              "name": "Ava",
+              "desc": "白色方块，初始可用"
+            },
+            {
+              "name": "Bl",
+              "desc": "蓝色方块，需解锁"
+            }
+          ]
+        },
+        {
+          "name": "等级",
+          "children": [
+            {
+              "name": "等级上限 50"
+            },
+            {
+              "name": "经验随等级递增",
+              "desc": "升级提升生命与攻击"
+            }
+          ]
+        },
+        {
+          "name": "经验道具",
+          "children": [
+            {
+              "name": "基础经验",
+              "desc": "50 EXP，角色面板 Q 使用"
+            },
+            {
+              "name": "中等经验",
+              "desc": "100 EXP，角色面板 R 使用"
+            }
+          ]
+        },
+        {
+          "name": "药水加成",
+          "desc": "普攻倍率 / 技能倍率，按角色独立记录"
+        }
+      ]
+    },
+    {
+      "name": "武器 · 8 件",
+      "color": "#ff7b72",
+      "children": [
+        {
+          "name": "铁剑",
+          "desc": "近战起手，攻击 +20"
+        },
+        {
+          "name": "F·B 冰霜之刃",
+          "desc": "命中冷冻，叠 3 层减速，冻结目标受伤 +20%"
+        },
+        {
+          "name": "火焰法杖",
+          "desc": "远程火球，灼烧持续掉血"
+        },
+        {
+          "name": "暗影匕首",
+          "desc": "近战高机动"
+        },
+        {
+          "name": "雷霆锤",
+          "desc": "落雷麻痹，连击加成"
+        },
+        {
+          "name": "复合弓",
+          "desc": "蓄力瞄准，抛物线箭矢，可预判命中"
+        },
+        {
+          "name": "黑洞权杖",
+          "desc": "持续吸引聚怪，范围吸伤"
+        },
+        {
+          "name": "科技长矛",
+          "desc": "伤害随移动速度提升"
+        }
+      ]
+    },
+    {
+      "name": "装备 · 5 槽位",
+      "color": "#a78bfa",
+      "children": [
+        {
+          "name": "槽位",
+          "desc": "挂饰 ×2　面具 ×1　外衣 ×1　盾牌 ×1"
+        },
+        {
+          "name": "小丑面具",
+          "desc": "持续掉血，换 4 倍伤害"
+        },
+        {
+          "name": "十字架",
+          "desc": "每秒回血，提升生命上限"
+        },
+        {
+          "name": "冰霜之翼",
+          "desc": "占用 2 个挂饰；滑翔 + 攻击附带冷冻"
+        },
+        {
+          "name": "科技盾牌",
+          "desc": "每秒充能 25%，V 键开盾 0.8 秒，反弹击退"
+        },
+        {
+          "name": "神父服",
+          "desc": "祈祷免伤 / 说教僵直 / 弥撒魅惑敌人"
+        }
+      ]
+    },
+    {
+      "name": "宠物 · 4 只",
+      "color": "#4ecdc4",
+      "children": [
+        {
+          "name": "Monkey",
+          "desc": "升级材料：香蕉"
+        },
+        {
+          "name": "0.618",
+          "desc": "升级材料：几何图"
+        },
+        {
+          "name": "Horror",
+          "desc": "幽灵系宠物"
+        },
+        {
+          "name": "小e",
+          "desc": "升级材料：眼球"
+        },
+        {
+          "name": "升级材料 ×3",
+          "desc": "香蕉 / 几何图 / 眼球，抽卡获得"
+        }
+      ]
+    },
+    {
+      "name": "抽卡系统",
+      "color": "#f78fb3",
+      "children": [
+        {
+          "name": "单抽",
+          "desc": "30 金币"
+        },
+        {
+          "name": "十连",
+          "desc": "270 金币"
+        },
+        {
+          "name": "双卡池",
+          "desc": "宠物池 / 武器装备池，面板内切换"
+        },
+        {
+          "name": "产出范围",
+          "desc": "14 件装备与宠物资源等概率"
+        }
+      ]
+    },
+    {
+      "name": "天赋树 · 4 条",
+      "color": "#f2c14e",
+      "children": [
+        {
+          "name": "💪 力量强化",
+          "desc": "攻击 +10% / 级，最高 3 级"
+        },
+        {
+          "name": "🏃 疾风步",
+          "desc": "移速 +15% / 级，最高 2 级"
+        },
+        {
+          "name": "❤️ 生命祝福",
+          "desc": "生命上限 +20 / 级，最高 2 级"
+        },
+        {
+          "name": "🪽 三段跳",
+          "desc": "消耗 2 点解锁空中第三跳"
+        }
+      ]
+    },
+    {
+      "name": "成就 · 6 项",
+      "color": "#ffa657",
+      "children": [
+        {
+          "name": "初次杀敌"
+        },
+        {
+          "name": "百人斩"
+        },
+        {
+          "name": "等级提升"
+        },
+        {
+          "name": "等级大师"
+        },
+        {
+          "name": "财源滚滚"
+        },
+        {
+          "name": "BOSS 终结者"
+        }
+      ]
+    },
+    {
+      "name": "商店",
+      "color": "#8bd450",
+      "children": [
+        {
+          "name": "HP 药水",
+          "desc": "30 金币，回复 30 生命"
+        },
+        {
+          "name": "普攻药水",
+          "desc": "永久提升普攻倍率"
+        },
+        {
+          "name": "技能药水",
+          "desc": "永久提升技能倍率"
+        },
+        {
+          "name": "BOSS 商店",
+          "desc": "章节内专属补给"
+        }
+      ]
+    },
+    {
+      "name": "敌人与 BOSS",
+      "color": "#ff6b6b",
+      "children": [
+        {
+          "name": "红色方块",
+          "desc": "基础追击，近身攻击"
+        },
+        {
+          "name": "黑色方块",
+          "desc": "远程弹幕，冷却 5 秒"
+        },
+        {
+          "name": "小方块",
+          "desc": "3 只合体，合体前有 1.5 秒预警"
+        },
+        {
+          "name": "章节 BOSS",
+          "desc": "血量 1000，体型 200，多段攻击"
+        },
+        {
+          "name": "独立 BOSS 战",
+          "desc": "监狱专属战斗页，独立音乐与设置"
+        }
+      ]
+    },
+    {
+      "name": "打击手感",
+      "color": "#c9d1d9",
+      "children": [
+        {
+          "name": "命中停顿",
+          "desc": "130ms 顿帧 + 0.15 倍时间流速"
+        },
+        {
+          "name": "屏幕震动",
+          "desc": "随伤害强度衰减"
+        },
+        {
+          "name": "冲击波与粒子",
+          "desc": "扩散圆环 + 命中火花"
+        },
+        {
+          "name": "角色形变",
+          "desc": "Squash & Stretch + 受击抖动"
+        },
+        {
+          "name": "四种音效",
+          "desc": "命中 / 暴击 / 挥空 / 蓄力"
+        }
+      ]
+    },
+    {
+      "name": "指令台 · T",
+      "color": "#6e7b8b",
+      "children": [
+        {
+          "name": "help",
+          "desc": "查看全部指令"
+        },
+        {
+          "name": "give <物品>",
+          "desc": "直接获得装备或宠物"
+        },
+        {
+          "name": "summon <数量> block|black",
+          "desc": "召唤敌人"
+        },
+        {
+          "name": "kill",
+          "desc": "清场"
+        },
+        {
+          "name": "tune LV = <等级>",
+          "desc": "调整等级"
+        },
+        {
+          "name": "st summon / bm",
+          "desc": "场景与传送调试"
+        }
+      ]
+    }
+  ]
+};
+
+  /* 错误自检（供无头浏览器/控制台核对，不影响使用） */
+  window.addEventListener('error', function(e){
+    document.documentElement.setAttribute('data-js-error', String(e.message || 'error').slice(0, 240));
+  });
+
+  var GAP_X = 70, GAP_Y = 12;
+  var viewport   = document.getElementById('viewport');
+  var stage      = document.getElementById('stage');
+  var svg        = document.getElementById('links');
+  var nodesEl    = document.getElementById('nodes');
+  var searchEl   = document.getElementById('search');
+  var statTotal  = document.getElementById('statTotal');
+  var statVisible= document.getElementById('statVisible');
+
+  var ctx = document.createElement('canvas').getContext('2d');
+  var F0 = '700 16px "Microsoft YaHei", sans-serif';
+  var F1 = '600 13px "Microsoft YaHei", sans-serif';
+  var F2 = '600 12.5px "Microsoft YaHei", sans-serif';
+  var FD = '10.5px "Microsoft YaHei", sans-serif';
+
+  var all = [], map = {}, root = null, uid = 0;
+  var vis = [], stageW = 0, stageH = 0;
+  var k = 1, tx = 0, ty = 0;
+  var matchSet = new Set();
+
+  function prep(n, depth, parent, accent){
+    n.id = 'n' + (uid++);
+    n.depth = depth;
+    n.parent = parent || null;
+    n.accent = n.color || accent || '#8b949e';
+    n.hasChildren = !!(n.children && n.children.length);
+    n.expanded = false;
+    if(depth === 0 && DATA.sub && !n.desc){ n.desc = DATA.sub; }
+
+    ctx.font = depth === 0 ? F0 : (depth === 1 ? F1 : F2);
+    var tw = ctx.measureText(n.name).width;
+    ctx.font = FD;
+    var dw = n.desc ? ctx.measureText(n.desc).width : 0;
+    var w = Math.ceil(Math.max(tw, dw)) + 27 + (n.hasChildren ? 18 : 0);
+    n.w = Math.max(114, Math.min(368, w));
+    n.h = n.desc ? 50 : 32;
+    if(depth === 0){ n.w = Math.max(n.w, 200); n.h = 64; }
+
+    all.push(n);
+    map[n.id] = n;
+    (n.children || []).forEach(function(c){ prep(c, depth + 1, n, n.accent); });
+  }
+
+  /* ---------- 布局 ---------- */
+  function layout(){
+    vis = [];
+    var cursor = 0;
+    (function walk(n, x){
+      var kids = (n.expanded && n.hasChildren) ? n.children : [];
+      n.vis = kids;
+      n.x = x;
+      if(!kids.length){
+        n.y = cursor + n.h / 2;
+        cursor += n.h + GAP_Y;
+      }else{
+        kids.forEach(function(c){ walk(c, x + n.w + GAP_X); });
+        n.y = (kids[0].y + kids[kids.length - 1].y) / 2;
+      }
+      vis.push(n);
+    })(root, 0);
+
+    stageW = 0; stageH = 0;
+    vis.forEach(function(n){
+      if(n.x + n.w > stageW) stageW = n.x + n.w;
+      if(n.y + n.h / 2 > stageH) stageH = n.y + n.h / 2;
+    });
+    stageW += 24; stageH = Math.max(stageH, cursor);
+    stage.style.width  = stageW + 'px';
+    stage.style.height = stageH + 'px';
+    svg.setAttribute('width', stageW);
+    svg.setAttribute('height', stageH);
+  }
+
+  /* ---------- 渲染 ---------- */
+  var NS = 'http://www.w3.org/2000/svg';
+  function curve(p, c){
+    var x1 = p.x + p.w, y1 = p.y, x2 = c.x, y2 = c.y;
+    var mx = (x1 + x2) / 2;
+    return 'M' + x1 + ',' + y1 + ' C' + mx + ',' + y1 + ' ' + mx + ',' + y2 + ' ' + x2 + ',' + y2;
+  }
+
+  function render(){
+    while(svg.firstChild) svg.removeChild(svg.firstChild);
+    vis.forEach(function(n){
+      (n.vis || []).forEach(function(c){
+        var p = document.createElementNS(NS, 'path');
+        p.setAttribute('d', curve(n, c));
+        p.setAttribute('fill', 'none');
+        p.setAttribute('stroke', c.accent);
+        p.setAttribute('stroke-opacity', c.depth === 1 ? 0.55 : (c.depth === 2 ? 0.38 : 0.26));
+        p.setAttribute('stroke-width', c.depth === 1 ? 1.7 : 1.1);
+        p.setAttribute('stroke-linecap', 'round');
+        svg.appendChild(p);
+      });
+    });
+
+    var frag = document.createDocumentFragment();
+    vis.forEach(function(n){
+      var el = document.createElement('div');
+      var cls = 'node d' + Math.min(n.depth, 3);
+      if(n.hasChildren) cls += ' has-children';
+      if(matchSet.size) cls += matchSet.has(n.id) ? ' match' : ' dim';
+      el.className = cls;
+      el.style.left   = n.x + 'px';
+      el.style.top    = (n.y - n.h / 2) + 'px';
+      el.style.width  = n.w + 'px';
+      el.style.height = n.h + 'px';
+      el.style.setProperty('--c', n.accent);
+      el.setAttribute('data-id', n.id);
+      el.setAttribute('title', n.name + (n.desc ? '\n' + n.desc : ''));
+
+      var nm = document.createElement('div');
+      nm.className = 'nm';
+      nm.textContent = n.name;
+      el.appendChild(nm);
+
+      if(n.desc){
+        var ds = document.createElement('div');
+        ds.className = 'ds';
+        ds.textContent = n.desc;
+        el.appendChild(ds);
+      }
+      if(n.hasChildren){
+        var cnt = document.createElement('span');
+        cnt.className = 'cnt';
+        cnt.textContent = n.expanded ? '–' : String(n.children.length);
+        el.appendChild(cnt);
+      }
+      frag.appendChild(el);
+    });
+    nodesEl.textContent = '';
+    nodesEl.appendChild(frag);
+    updateStats();
+  }
+
+  function updateStats(){
+    statTotal.innerHTML = '节点 <b>' + all.length + '</b>';
+    var t = '可见 <b>' + vis.length + '</b>';
+    if(matchSet.size) t = '匹配 <b>' + matchSet.size + '</b> · 可见 <b>' + vis.length + '</b>';
+    else if(searchEl.value.trim()) t = '匹配 <b>0</b> · 可见 <b>' + vis.length + '</b>';
+    statVisible.innerHTML = t;
+  }
+
+  /* ---------- 视图变换 ---------- */
+  function apply(){
+    stage.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + k + ')';
+  }
+
+  function bounds(){
+    var b = { x1: Infinity, y1: Infinity, x2: -Infinity, y2: -Infinity };
+    vis.forEach(function(n){
+      if(n.x < b.x1) b.x1 = n.x;
+      if(n.x + n.w > b.x2) b.x2 = n.x + n.w;
+      if(n.y - n.h / 2 < b.y1) b.y1 = n.y - n.h / 2;
+      if(n.y + n.h / 2 > b.y2) b.y2 = n.y + n.h / 2;
+    });
+    return b;
+  }
+
+  function fit(){
+    if(!vis.length) return;
+    var b = bounds();
+    var vw = viewport.clientWidth || window.innerWidth;
+    var vh = viewport.clientHeight || window.innerHeight;
+    var pad = 44;
+    var kk = Math.min((vw - pad * 2) / (b.x2 - b.x1), (vh - pad * 2) / (b.y2 - b.y1));
+    k = Math.max(0.1, Math.min(3.2, kk));
+    tx = (vw - (b.x2 - b.x1) * k) / 2 - b.x1 * k;
+    ty = (vh - (b.y2 - b.y1) * k) / 2 - b.y1 * k;
+    apply();
+  }
+
+  function centerOn(n){
+    var vw = viewport.clientWidth, vh = viewport.clientHeight;
+    if(k < 0.55) k = 0.55;
+    tx = vw / 2 - (n.x + n.w / 2) * k;
+    ty = vh / 2 - n.y * k;
+    apply();
+  }
+
+  /* ---------- 交互 ---------- */
+  function toggle(n){
+    var oldY = n.y;
+    n.expanded = !n.expanded;
+    layout(); render();
+    ty += (oldY - n.y) * k;
+    apply();
+  }
+
+  var drag = null;
+  viewport.addEventListener('pointerdown', function(e){
+    if(e.button !== 0 && e.pointerType === 'mouse') return;
+    var t = e.target;
+    drag = {
+      x: e.clientX, y: e.clientY, tx: tx, ty: ty, moved: false,
+      node: (t && t.closest) ? t.closest('.node') : null
+    };
+    viewport.classList.add('grabbing');
+  });
+  window.addEventListener('pointermove', function(e){
+    if(!drag) return;
+    var dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    if(Math.abs(dx) + Math.abs(dy) > 4) drag.moved = true;
+    tx = drag.tx + dx;
+    ty = drag.ty + dy;
+    apply();
+  });
+  window.addEventListener('pointerup', function(){
+    if(!drag) return;
+    var d = drag; drag = null;
+    viewport.classList.remove('grabbing');
+    if(!d.moved && d.node){
+      var n = map[d.node.getAttribute('data-id')];
+      if(n && n.hasChildren) toggle(n);
+    }
+  });
+  window.addEventListener('pointercancel', function(){ drag = null; viewport.classList.remove('grabbing'); });
+
+  viewport.addEventListener('wheel', function(e){
+    e.preventDefault();
+    var r = viewport.getBoundingClientRect();
+    var mx = e.clientX - r.left, my = e.clientY - r.top;
+    var nk = Math.max(0.1, Math.min(3.2, k * Math.exp(-e.deltaY * 0.0015)));
+    if(Math.abs(nk - k) < 1e-6) return;
+    tx = mx - (mx - tx) * (nk / k);
+    ty = my - (my - ty) * (nk / k);
+    k = nk;
+    apply();
+  }, { passive: false });
+
+  /* ---------- 搜索 ---------- */
+  function runSearch(){
+    var kw = searchEl.value.trim().toLowerCase();
+    matchSet = new Set();
+    if(kw){
+      all.forEach(function(n){
+        var text = (n.name + ' ' + (n.desc || '')).toLowerCase();
+        if(text.indexOf(kw) >= 0) matchSet.add(n.id);
+      });
+      matchSet.forEach(function(id){
+        var p = map[id].parent;
+        while(p){ p.expanded = true; p = p.parent; }
+      });
+    }
+    layout(); render();
+    if(matchSet.size) centerOn(map[matchSet.values().next().value]);
+  }
+  searchEl.addEventListener('input', runSearch);
+  searchEl.addEventListener('keydown', function(e){
+    if(e.key === 'Escape'){ searchEl.value = ''; runSearch(); searchEl.blur(); }
+  });
+
+  /* ---------- 工具栏 ---------- */
+  function expandAll(){
+    all.forEach(function(n){ if(n.hasChildren) n.expanded = true; });
+    layout(); render(); fit();
+  }
+  function collapseAll(){
+    all.forEach(function(n){ n.expanded = false; });
+    layout(); render(); fit();
+  }
+  function reset(){
+    all.forEach(function(n){ n.expanded = false; });
+    root.expanded = true;
+    root.children.forEach(function(c){ c.expanded = c.hasChildren; });
+    searchEl.value = '';
+    matchSet = new Set();
+    layout(); render(); fit();
+  }
+  document.querySelectorAll('.tools button').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var a = btn.getAttribute('data-act');
+      if(a === 'expand') expandAll();
+      else if(a === 'collapse') collapseAll();
+      else if(a === 'reset') reset();
+      else if(a === 'fit') fit();
+    });
+  });
+
+  /* ---------- 打印 ---------- */
+  var preView = null;
+  window.addEventListener('beforeprint', function(){
+    preView = { k: k, tx: tx, ty: ty };
+    fit();
+  });
+  window.addEventListener('afterprint', function(){
+    if(preView){ k = preView.k; tx = preView.tx; ty = preView.ty; apply(); preView = null; }
+  });
+
+  /* ---------- 初始化 ---------- */
+  prep(DATA, 0, null, null);
+  root = all[0];
+  root.expanded = true;
+  root.children.forEach(function(c){ c.expanded = !!c.hasChildren; });
+  layout();
+  render();
+  fit();
+  document.documentElement.setAttribute('data-ready', '1');
+
+  window.addEventListener('resize', function(){ apply(); });
+})();
+</script>
+</body>
+</html>

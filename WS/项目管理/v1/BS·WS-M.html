@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>BS·WS-M 登录</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', 'Microsoft YaHei', system-ui, sans-serif;
+            background: #ffffff;
+            padding: 1.5rem;
+        }
+
+        .login-container {
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        .avatar-wrapper {
+            width: 130px;
+            height: 130px;
+            margin: 0 auto 1.2rem;
+            border-radius: 50%;
+            background: #6b7a8a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            border: none;
+            box-shadow: none;
+        }
+
+        .avatar-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            color: transparent;
+            font-size: 0;
+        }
+
+        .user-name {
+            font-size: 2rem;
+            font-weight: 400;
+            color: #1e1e2e;
+            text-shadow: none;
+            margin-bottom: 0.25rem;
+            letter-spacing: 0.5px;
+        }
+
+        .admin-badge {
+            font-size: 0.9rem;
+            color: #5a6a7a;
+            margin-bottom: 2.5rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            opacity: 0.9;
+        }
+
+        .input-group {
+            margin-bottom: 1.2rem;
+            text-align: left;
+        }
+
+        .input-label {
+            display: block;
+            margin-bottom: 0.4rem;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #3a4a5a;
+            letter-spacing: 0.3px;
+        }
+
+        .password-field {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .password-field input {
+            width: 100%;
+            padding: 0.9rem 1.2rem;
+            background: #f0f2f5;
+            border: 1.5px solid #ccd5e0;
+            border-radius: 40px;
+            font-size: 1rem;
+            color: #1e1e2e;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .password-field input:focus {
+            border-color: #2a5f8a;
+            background: #ffffff;
+            box-shadow: 0 0 0 3px rgba(42, 95, 138, 0.15);
+        }
+
+        .password-field input::placeholder {
+            color: #8a9aa8;
+            font-weight: 300;
+        }
+
+        .helper-row {
+            text-align: right;
+            margin-bottom: 2.2rem;
+        }
+
+        .forgot-link {
+            color: #2a5f8a;
+            text-decoration: none;
+            font-size: 0.9rem;
+            border-bottom: 1px dotted transparent;
+            transition: border-color 0.2s, color 0.2s;
+            cursor: pointer;
+        }
+
+        .forgot-link:hover {
+            color: #1a3f5f;
+            border-bottom-color: #2a5f8a;
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 0.9rem;
+            background: #2a5f8a;
+            border: none;
+            border-radius: 40px;
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 600;
+            letter-spacing: 1.2px;
+            cursor: pointer;
+            box-shadow: 0 8px 0 #1a3f5f, 0 4px 12px rgba(0, 0, 0, 0.1);
+            transition: all 0.1s ease;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            margin-bottom: 2rem;
+        }
+
+        .login-btn:hover {
+            transform: translateY(3px);
+            box-shadow: 0 5px 0 #1a3f5f, 0 6px 12px rgba(0, 0, 0, 0.1);
+            background: #316ba0;
+        }
+
+        .login-btn:active {
+            transform: translateY(6px);
+            box-shadow: 0 2px 0 #1a3f5f, 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .footer-watermark {
+            color: #8a9aa8;
+            font-size: 0.75rem;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="avatar-wrapper">
+            <img class="avatar-img" src="头像.png" alt="">
+        </div>
+
+        <div class="user-name">Bean soil</div>
+        <div class="admin-badge">WS 项目管理 · 管理员</div>
+
+        <div class="input-group">
+            <div class="input-label">🔒 密码</div>
+            <div class="password-field">
+                <input type="password" id="passwordInput" placeholder="输入管理员密码" autocomplete="off">
+            </div>
+        </div>
+
+        <div class="helper-row">
+            <a class="forgot-link" id="forgotPasswordLink">忘记密码？</a>
+        </div>
+
+        <button class="login-btn" id="loginButton">登录</button>
+
+        <div class="footer-watermark">Bean soil · WS 内部工具</div>
+    </div>
+
+    <script>
+        (function() {
+            const pwdInput = document.getElementById('passwordInput');
+            const CORRECT_PASSWORD = 'lidudu47hao';
+
+            document.getElementById('forgotPasswordLink').addEventListener('click', (e) => {
+                e.preventDefault();
+                alert('请联系管理员 "IMA" 重置密码。\n(演示功能，暂未开放)');
+            });
+
+            // 跳转函数：尝试相对路径，如果失败则提供手动提示
+            function redirectToManager() {
+                const target = '管理器/管理器.html';
+                // 尝试 fetch 检测是否可访问（仅用于判断，不影响跳转）
+                fetch(target, { method: 'HEAD' })
+                    .then(res => {
+                        if (res.ok) {
+                            window.location.href = target;
+                        } else {
+                            throw new Error('文件不存在');
+                        }
+                    })
+                    .catch(err => {
+                        alert('无法自动跳转到管理器，可能原因：\n' +
+                              '1. 您正在通过 HTTP 服务器访问，但服务器配置不正确。\n' +
+                              '2. 请确保 "管理器" 文件夹与当前登录页在同一目录下，且包含 "管理器.html"。\n\n' +
+                              '您可以手动在文件管理器中打开：\n' +
+                              window.location.href.substring(0, window.location.href.lastIndexOf('/')+1) + target);
+                        // 提供一个备选：直接打开新窗口（用户手动确认）
+                        if (confirm('是否尝试在新窗口打开？')) {
+                            window.open(target, '_blank');
+                        }
+                    });
+            }
+
+            document.getElementById('loginButton').addEventListener('click', () => {
+                const pwd = pwdInput.value;
+                if (pwd.trim() === '') {
+                    alert('请输入密码');
+                    return;
+                }
+                if (pwd !== CORRECT_PASSWORD) {
+                    alert('密码错误');
+                    return;
+                }
+                sessionStorage.setItem('ws_manager_logged_in', 'true');
+                redirectToManager();
+            });
+
+            pwdInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    document.getElementById('loginButton').click();
+                }
+            });
+
+            if (sessionStorage.getItem('ws_manager_logged_in') === 'true') {
+                redirectToManager();
+            }
+        })();
+    </script>
+</body>
+</html>

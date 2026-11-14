@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BOSS 战 · 黑屋</title>
+<link rel="stylesheet" href="../style.css">
+<script>window.__SCENE__ = 'blackroom';</script>
+</head>
+<body>
+<canvas id="gameCanvas"></canvas>
+
+<div id="victoryMsg" class="overlay-msg">
+    <div class="ov-title win">胜 利</div>
+    <div class="ov-sub" id="victorySub"></div>
+</div>
+<div id="gameOverMsg" class="overlay-msg">
+    <div class="ov-title lose">你 倒 下 了</div>
+    <div class="ov-sub" id="gameOverSub"></div>
+</div>
+<div class="ov-btn-row">
+    <button id="returnBtn" class="ov-btn">返回</button>
+    <button id="nextBtn" class="ov-btn primary">继续</button>
+</div>
+
+<script src="../js/settings.js"></script>
+<script src="../js/touch.js"></script>
+<script src="../js/terrain.js"></script>
+<script src="../js/config.js"></script>
+<script src="../js/iso.js"></script>
+<script src="../js/assets.js"></script>
+<script src="../js/bgm.js"></script>
+<script src="../js/boss-ai.js"></script>
+<script src="../js/combat.js"></script>
+<script src="../js/render.js"></script>
+<script src="../js/battle.js"></script>
+</body>
+</html>

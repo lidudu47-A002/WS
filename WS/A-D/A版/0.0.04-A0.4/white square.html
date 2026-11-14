@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>white square - 入口</title>
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        font-family: "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+        background: #0a0c14;
+    }
+
+    /* 深色玻璃拟态背景 */
+    .bg {
+        position: fixed;
+        inset: 0;
+        background:
+            radial-gradient(ellipse 60% 50% at 20% 15%, rgba(90, 120, 255, 0.18), transparent 60%),
+            radial-gradient(ellipse 50% 45% at 85% 80%, rgba(160, 90, 255, 0.16), transparent 60%),
+            radial-gradient(ellipse 40% 35% at 75% 20%, rgba(40, 200, 220, 0.10), transparent 60%),
+            linear-gradient(160deg, #0b0e1a 0%, #0a0c14 55%, #070810 100%);
+    }
+    .bg::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background-image:
+            linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+        background-size: 48px 48px;
+        mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, #000 0%, transparent 75%);
+    }
+    .bg::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        backdrop-filter: blur(2px);
+    }
+
+    /* 中央玻璃卡片 */
+    .card {
+        position: relative;
+        z-index: 2;
+        width: min(420px, 90vw);
+        margin: 0 auto;
+        padding: 44px 38px 36px;
+        top: 50%;
+        transform: translateY(-50%);
+        border-radius: 26px;
+        background: linear-gradient(150deg, rgba(255,255,255,0.10), rgba(255,255,255,0.035));
+        border: 1px solid rgba(255,255,255,0.16);
+        box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.14),
+            inset 0 -1px 0 rgba(255,255,255,0.04),
+            0 24px 60px rgba(0,0,0,0.55);
+        backdrop-filter: blur(20px) saturate(140%);
+        -webkit-backdrop-filter: blur(20px) saturate(140%);
+        text-align: center;
+    }
+
+    .title {
+        font-size: 34px;
+        font-weight: 700;
+        letter-spacing: 3px;
+        color: #fff;
+        text-shadow: 0 0 24px rgba(140, 180, 255, 0.35);
+    }
+    .subtitle {
+        margin-top: 8px;
+        font-size: 14px;
+        letter-spacing: 6px;
+        color: rgba(255,255,255,0.55);
+    }
+    .divider {
+        height: 1px;
+        margin: 26px 10px 28px;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.22), transparent);
+    }
+
+    .btn {
+        display: block;
+        width: 100%;
+        padding: 14px 0;
+        margin-bottom: 14px;
+        border-radius: 14px;
+        border: 1px solid rgba(255,255,255,0.18);
+        font-size: 16px;
+        letter-spacing: 4px;
+        cursor: pointer;
+        text-decoration: none;
+        transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+    }
+    .btn:hover {
+        transform: translateY(-2px);
+    }
+    .btn:active {
+        transform: translateY(0);
+    }
+
+    .btn-primary {
+        color: #fff;
+        background: linear-gradient(135deg, rgba(96, 130, 255, 0.55), rgba(160, 100, 255, 0.45));
+        border-color: rgba(140, 170, 255, 0.40);
+        box-shadow: 0 8px 24px rgba(90, 120, 255, 0.28);
+    }
+    .btn-primary:hover {
+        box-shadow: 0 10px 30px rgba(90, 120, 255, 0.42);
+        background: linear-gradient(135deg, rgba(110, 145, 255, 0.65), rgba(175, 115, 255, 0.55));
+    }
+
+    .btn-ghost {
+        color: rgba(255,255,255,0.88);
+        background: rgba(255,255,255,0.07);
+    }
+    .btn-ghost:hover {
+        background: rgba(255,255,255,0.13);
+        box-shadow: 0 8px 22px rgba(0,0,0,0.30);
+    }
+
+    .guest-tip {
+        margin-top: 4px;
+        font-size: 12px;
+        color: rgba(255,255,255,0.42);
+        letter-spacing: 1px;
+        line-height: 1.7;
+    }
+    .footer {
+        margin-top: 22px;
+        font-size: 11px;
+        color: rgba(255,255,255,0.26);
+        letter-spacing: 2px;
+    }
+</style>
+</head>
+<body>
+    <div class="bg"></div>
+
+    <div class="card">
+        <div class="title">WHITE SQUARE</div>
+        <div class="subtitle">白色方块的冒险</div>
+        <div class="divider"></div>
+
+        <a class="btn btn-primary" href="Black room/Black room.html?guest=1">游 客 模 式</a>
+        <div class="guest-tip">游客模式直接开始游戏<br>但无法在任何地图存档，退出后进度不会保留</div>
+
+        <a class="btn btn-ghost" href="主页/index.html">去 登 录</a>
+
+        <div class="footer">v0.0.04-A0.4</div>
+    </div>
+</body>
+</html>

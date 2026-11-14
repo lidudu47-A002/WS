@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>黑屋3D · 从左到右</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { background:#000; overflow:hidden; font-family:monospace; }
+    canvas { display:block; }
+    .ui-panel {
+      position:absolute; background:rgba(20,20,20,0.95); border:2px solid gold;
+      border-radius:12px; color:#fff; padding:1rem; z-index:100; display:none;
+    }
+    #statusPanel { top:50%; left:50%; transform:translate(-50%,-50%); width:280px; }
+    #shopPanel { top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); display:none; justify-content:center; align-items:center; }
+    .shop-content { background:#222; border-radius:20px; padding:2rem; text-align:center; border:2px solid gold; }
+    .shop-item { display:inline-block; margin:1rem; padding:1rem; background:#333; border-radius:12px; cursor:pointer; color:white; }
+    .shop-item:hover { background:#555; }
+    #commandUI { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:200; display:none; }
+    .cmd-input { background:#000; border:2px solid white; color:white; font-size:1.5rem; padding:0.5rem; width:400px; font-family:monospace; }
+    .msg { position:absolute; top:20%; left:50%; transform:translateX(-50%); color:gold; font-size:2rem; z-index:50; display:none; }
+  </style>
+</head>
+<body>
+  <div id="statusPanel" class="ui-panel">
+    <h2 style="color:gold;text-align:center;">角色状态</h2>
+    <div>LV: <span id="lv">1</span> | EXP: <span id="exp">0/100</span></div>
+    <div>金币: <span id="gold">0</span> | 杀敌: <span id="kills">0</span></div>
+    <div>攻击力: <span id="atk">10</span> | 技能倍率: <span id="mult">x1.00</span></div>
+    <div>当前区块: <span id="chunk">0</span></div>
+    <small style="color:#888;">松开F关闭</small>
+  </div>
+
+  <div id="shopPanel">
+    <div class="shop-content">
+      <h2 style="color:gold;">黑市商店</h2>
+      <div id="shopItems">
+        <div class="shop-item" data-item="hp">❤️ HP药水 (30G)</div>
+        <div class="shop-item" data-item="atk">⚔️ 普攻药水 (100G)</div>
+        <div class="shop-item" data-item="skill">✨ 技能药水 (50G)</div>
+      </div>
+      <button id="closeShop" style="margin-top:1rem; padding:0.5rem 2rem; background:#555; color:white; border:none; border-radius:20px; cursor:pointer;">关闭</button>
+    </div>
+  </div>
+
+  <div id="commandUI">
+    <span style="color:white;font-size:1.5rem;margin-right:8px;">/</span>
+    <input type="text" id="cmdInput" class="cmd-input" placeholder="bm 14">
+  </div>
+  <div class="msg" id="saveMsg">✨ 游戏已保存 ✨</div>
+  <div class="msg" id="loadMsg">📂 存档加载成功 📂</div>
+  <div class="msg" id="respawnMsg">💀 从存档点复活 💀</div>
+
+  <script type="importmap">
+    { "imports": { "three": "https://unpkg.com/three@0.126.0/build/three.module.js" } }
+  </script>
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'https://unpkg.com/three@0.126.0/examples/jsm/controls/OrbitControls.js';
+
+    // ---------- 常量 ----------
+    const WORLD_WIDTH = 8000;  // 20 chunks * 400
+    const CHUNK_SIZE = 400;
+    const GROUND_Y = 0;
+    const PLAYER_SPEED = 200;
+    const JUMP_POWER = 400;
+    const GRAVITY = -800;
+
+    // 游戏状态
+    let playerHP = 100, maxHP = 100;
+    let gold = 0, exp = 0, level = 1, killCount = 0;
+    let normalAttackMult = 1.0, skillDamageMult = 1.0;
+    let gameOver = false, victory = false;
+    let panelVisible = false;
+    let cameraTargetX = 0;
+    let enemies = [];
+    let projectiles = [];
+    let boss = null;
+    let pierceProjectile = null;
+    let lasers = [];
+    let charging = false, left = false, right = false, jumpUsed = false, shiftDown = false;
+    let lastBrick = 0, brickCD = 5000;
+    let previewBrick = { active: false, worldX: 0, worldY: 0, angle: 0 };
+
+    // 玩家对象
+    const player = {
+      mesh: null,
+      velocity: new THREE.Vector3(0, 0, 0),
+      jumpsLeft: 2,
+      facing: 1,
+      attacking: false,
+      attackStart: 0
+    };
+
+    // Three.js 基础
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x111122);
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 5, 15);
+    camera.lookAt(0, 0, 0);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    document.body.appendChild(renderer.domElement);
+
+    // 光照
+    const ambient = new THREE.AmbientLight(0x404080);
+    scene.add(ambient);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    dirLight.position.set(1, 1, 0.5);
+    dirLight.castShadow = true;
+    scene.add(dirLight);
+
+    // 地面
+    const groundGeo = new THREE.PlaneGeometry(WORLD_WIDTH, 20);
+    const groundMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
+    const ground = new THREE.Mesh(groundGeo, groundMat);
+    ground.rotation.x = -Math.PI/2;
+    ground.position.set(WORLD_WIDTH/2, -1, 0);
+    ground.receiveShadow = true;
+    scene.add(ground);
+
+    // 网格标记
+    for (let i = 0; i < WORLD_WIDTH/CHUNK_SIZE; i++) {
+      const lineGeo = new THREE.BoxGeometry(0.1, 2, 0.1);
+      const lineMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+      const line = new THREE.Mesh(lineGeo, lineMat);
+      line.position.set(i * CHUNK_SIZE, 1, 0);
+      scene.add(line);
+    }
+
+    // 创建玩家
+    const playerGeo = new THREE.BoxGeometry(0.6, 1.2, 0.6);
+    const playerMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+    player.mesh = new THREE.Mesh(playerGeo, playerMat);
+    player.mesh.castShadow = true;
+    player.mesh.position.set(50, 0.6, 0);
+    scene.add(player.mesh);
+
+    // 辅助函数：碰撞检测 (AABB)
+    function boxCollide(a, b) {
+      const aBox = new THREE.Box3().setFromObject(a);
+      const bBox = new THREE.Box3().setFromObject(b);
+      return aBox.intersectsBox(bBox);
+    }
+
+    // 敌人模板
+    function createEnemyMesh(x) {
+      const geo = new THREE.BoxGeometry(0.6, 0.6, 0.6);
+      const mat = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.castShadow = true;
+      mesh.position.set(x, 0.3, 0);
+      scene.add(mesh);
+      return mesh;
+    }
+
+    // 生成敌人 (逻辑简化)
+    function spawnEnemyIfNeeded() {
+      if (enemies.length >= 15) return;
+      const chunk = Math.floor(player.mesh.position.x / CHUNK_SIZE);
+      const spawnChance = 0.02;
+      if (Math.random() < spawnChance) {
+        const side = Math.random() < 0.5 ? -1 : 1;
+        const x = player.mesh.position.x + side * (300 + Math.random() * 200);
+        const clampedX = Math.max(10, Math.min(WORLD_WIDTH-10, x));
+        const mesh = createEnemyMesh(clampedX);
+        enemies.push({ mesh, hp: 50, stun: 0 });
+      }
+    }
+
+    // BOSS (3D 彩色方块)
+    const bossGeo = new THREE.BoxGeometry(4, 4, 4);
+    const bossColors = [];
+    for (let i=0;i<16;i++) bossColors.push(new THREE.Color(0xff0000));
+    const bossMesh = new THREE.Mesh(bossGeo, new THREE.MeshStandardMaterial({ vertexColors: true }));
+    bossMesh.position.set(WORLD_WIDTH-200, 2, 0);
+    scene.add(bossMesh);
+    boss = { mesh: bossMesh, hp: 1000, maxHp: 1000, speed: 1.5 };
+
+    // 指令系统 (简化)
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'KeyT') {
+        document.getElementById('commandUI').style.display = 'block';
+        document.getElementById('cmdInput').focus();
+      }
+    });
+    document.getElementById('cmdInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        const cmd = e.target.value.trim();
+        // 简单处理/bm 和 /tune 和 /kill
+        if (cmd.startsWith('bm')) {
+          const parts = cmd.split(' ');
+          const block = parseInt(parts[1]);
+          if (!isNaN(block) && block>=0 && block<20) {
+            player.mesh.position.x = block * CHUNK_SIZE + CHUNK_SIZE/2;
+            cameraTargetX = player.mesh.position.x;
+            document.getElementById('commandUI').style.display = 'none';
+          }
+        } else if (cmd.startsWith('tune')) {
+          const parts = cmd.split('=');
+          const lv = parseInt(parts[1]);
+          if (!isNaN(lv)) { level = lv; exp = 0; updateUI(); }
+        } else if (cmd === 'kill') {
+          enemies.forEach(e => scene.remove(e.mesh));
+          enemies = [];
+          killCount += enemies.length;
+        }
+        e.target.value = '';
+        document.getElementById('commandUI').style.display = 'none';
+      }
+    });
+
+    // 游戏循环
+    function update(delta) {
+      if (gameOver || victory) return;
+
+      // 玩家移动
+      if (left) player.mesh.position.x -= PLAYER_SPEED * delta;
+      if (right) player.mesh.position.x += PLAYER_SPEED * delta;
+      player.mesh.position.x = Math.max(0, Math.min(WORLD_WIDTH, player.mesh.position.x));
+
+      // 重力与跳跃
+      player.velocity.y += GRAVITY * delta;
+      player.mesh.position.y += player.velocity.y * delta;
+      if (player.mesh.position.y <= 0.6) {
+        player.mesh.position.y = 0.6;
+        player.velocity.y = 0;
+        player.jumpsLeft = 2;
+        jumpUsed = false;
+      }
+      // 输入跳跃
+      if (!jumpUsed && (left || right)) { /* 简化, 实际已在 keydown */ }
+
+      // 敌人移动
+      enemies.forEach(e => {
+        const dir = player.mesh.position.x - e.mesh.position.x;
+        e.mesh.position.x += Math.sign(dir) * 1.5 * delta * 60;
+      });
+
+      // BOSS 检测跳转
+      if (boss && Math.abs(player.mesh.position.x - boss.mesh.position.x) < 5) {
+        window.location.href = 'boss-battle/index.html';
+      }
+
+      // 相机跟随
+      cameraTargetX = player.mesh.position.x;
+      camera.position.x += (cameraTargetX - camera.position.x) * 0.1;
+      camera.position.y = 5;
+      camera.position.z = 15;
+      camera.lookAt(camera.position.x, 0, 0);
+
+      spawnEnemyIfNeeded();
+    }
+
+    function updateUI() {
+      document.getElementById('lv').textContent = level;
+      document.getElementById('exp').textContent = exp + '/100';
+      document.getElementById('gold').textContent = gold;
+      document.getElementById('kills').textContent = killCount;
+      document.getElementById('atk').textContent = Math.floor(10 * normalAttackMult);
+      document.getElementById('mult').textContent = skillDamageMult.toFixed(2);
+    }
+
+    // 定时器循环
+    let lastTime = performance.now();
+    function animate() {
+      const now = performance.now();
+      const delta = Math.min(0.05, (now - lastTime) / 1000); // 限制最大步长
+      lastTime = now;
+      update(delta);
+      renderer.render(scene, camera);
+      requestAnimationFrame(animate);
+    }
+    animate();
+
+    // 窗口大小调整
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // 键盘输入 (简化)
+    window.addEventListener('keydown', e => {
+      if (e.code === 'KeyA' || e.code === 'ArrowLeft') left = true;
+      if (e.code === 'KeyD' || e.code === 'ArrowRight') right = true;
+      if (e.code === 'Space' || e.code === 'ArrowUp') {
+        if (player.jumpsLeft > 0) {
+          player.velocity.y = JUMP_POWER;
+          player.jumpsLeft--;
+          jumpUsed = true;
+        }
+      }
+    });
+    window.addEventListener('keyup', e => {
+      if (e.code === 'KeyA' || e.code === 'ArrowLeft') left = false;
+      if (e.code === 'KeyD' || e.code === 'ArrowRight') right = false;
+    });
+
+    // 商店逻辑
+    document.getElementById('shopItems').addEventListener('click', (e) => {
+      const item = e.target.dataset.item;
+      if (item === 'hp' && gold >= 30) { gold -= 30; playerHP = Math.min(maxHP, playerHP+20); }
+      if (item === 'atk' && gold >= 100) { gold -= 100; normalAttackMult *= 1.2; }
+      if (item === 'skill' && gold >= 50) { gold -= 50; skillDamageMult *= 1.2; }
+      updateUI();
+    });
+    document.getElementById('closeShop').addEventListener('click', () => {
+      document.getElementById('shopPanel').style.display = 'none';
+    });
+
+    // 其他快捷键占位 (H, F等)
+    window.addEventListener('keydown', e => {
+      if (e.code === 'KeyH') {
+        const sp = document.getElementById('shopPanel');
+        sp.style.display = sp.style.display === 'flex' ? 'none' : 'flex';
+      }
+      if (e.code === 'KeyF') {
+        panelVisible = !panelVisible;
+        document.getElementById('statusPanel').style.display = panelVisible ? 'block' : 'none';
+        if (panelVisible) updateUI();
+      }
+    });
+
+    console.log('3D黑屋已启动！使用 A/D 移动，空格跳跃，走到右侧BOSS处触发战斗。');
+  </script>
+</body>
+</html>

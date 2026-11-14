@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BOSS 战 · 黑屋</title>
+<link rel="stylesheet" href="../style.css">
+<script>window.__SCENE__ = 'blackroom';</script>
+</head>
+<body>
+<canvas id="gameCanvas"></canvas>
+
+<div id="victoryMsg" class="overlay-msg">
+    <div class="ov-title win">胜 利</div>
+    <div class="ov-sub" id="victorySub"></div>
+</div>
+<div id="gameOverMsg" class="overlay-msg">
+    <div class="ov-title lose">你 倒 下 了</div>
+    <div class="ov-sub" id="gameOverSub"></div>
+</div>
+<div class="ov-btn-row">
+    <button id="returnBtn" class="ov-btn">返回</button>
+    <button id="nextBtn" class="ov-btn primary">继续</button>
+</div>
+
+<script src="../js/settings.js"></script>
+<script src="../js/touch.js"></script>
+<script src="../js/terrain.js"></script>
+<script src="../js/config.js"></script>
+<script src="../js/iso.js"></script>
+<script src="../js/assets.js"></script>
+<script src="../js/bgm.js"></script>
+<script src="../js/boss-ai.js"></script>
+<script src="../js/combat.js"></script>
+<script src="../js/render.js"></script>
+<script src="../js/battle.js"></script>
+<script>
+// 无头验证脚本：注入到场景页副本中，等待进入 fight 后采集断言数据
+(function () {
+    var R = { errors: [], phase: 'init' };
+    window.addEventListener('error', function (e) {
+        R.errors.push('window.error: ' + (e.message || e.type));
+    });
+    window.addEventListener('unhandledrejection', function () {
+        R.errors.push('unhandledrejection');
+    });
+    var _ce = console.error, _cw = console.warn;
+    console.error = function () {
+        R.errors.push('console.error: ' + Array.prototype.slice.call(arguments).join(' '));
+        _ce.apply(console, arguments);
+    };
+    console.warn = function () {
+        R.errors.push('console.warn: ' + Array.prototype.slice.call(arguments).join(' '));
+        _cw.apply(console, arguments);
+    };
+
+    function bfs() {
+        var W = MAP.W, H = MAP.H;
+        var seen = new Uint8Array(W * H);
+        var sx = Math.floor(MAP.spawn.x), sz = Math.floor(MAP.spawn.z);
+        var stack = [[sx, sz]];
+        seen[sz * W + sx] = 1;
+        var n = 1;
+        while (stack.length) {
+            var c = stack.pop(), x = c[0], z = c[1];
+            var nb = [[x + 1, z], [x - 1, z], [x, z + 1], [x, z - 1]];
+            for (var i = 0; i < 4; i++) {
+                var nx = nb[i][0], nz = nb[i][1];
+                if (nx < 0 || nz < 0 || nx >= W || nz >= H) continue;
+                if (seen[nz * W + nx]) continue;
+                if (MAP.grid[nz * W + nx] !== 0) continue;
+                seen[nz * W + nx] = 1; n++; stack.push([nx, nz]);
+            }
+        }
+        var walk = 0;
+        for (var k = 0; k < W * H; k++) if (MAP.grid[k] === 0) walk++;
+        var un = [];
+        for (var z2 = 0; z2 < H; z2++) {
+            for (var x2 = 0; x2 < W; x2++) {
+                if (MAP.grid[z2 * W + x2] === 0 && !seen[z2 * W + x2]) un.push([x2, z2]);
+            }
+        }
+        var bx = Math.floor(MAP.bossHome.x), bz = Math.floor(MAP.bossHome.z);
+        return {
+            reachable: n, walkable: walk,
+            ratio: walk ? +(n / walk).toFixed(4) : 0,
+            unreachable: un.slice(0, 20), unreachableCount: un.length,
+            bossReach: !!seen[bz * W + bx],
+            spawnCell: [sx, sz], bossCell: [bx, bz],
+            spawnCellSolid: MAP.grid[sz * W + sx] !== 0,
+            bossCellSolid: MAP.grid[bz * W + bx] !== 0
+        };
+    }
+
+    function margin(p, r) {
+        var bad = [];
+        if (MAP.isSolid(p.x, p.z)) bad.push('center');
+        var D = [[1, 0], [-1, 0], [0, 1], [0, -1],
+                 [0.7071, 0.7071], [-0.7071, 0.7071], [0.7071, -0.7071], [-0.7071, -0.7071]];
+        for (var i = 0; i < D.length; i++) {
+            if (MAP.isSolid(p.x + D[i][0] * r, p.z + D[i][1] * r)) bad.push(D[i].join('/'));
+        }
+        return { radius: r, clear: bad.length === 0, bad: bad };
+    }
+
+    function corners() {
+        var w = canvas.width, h = canvas.height;
+        var pts = {
+            north: Iso.proj(0, 0, 0),
+            east: Iso.proj(MAP.W, 0, 0),
+            south: Iso.proj(MAP.W, MAP.H, 0),
+            west: Iso.proj(0, MAP.H, 0)
+        };
+        var inside = {}, minx = 1e9, maxx = -1e9, miny = 1e9, maxy = -1e9;
+        Object.keys(pts).forEach(function (k) {
+            var p = pts[k];
+            inside[k] = (p.x >= 0 && p.x <= w && p.y >= 0 && p.y <= h);
+            if (p.x < minx) minx = p.x; if (p.x > maxx) maxx = p.x;
+            if (p.y < miny) miny = p.y; if (p.y > maxy) maxy = p.y;
+        });
+        return {
+            inside: inside, allInside: Object.keys(inside).every(function (k) { return inside[k]; }),
+            box: { x: Math.round(minx), y: Math.round(miny), w: Math.round(maxx - minx), h: Math.round(maxy - miny) },
+            canvas: { w: w, h: h }
+        };
+    }
+
+    function finalize() {
+        try {
+            R.ready = (typeof MAP !== 'undefined');
+            R.W = MAP.W; R.H = MAP.H; R.border = MAP.BORDER;
+            R.arena = MAP.ARENA;
+            R.isPrison = IS_PRISON;
+            R.spawn = MAP.spawn; R.bossHome = MAP.bossHome;
+            R.playerR = PLAYER_R; R.bossR = BOSS_R;
+            R.spawnMargin = margin(MAP.spawn, PLAYER_R);
+            R.bossMargin = margin(MAP.bossHome, BOSS_R * 0.75);
+            R.bossStrictMargin = margin(MAP.bossHome, BOSS_R);
+            R.bfs = bfs();
+            R.bossMaxHp = boss.maxHp;
+            R.scale = +Iso.getScale().toFixed(4);
+            R.hTW = +Iso.hTW.toFixed(2); R.hTH = +Iso.hTH.toFixed(2);
+            R.corners = corners();
+            R.gameState = gameState;
+            R.fightTime = +(typeof fightTime === 'number' ? fightTime : -1).toFixed(2);
+            R.bossAwake = (typeof bossAwake !== 'undefined') ? bossAwake : null;
+            R.player = { x: +player.x.toFixed(2), z: +player.z.toFixed(2) };
+            R.boss = { x: +boss.x.toFixed(2), z: +boss.z.toFixed(2), phase: boss.phase };
+            R.cam = { x: +CAM.x.toFixed(2), z: +CAM.z.toFixed(2) };
+            R.deco = MAP.deco.length;
+            R.phase = 'done';
+        } catch (e) {
+            R.phase = 'exception';
+            R.errors.push('finalize: ' + e.message);
+        }
+        var json = JSON.stringify(R);
+        document.documentElement.setAttribute('data-verify', json);
+        var pre = document.createElement('pre');
+        pre.id = 'verifyOut';
+        pre.textContent = json;
+        document.body.appendChild(pre);
+    }
+
+    var tries = 0;
+    function tick() {
+        tries++;
+        var loaded = (typeof MAP !== 'undefined' && typeof Iso !== 'undefined' &&
+                      typeof gameState !== 'undefined');
+        var fighting = loaded && gameState === 'fight' && fightTime > 0.6;
+        if (fighting || tries > 900 || (loaded && gameState === 'win')) {
+            finalize();
+            return;
+        }
+        requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+})();
+
+</script>
+</body>
+</html>

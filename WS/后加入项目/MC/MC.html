@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>⛏️ 体素世界 · 完整版</title>
+    <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<div id="game-container">
+    <div id="three-container"></div>
+    <div id="crosshair"><div class="dot"></div></div>
+    <div id="hud">
+        <div class="coord" id="coordDisplay">📍 0, 0, 0</div>
+        <div class="block-info"><span>🔨</span><span id="blockName">草地</span><span class="color-preview" id="blockColorPreview" style="background:#27AE60;"></span></div>
+        <div class="seed-info" id="seedDisplay">🌱 种子: —</div>
+    </div>
+    <div id="hotbar"></div>
+    <div id="message"></div>
+    <div id="start-prompt" class="hidden"></div>
+
+    <!-- 主菜单 -->
+    <div id="menu-main" class="ui-overlay">
+        <div class="panel">
+            <h1>⛏️ 体素世界</h1>
+            <div class="subtitle">— 我的世界风格 · 单机版 —</div>
+            <div class="btn-group">
+                <button class="btn primary" id="btn-start">🎮 开始游戏</button>
+                <button class="btn danger" id="btn-exit">🚪 退出</button>
+            </div>
+            <div style="margin-top:20px;font-size:12px;color:#556;">💾 存档保存在浏览器本地</div>
+        </div>
+    </div>
+
+    <!-- 存档选择 -->
+    <div id="menu-saves" class="ui-overlay hidden">
+        <div class="panel">
+            <h2>📂 选择存档</h2>
+            <div class="subtitle">加载已有存档 或 创建新世界</div>
+            <div id="save-list-container" class="save-list"></div>
+            <div class="btn-group">
+                <button class="btn primary" id="btn-new-save">✨ 新建存档</button>
+                <button class="btn" id="btn-back-main">↩ 返回主菜单</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 新建存档 -->
+    <div id="menu-new-save" class="ui-overlay hidden">
+        <div class="panel">
+            <h2>✨ 新建存档</h2>
+            <div class="input-group">
+                <label>📛 存档名</label>
+                <input type="text" id="input-save-name" value="新游戏" />
+            </div>
+            <div class="input-group">
+                <label>🎮 游戏模式</label>
+                <select id="input-game-mode">
+                    <option value="creative">创造</option>
+                    <option value="survival">生存</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label>🌱 种子 (留空则随机)</label>
+                <input type="text" id="input-seed" placeholder="输入数字或字符串" />
+            </div>
+            <div class="btn-group">
+                <button class="btn primary" id="btn-create-save">✅ 创建</button>
+                <button class="btn" id="btn-cancel-new">❌ 取消</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="importmap">
+{
+    "imports": {
+        "three": "https://unpkg.com/three@0.157.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.157.0/examples/jsm/"
+    }
+}
+</script>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

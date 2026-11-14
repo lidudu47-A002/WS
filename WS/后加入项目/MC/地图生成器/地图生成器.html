@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>🌍 地形生成器 · 体素3D</title>
+    <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+    <div class="app-container">
+
+        <div class="controls">
+            <div class="control-group">
+                <label for="dimensionSelect">模式</label>
+                <select id="dimensionSelect">
+                    <option value="2d">2D 地图</option>
+                    <option value="1d">1D 条带</option>
+                    <option value="3d">3D 地形</option>
+                </select>
+            </div>
+            <div class="control-group" id="shapeGroup" style="display:none;">
+                <label for="shapeSelect">形状</label>
+                <select id="shapeSelect">
+                    <option value="flat">平面</option>
+                    <option value="sphere">球形</option>
+                </select>
+            </div>
+            <div class="control-group" id="yScaleGroup" style="display:none;">
+                <label for="yScaleSlider">Y轴高度</label>
+                <input type="range" id="yScaleSlider" min="1" max="60" value="30" step="1" />
+                <span class="size-value" id="yScaleDisplay">30</span>
+            </div>
+            <div class="control-group">
+                <label for="sizeSlider" id="sizeLabel">尺寸</label>
+                <input type="range" id="sizeSlider" min="50" max="300" value="150" step="10" />
+                <span class="size-value" id="sizeDisplay">150</span>
+                <span style="font-size:13px;color:#6f7f92;font-weight:400;" id="sizeUnit">× 150</span>
+            </div>
+            <div class="control-group" style="flex-wrap:nowrap;">
+                <label for="seedInput">种子</label>
+                <input type="text" id="seedInput" placeholder="abc12" />
+                <span class="hint">(1-7位)</span>
+                <button class="btn-small" id="applySeedBtn">应用</button>
+            </div>
+            <button class="btn-generate" id="generateBtn">🎲 生成</button>
+        </div>
+
+        <div class="legend">
+            <div class="legend-item"><span class="legend-color sea"></span> 海</div>
+            <div class="legend-item"><span class="legend-color water"></span> 内陆水</div>
+            <div class="legend-item"><span class="legend-color grass"></span> 草地</div>
+            <div class="legend-item"><span class="legend-color forest"></span> 森林</div>
+            <div class="legend-item"><span class="legend-color desert"></span> 沙漠</div>
+            <div class="legend-item"><span class="legend-color trunk"></span> 树干</div>
+            <div class="legend-item"><span class="legend-color leaf"></span> 树叶</div>
+            <span class="stats" id="statsInfo">
+                <span>点击生成开始</span>
+                <span class="seed-display" id="seedDisplay">种子: —</span>
+            </span>
+        </div>
+
+        <div class="map-wrapper">
+            <canvas id="mapCanvas" width="800" height="800"></canvas>
+            <div id="three-container"></div>
+            <div class="placeholder-text" id="placeholder">
+                <span class="icon">🌍</span>
+                点击 “生成” 创建<br />随机地形
+            </div>
+        </div>
+    </div>
+
+    <!-- Tooltip -->
+    <div id="tooltip">
+        <span class="dot" id="tipDot"></span>
+        <span class="coord" id="tipCoord">(0, 0)</span>
+        <span class="type-name" id="tipType">—</span>
+    </div>
+
+    <!-- Three.js (CDN) -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.157.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.157.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <!-- 主脚本 -->
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>

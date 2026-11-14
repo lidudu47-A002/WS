@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pixel Paint - Pixel Art Tool</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    background: #1e1f22;
+    color: #e0e0e0;
+    font-family: "Segoe UI", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+    font-size: 13px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    user-select: none;
+  }
+  button {
+    font-family: inherit;
+    font-size: 13px;
+    color: #e0e0e0;
+    background: #3a3d41;
+    border: 1px solid #55585d;
+    border-radius: 4px;
+    padding: 5px 10px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+  }
+  button:hover { background: #4a4e52; }
+  button:active { background: #2a2d31; }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  button.primary { background: #2f6fb2; border-color: #4a90d9; }
+  button.primary:hover { background: #3b7fc2; }
+  input[type="number"], input[type="text"] {
+    background: #2a2c2f;
+    color: #e0e0e0;
+    border: 1px solid #55585d;
+    border-radius: 4px;
+    padding: 4px 6px;
+    font-size: 13px;
+    width: 64px;
+  }
+  input[type="number"]:focus, input[type="text"]:focus { outline: 1px solid #4a90d9; }
+  input[type="color"] { -webkit-appearance: none; appearance: none; border: none; background: none; width: 100%; height: 44px; padding: 0; cursor: pointer; border-radius: 4px; }
+  input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+  input[type="color"]::-webkit-color-swatch { border: 1px solid #55585d; border-radius: 4px; }
+  hr.sep { width: 1px; height: 26px; background: #55585d; border: none; margin: 0 6px; }
+
+  /* 顶部工具栏 */
+  #toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #2b2c30;
+    padding: 8px 12px;
+    border-bottom: 1px solid #44464a;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+    z-index: 5;
+  }
+  #toolbar .group { display: flex; align-items: center; gap: 6px; }
+  #toolbar label { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+  #toolbar input[type="number"] { width: 56px; }
+  #zoom-label { min-width: 60px; text-align: center; display: inline-block; }
+  .icon-btn { padding: 5px 7px; }
+  .icon-btn svg { width: 16px; height: 16px; fill: #e0e0e0; pointer-events: none; }
+  .icon-btn.active { background: #2f6fb2; border-color: #4a90d9; }
+
+  /* 主体 */
+  #main {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+  }
+
+  /* 左侧工具栏 */
+  #left-panel {
+    width: 68px;
+    background: #2b2c30;
+    border-right: 1px solid #44464a;
+    padding: 8px 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex-shrink: 0;
+    overflow-y: auto;
+  }
+  #left-panel .tool-btn {
+    flex-direction: column;
+    gap: 3px;
+    padding: 8px 4px;
+    font-size: 11px;
+    border-radius: 6px;
+  }
+  #left-panel .tool-btn svg { width: 24px; height: 24px; fill: #e0e0e0; pointer-events: none; }
+  #left-panel .tool-btn.active {
+    background: #2f6fb2;
+    border-color: #4a90d9;
+    box-shadow: 0 0 0 1px #4a90d9;
+  }
+  .tool-btn.danger-active { background: #b0552f; border-color: #d97b4a; box-shadow: 0 0 0 1px #d97b4a; }
+
+  /* 画布区域 */
+  #canvas-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    background: #141517;
+  }
+  #canvas-scroll {
+    flex: 1;
+    overflow: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    min-height: 0;
+  }
+  #canvas-stage {
+    position: relative;
+    background-image:
+      linear-gradient(45deg, #3a3d41 25%, transparent 25%),
+      linear-gradient(-45deg, #3a3d41 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #3a3d41 75%),
+      linear-gradient(-45deg, transparent 75%, #3a3d41 75%);
+    background-size: 20px 20px;
+    background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+    border: 1px solid #55585d;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.6);
+    cursor: crosshair;
+  }
+  #canvas {
+    display: block;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+  }
+  #statusbar {
+    background: #2b2c30;
+    border-top: 1px solid #44464a;
+    padding: 5px 12px;
+    display: flex;
+    gap: 18px;
+    font-size: 12px;
+    color: #a8abb0;
+    flex-shrink: 0;
+  }
+
+  /* 右侧颜色面板 */
+  #right-panel {
+    width: 220px;
+    background: #2b2c30;
+    border-left: 1px solid #44464a;
+    padding: 10px;
+    flex-shrink: 0;
+    overflow-y: auto;
+  }
+  #right-panel h3 {
+    font-size: 12px;
+    color: #a8abb0;
+    font-weight: normal;
+    margin: 10px 0 6px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  #right-panel h3:first-child { margin-top: 0; }
+  #current-color-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  #current-color-box {
+    width: 40px;
+    height: 40px;
+    border: 1px solid #55585d;
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+  #current-color-hex {
+    font-family: Consolas, monospace;
+    color: #e0e0e0;
+    flex: 1;
+    width: auto;
+    font-size: 14px;
+  }
+  #palette {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 4px;
+  }
+  #palette .swatch {
+    aspect-ratio: 1 / 1;
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 3px;
+    cursor: pointer;
+    position: relative;
+  }
+  #palette .swatch:hover { outline: 2px solid #4a90d9; outline-offset: 1px; }
+  #palette .swatch.selected { outline: 2px solid #ffffff; outline-offset: 1px; }
+  .hint { color: #8a8d92; font-size: 11px; line-height: 1.6; margin-top: 8px; }
+
+  /* 消息提示 */
+  #toast {
+    position: fixed;
+    bottom: 46px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #33363a;
+    border: 1px solid #55585d;
+    border-radius: 6px;
+    padding: 10px 18px;
+    font-size: 13px;
+    z-index: 100;
+    display: none;
+    max-width: 70%;
+    text-align: center;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+    line-height: 1.5;
+  }
+  #toast.show { display: block; animation: fadein 0.15s ease; }
+  #toast.error { background: #5b2c24; border-color: #b0552f; }
+  #toast.success { background: #2c4a33; border-color: #4a8a5a; }
+  @keyframes fadein { from { opacity: 0; transform: translateX(-50%) translateY(6px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+
+  /* 对话框 */
+  #modal-mask {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+  }
+  #modal-mask.show { display: flex; }
+  #modal {
+    background: #2b2c30;
+    border: 1px solid #55585d;
+    border-radius: 8px;
+    padding: 20px;
+    width: 420px;
+    max-width: 90%;
+  }
+  #modal h2 { font-size: 15px; margin-bottom: 10px; }
+  #modal p { color: #c0c3c8; line-height: 1.6; margin-bottom: 8px; }
+  #modal pre {
+    background: #1e1f22;
+    border: 1px solid #44464a;
+    border-radius: 4px;
+    padding: 8px;
+    font-size: 12px;
+    overflow: auto;
+    margin-bottom: 12px;
+    color: #9fceff;
+    white-space: pre-wrap;
+  }
+  #modal .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 6px; }
+</style>
+</head>
+<body>
+
+<header id="toolbar">
+  <div class="group">
+    <button class="primary" id="btn-import" title="Import a JSON / TXT file">Import</button>
+    <input type="file" id="file-input" accept=".json,.txt,application/json,text/plain" style="display:none">
+  </div>
+  <div class="group">
+    <button id="btn-export-png" title="Export the canvas as a PNG image">Export PNG</button>
+    <label title="Scale factor when exporting PNG">x<input type="number" id="export-scale" value="8" min="1" max="64"></label>
+    <button id="btn-export-json" title="Export JSON in the standard format">Export JSON</button>
+    <button id="btn-export-txt" title="Export TXT in the standard format">Export TXT</button>
+  </div>
+  <hr class="sep">
+  <div class="group">
+    <button id="btn-undo" title="Undo (Ctrl+Z)">Undo</button>
+    <button id="btn-redo" title="Redo (Ctrl+Y)">Redo</button>
+    <button id="btn-clear" title="Clear canvas (all pixels transparent)">Clear</button>
+  </div>
+  <hr class="sep">
+  <div class="group">
+    <label>W<input type="number" id="canvas-width" value="32" min="1" max="512"></label>
+    <label>H<input type="number" id="canvas-height" value="32" min="1" max="512"></label>
+    <button id="btn-resize" title="Reset canvas to the given size (contents cleared)">Reset Canvas</button>
+  </div>
+  <hr class="sep">
+  <div class="group">
+    <button id="btn-zoom-out" class="icon-btn" title="Zoom out">−</button>
+    <span id="zoom-label">100%</span>
+    <button id="btn-zoom-in" class="icon-btn" title="Zoom in">+</button>
+    <button id="btn-fit" title="Fit to window">Fit Window</button>
+    <button id="btn-grid" class="icon-btn" title="Show/hide grid">Grid</button>
+  </div>
+</header>
+
+<div id="main">
+  <aside id="left-panel">
+    <button class="tool-btn active" data-tool="pencil" title="Pencil: click or drag to draw">
+      <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.996.996 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+      Pencil
+    </button>
+    <button class="tool-btn" data-tool="eraser" title="Eraser: erase to transparent">
+      <svg viewBox="0 0 24 24"><path d="M16.24 3.56l4.2 4.2c.78.78.78 2.05 0 2.83l-8.2 8.2c-.78.78-2.05.78-2.83 0l-4.2-4.2a2 2 0 0 1 0-2.83l8.2-8.2c.78-.78 2.05-.78 2.83 0z"/><path d="M9 20h12v2H9z" fill="#2b2c30"/></svg>
+      Eraser
+    </button>
+    <button class="tool-btn" data-tool="bucket" title="Fill: fill connected same-color areas">
+      <svg viewBox="0 0 24 24"><path d="M19 11.5s-2 2.17-2 3.5a2 2 0 0 0 4 0c0-1.33-2-3.5-2-3.5zM3.5 10l9-9 1.5 1.5-2 2 6.5 6.5a1.5 1.5 0 0 1 0 2.12l-4.38 4.38a1.5 1.5 0 0 1-2.12 0l-8.5-8.5a1.5 1.5 0 0 1 0-2.12L3.5 10z"/></svg>
+      Fill
+    </button>
+    <button class="tool-btn" data-tool="picker" title="Eyedropper: pick a color and switch back to pencil">
+      <svg viewBox="0 0 24 24"><path d="M18.79 5.21a2.5 2.5 0 0 0-3.54 0l-2.6 2.6L5 15.5V19h3.5l7.69-7.65 2.6-2.6a2.5 2.5 0 0 0 0-3.54zM15.5 9.29L7.79 17H7v-.79l7.71-7.71 1.5 1.5.29-.29z"/></svg>
+      Eyedropper
+    </button>
+  </aside>
+
+  <section id="canvas-area">
+    <div id="canvas-scroll">
+      <div id="canvas-stage">
+        <canvas id="canvas" width="512" height="512"></canvas>
+      </div>
+    </div>
+    <div id="statusbar">
+      <span id="status-size">32 x 32</span>
+      <span id="status-tool">Tool: Pencil</span>
+      <span id="status-zoom">Zoom: 100%</span>
+      <span>Left click draw · right click erase · drop a file on the canvas to import</span>
+    </div>
+  </section>
+
+  <aside id="right-panel">
+    <h3>Current Color</h3>
+    <div id="current-color-wrap">
+      <div id="current-color-box"></div>
+      <input type="text" id="current-color-hex" value="#000000" maxlength="7" spellcheck="false" title="Type a color value directly (#RRGGBB)">
+    </div>
+    <input type="color" id="color-picker" value="#000000" title="Open the system color picker">
+    <h3>Palette</h3>
+    <div id="palette"></div>
+    <div class="hint">
+      Tool guide:<br>
+      Pencil/Eraser: click or drag to draw, right click to erase.<br>
+      Fill: fills connected areas of the same color.<br>
+      Eyedropper: click a pixel to pick its color.
+    </div>
+  </aside>
+</div>
+
+<div id="toast"></div>
+
+<div id="modal-mask">
+  <div id="modal">
+    <h2 id="modal-title">Notice</h2>
+    <div id="modal-body"></div>
+    <div class="actions">
+      <button id="modal-cancel">Cancel</button>
+      <button id="modal-ok" class="primary">OK</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var state = {
+    width: 32,
+    height: 32,
+    pixels: [],          // 长度 = width*height，元素为 '#RRGGBB' 或 ''（透明）
+    tool: 'pencil',
+    color: '#000000',
+    scale: 16,           // 每个像素的显示尺寸（px）
+    showGrid: true,
+    drawing: false,
+    eraseMode: false,
+    lastPos: null,
+    strokeStart: null,
+    undoStack: [],
+    redoStack: [],
+    maxHistory: 100
+  };
+
+  var canvas = document.getElementById('canvas');
+  var ctx = canvas.getContext('2d');
+  var stage = document.getElementById('canvas-stage');
+  var scrollBox = document.getElementById('canvas-scroll');
+  var fileInput = document.getElementById('file-input');
+  var toastEl = document.getElementById('toast');
+  var toastTimer = null;
+
+  var PALETTE = [
+    '#000000', '#ffffff', '#808080', '#c0c0c0', '#404040', '#e0e0e0',
+    '#ff0000', '#ff6666', '#cc0000', '#ff8800', '#ffaa66', '#ff4400',
+    '#ffff00', '#ffee88', '#cccc00', '#00ff00', '#88ff88', '#00cc00',
+    '#00ffff', '#88ffff', '#00cccc', '#0000ff', '#66aaff', '#0000cc',
+    '#8800ff', '#cc66ff', '#ff00ff', '#ff88cc', '#cc00cc', '#885500',
+    '#ffcc99', '#cc9966', '#664433', '#223322', '#9966cc', '#336699'
+  ];
+
+  // ---------- 基础工具函数 ----------
+  function setPixel(x, y, color) {
+    if (x < 0 || y < 0 || x >= state.width || y >= state.height) return;
+    state.pixels[y * state.width + x] = color;
+  }
+
+  function getPixel(x, y) {
+    if (x < 0 || y < 0 || x >= state.width || y >= state.height) return '';
+    return state.pixels[y * state.width + x];
+  }
+
+  function fillPixels(color) {
+    var arr = [];
+    for (var i = 0; i < state.width * state.height; i++) arr.push(color);
+    state.pixels = arr;
+  }
+
+  function normalizeColor(v) {
+    if (v === null || v === undefined) return '';
+    var s = String(v).trim();
+    if (s === '' || s === '-' || s === 'transparent' || s === 'Transparent' || s === 'TRANSPARENT' || s === 'none' || s === 'null') return '';
+    if (s.charAt(0) === '#') s = s.slice(1);
+    if (/^[0-9a-fA-F]{3}$/.test(s)) {
+      s = s.charAt(0) + s.charAt(0) + s.charAt(1) + s.charAt(1) + s.charAt(2) + s.charAt(2);
+    }
+    if (/^[0-9a-fA-F]{6}$/.test(s)) return '#' + s.toLowerCase();
+    return null;
+  }
+
+  // ---------- 渲染 ----------
+  function render() {
+    var w = state.width, h = state.height, s = state.scale;
+    canvas.width = w * s;
+    canvas.height = h * s;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.imageSmoothingEnabled = false;
+    for (var y = 0; y < h; y++) {
+      for (var x = 0; x < w; x++) {
+        var c = state.pixels[y * w + x];
+        if (c && c !== '') {
+          ctx.fillStyle = c;
+          ctx.fillRect(x * s, y * s, s, s);
+        }
+      }
+    }
+    if (state.showGrid && s >= 4) {
+      ctx.strokeStyle = 'rgba(0,0,0,0.18)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (var i = 1; i < w; i++) {
+        ctx.moveTo(i * s + 0.5, 0);
+        ctx.lineTo(i * s + 0.5, h * s);
+      }
+      for (var j = 1; j < h; j++) {
+        ctx.moveTo(0, j * s + 0.5);
+        ctx.lineTo(w * s, j * s + 0.5);
+      }
+      ctx.stroke();
+    }
+    document.getElementById('status-size').textContent = w + ' x ' + h;
+    document.getElementById('zoom-label').textContent = Math.round(s / 16 * 100) + '%';
+    document.getElementById('status-zoom').textContent = 'Zoom: ' + Math.round(s / 16 * 100) + '%';
+  }
+
+  // ---------- 历史（撤销/重做） ----------
+  function pushHistory() {
+    state.strokeStart = state.pixels.slice();
+  }
+
+  function endStroke() {
+    if (!state.strokeStart) return;
+    var changed = false;
+    for (var i = 0; i < state.pixels.length; i++) {
+      if (state.pixels[i] !== state.strokeStart[i]) { changed = true; break; }
+    }
+    if (changed) {
+      state.undoStack.push(state.strokeStart);
+      if (state.undoStack.length > state.maxHistory) state.undoStack.shift();
+      state.redoStack = [];
+    }
+    state.strokeStart = null;
+    updateHistoryButtons();
+  }
+
+  function undo() {
+    if (!state.undoStack.length) return;
+    state.redoStack.push(state.pixels.slice());
+    state.pixels = state.undoStack.pop();
+    if (state.redoStack.length > state.maxHistory) state.redoStack.shift();
+    render();
+    updateHistoryButtons();
+    showToast('Undone');
+  }
+
+  function redo() {
+    if (!state.redoStack.length) return;
+    state.undoStack.push(state.pixels.slice());
+    state.pixels = state.redoStack.pop();
+    if (state.undoStack.length > state.maxHistory) state.undoStack.shift();
+    render();
+    updateHistoryButtons();
+    showToast('Redone');
+  }
+
+  function updateHistoryButtons() {
+    document.getElementById('btn-undo').disabled = !state.undoStack.length;
+    document.getElementById('btn-redo').disabled = !state.redoStack.length;
+  }
+
+  function clearCanvas() {
+    pushHistory();
+    fillPixels('');
+    endStroke();
+    render();
+  }
+
+  // ---------- 绘制 ----------
+  function canvasPos(e) {
+    var rect = canvas.getBoundingClientRect();
+    var x = Math.floor((e.clientX - rect.left) / state.scale);
+    var y = Math.floor((e.clientY - rect.top) / state.scale);
+    return { x: x, y: y };
+  }
+
+  function paintCell(p) {
+    var tool = state.tool;
+    var erase = state.eraseMode;
+    if (tool === 'pencil') {
+      setPixel(p.x, p.y, erase ? '' : state.color);
+    } else if (tool === 'eraser') {
+      setPixel(p.x, p.y, '');
+    } else if (tool === 'picker') {
+      var c = getPixel(p.x, p.y) || '#ffffff';
+      setColor(c);
+      state.tool = 'pencil';
+      updateToolUI();
+      showToast('Picked: ' + c);
+    } else if (tool === 'bucket') {
+      floodFill(p.x, p.y, erase ? '' : state.color);
+    }
+  }
+
+  function paintLine(x0, y0, x1, y1) {
+    // Bresenham 直线插值，避免快速拖动产生断点
+    var dx = Math.abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
+    var dy = -Math.abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
+    var err = dx + dy;
+    while (true) {
+      paintCell({ x: x0, y: y0 });
+      if (x0 === x1 && y0 === y1) break;
+      var e2 = 2 * err;
+      if (e2 >= dy) { err += dy; x0 += sx; }
+      if (e2 <= dx) { err += dx; y0 += sy; }
+    }
+  }
+
+  function floodFill(sx, sy, newColor) {
+    var target = getPixel(sx, sy);
+    if (target === newColor) return;
+    var w = state.width, h = state.height;
+    var stack = [[sx, sy]];
+    var visited = new Uint8Array(w * h);
+    var idx = sy * w + sx;
+    visited[idx] = 1;
+    while (stack.length) {
+      var cur = stack.pop();
+      var cx = cur[0], cy = cur[1];
+      state.pixels[cy * w + cx] = newColor;
+      var neighbors = [[cx + 1, cy], [cx - 1, cy], [cx, cy + 1], [cx, cy - 1]];
+      for (var i = 0; i < 4; i++) {
+        var nx = neighbors[i][0], ny = neighbors[i][1];
+        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+        var ni = ny * w + nx;
+        if (visited[ni]) continue;
+        if (state.pixels[ni] === target) {
+          visited[ni] = 1;
+          stack.push([nx, ny]);
+        }
+      }
+    }
+  }
+
+  // ---------- 鼠标事件 ----------
+  canvas.addEventListener('mousedown', function (e) {
+    e.preventDefault();
+    if (e.button === 0 || e.button === 2) {
+      state.drawing = true;
+      state.eraseMode = (e.button === 2);
+      pushHistory();
+      var p = canvasPos(e);
+      if (p.x >= 0 && p.y >= 0 && p.x < state.width && p.y < state.height) {
+        paintCell(p);
+        state.lastPos = p;
+        render();
+      }
+    }
+  });
+
+  canvas.addEventListener('mousemove', function (e) {
+    if (!state.drawing) return;
+    var p = canvasPos(e);
+    if (p.x < 0 || p.y < 0 || p.x >= state.width || p.y >= state.height) return;
+    if (state.lastPos) {
+      paintLine(state.lastPos.x, state.lastPos.y, p.x, p.y);
+    } else {
+      paintCell(p);
+    }
+    state.lastPos = p;
+    render();
+  });
+
+  window.addEventListener('mouseup', function () {
+    if (state.drawing) {
+      state.drawing = false;
+      state.eraseMode = false;
+      state.lastPos = null;
+      endStroke();
+      render();
+    }
+  });
+
+  canvas.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+  canvas.addEventListener('mouseleave', function () {
+    if (state.drawing) {
+      state.drawing = false;
+      state.eraseMode = false;
+      state.lastPos = null;
+      endStroke();
+      render();
+    }
+  });
+
+  // ---------- 缩放 ----------
+  function applyScale(s) {
+    s = Math.max(1, Math.min(64, Math.round(s)));
+    state.scale = s;
+    render();
+  }
+
+  function fitToWindow() {
+    var availW = scrollBox.clientWidth - 48;
+    var availH = scrollBox.clientHeight - 48;
+    if (availW <= 0 || availH <= 0) return;
+    var s = Math.floor(Math.min(availW / state.width, availH / state.height));
+    applyScale(Math.max(1, Math.min(64, s)));
+  }
+
+  // ---------- 颜色 ----------
+  function setColor(c) {
+    var n = normalizeColor(c);
+    if (n === null) n = '#000000';
+    state.color = n;
+    document.getElementById('color-picker').value = n;
+    document.getElementById('current-color-hex').value = n.toUpperCase();
+    document.getElementById('current-color-box').style.background = n;
+    var sw = document.querySelectorAll('#palette .swatch');
+    for (var i = 0; i < sw.length; i++) {
+      sw[i].classList.toggle('selected', sw[i].getAttribute('data-color') === n);
+    }
+  }
+
+  function buildPalette() {
+    var pal = document.getElementById('palette');
+    pal.innerHTML = '';
+    for (var i = 0; i < PALETTE.length; i++) {
+      var d = document.createElement('div');
+      d.className = 'swatch';
+      d.style.background = PALETTE[i];
+      d.setAttribute('data-color', PALETTE[i]);
+      d.title = PALETTE[i];
+      d.addEventListener('click', function () { setColor(this.getAttribute('data-color')); });
+      pal.appendChild(d);
+    }
+  }
+
+  // ---------- 工具 UI ----------
+  function updateToolUI() {
+    var btns = document.querySelectorAll('#left-panel .tool-btn');
+    for (var i = 0; i < btns.length; i++) {
+      var active = btns[i].getAttribute('data-tool') === state.tool;
+      btns[i].classList.toggle('active', active);
+      btns[i].classList.toggle('danger-active', state.tool === 'eraser' && active);
+    }
+    document.getElementById('status-tool').textContent = 'Tool: ' + toolName(state.tool);
+  }
+
+  function toolName(t) {
+    var m = { pencil: 'Pencil', eraser: 'Eraser', bucket: 'Fill', picker: 'Eyedropper' };
+    return m[t] || t;
+  }
+
+  // ---------- 导入/导出 ----------
+  function downloadBlob(blob, filename) {
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  }
+
+  function exportJSON() {
+    var pixels = [];
+    for (var i = 0; i < state.pixels.length; i++) {
+      pixels.push(state.pixels[i] === '' ? '' : state.pixels[i].slice(1));
+    }
+    var data = { width: state.width, height: state.height, pixels: pixels };
+    var blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+    downloadBlob(blob, 'pixel-art.json');
+    showToast('Exported JSON file');
+  }
+
+  function exportTXT() {
+    var lines = [state.width + ' ' + state.height];
+    for (var y = 0; y < state.height; y++) {
+      var row = [];
+      for (var x = 0; x < state.width; x++) {
+        var c = state.pixels[y * state.width + x];
+        row.push(c === '' ? '-' : c.slice(1));
+      }
+      lines.push(row.join(' '));
+    }
+    var blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+    downloadBlob(blob, 'pixel-art.txt');
+    showToast('Exported TXT file');
+  }
+
+  function exportPNG() {
+    var factor = parseInt(document.getElementById('export-scale').value, 10);
+    if (!factor || factor < 1) factor = 1;
+    if (factor > 64) factor = 64;
+    var w = state.width * factor, h = state.height * factor;
+    var off = document.createElement('canvas');
+    off.width = w;
+    off.height = h;
+    var octx = off.getContext('2d');
+    octx.imageSmoothingEnabled = false;
+    octx.clearRect(0, 0, w, h);
+    for (var y = 0; y < state.height; y++) {
+      for (var x = 0; x < state.width; x++) {
+        var c = state.pixels[y * state.width + x];
+        if (c && c !== '') {
+          octx.fillStyle = c;
+          octx.fillRect(x * factor, y * factor, factor, factor);
+        }
+      }
+    }
+    off.toBlob(function (blob) {
+      if (blob) {
+        downloadBlob(blob, 'pixel-art.png');
+        showToast('Exported PNG image (scale x' + factor + '）');
+      } else {
+        showToast('PNG export failed; please try another browser', true);
+      }
+    }, 'image/png');
+  }
+
+  function parseJSONText(text) {
+    var obj;
+    try {
+      obj = JSON.parse(text);
+    } catch (e) {
+      throw new Error('JSON parse failed: ' + e.message);
+    }
+    if (!obj || typeof obj !== 'object') {
+      throw new Error('JSON root is not an object; use the format {"width":w,"height":h,"pixels":[...]}');
+    }
+    if (obj.data && typeof obj.data === 'object' && Array.isArray(obj.data.pixels)) obj = obj.data;
+    var w = parseInt(obj.width, 10);
+    var h = parseInt(obj.height, 10);
+    if (!w || !h || w <= 0 || h <= 0 || w > 512 || h > 512) {
+      throw new Error('width/height in JSON is missing or invalid (must be an integer from 1 to 512)');
+    }
+    var src = obj.pixels;
+    if (!Array.isArray(src)) {
+      throw new Error('JSON has no pixels array (expected an array of length ' + (w * h) + ' of color codes)');
+    }
+    return normalizePixelArray(src, w, h);
+  }
+
+  function parseTXTText(text) {
+    var lines = text.split(/\r?\n/);
+    var nonEmpty = [];
+    for (var i = 0; i < lines.length; i++) {
+      if (lines[i].trim() !== '') nonEmpty.push(lines[i]);
+    }
+    if (!nonEmpty.length) throw new Error('TXT file is empty');
+    var header = nonEmpty[0].trim().split(/[\s,，;；]+/).filter(Boolean);
+    if (header.length < 2) throw new Error('TXT first line must be "width height" (space separated)');
+    var w = parseInt(header[0], 10);
+    var h = parseInt(header[1], 10);
+    if (!w || !h || w <= 0 || h <= 0 || w > 512 || h > 512) {
+      throw new Error('Width/height on the first TXT line is invalid (must be 1 to 512)');
+    }
+    var src = [];
+    for (var y = 1; y <= h && y < nonEmpty.length; y++) {
+      var parts = nonEmpty[y].trim().split(/[\s,，;；]+/).filter(Boolean);
+      for (var x = 0; x < w; x++) {
+        src.push(x < parts.length ? parts[x] : '-');
+      }
+    }
+    return normalizePixelArray(src, w, h);
+  }
+
+  function normalizePixelArray(src, w, h) {
+    var expected = w * h;
+    var out = [];
+    var bad = 0;
+    for (var i = 0; i < expected; i++) {
+      var raw = i < src.length ? src[i] : '';
+      var n = normalizeColor(raw);
+      if (n === null) {
+        out.push('');
+        bad++;
+      } else {
+        out.push(n);
+      }
+    }
+    return { width: w, height: h, pixels: out, badCount: bad, extraCount: src.length > expected ? (src.length - expected) : 0 };
+  }
+
+  function applyImported(result) {
+    state.width = result.width;
+    state.height = result.height;
+    state.pixels = result.pixels;
+    state.undoStack = [];
+    state.redoStack = [];
+    document.getElementById('canvas-width').value = state.width;
+    document.getElementById('canvas-height').value = state.height;
+    var msg = 'Imported: ' + state.width + ' x ' + state.height;
+    if (result.badCount) msg += '（' + result.badCount + ' color values unrecognized, treated as transparent)';
+    if (result.extraCount) msg += ' (' + result.extraCount + ' extra pixels ignored)';
+    render();
+    updateHistoryButtons();
+    showToast(msg);
+  }
+
+  function handleFile(file) {
+    var reader = new FileReader();
+    var name = (file.name || '').toLowerCase();
+    reader.onload = function (e) {
+      var text = e.target.result;
+      try {
+        var result;
+        if (/\.json$/.test(name)) {
+          result = parseJSONText(text);
+        } else if (/\.txt$/.test(name)) {
+          result = parseTXTText(text);
+        } else {
+          // 未知扩展名：先按 JSON 试，失败再按 TXT 试
+          try {
+            result = parseJSONText(text);
+          } catch (e1) {
+            result = parseTXTText(text);
+          }
+        }
+        applyImported(result);
+      } catch (err) {
+        showToast('Import failed: ' + err.message, true);
+      }
+    };
+    reader.onerror = function () { showToast('File read failed', true); };
+    reader.readAsText(file);
+  }
+
+  // ---------- 重置画布 ----------
+  function resizeCanvas(confirmClear) {
+    var w = parseInt(document.getElementById('canvas-width').value, 10);
+    var h = parseInt(document.getElementById('canvas-height').value, 10);
+    if (!w || !h || w <= 0 || h <= 0 || w > 512 || h > 512) {
+      showToast('Width and height must be integers from 1 to 512', true);
+      return;
+    }
+    if (w === state.width && h === state.height) {
+      showToast('Canvas size unchanged');
+      return;
+    }
+    var hasContent = false;
+    for (var i = 0; i < state.pixels.length; i++) {
+      if (state.pixels[i] !== '') { hasContent = true; break; }
+    }
+    function doResize() {
+      state.width = w;
+      state.height = h;
+      fillPixels('');
+      state.undoStack = [];
+      state.redoStack = [];
+      render();
+      updateHistoryButtons();
+      showToast('Canvas reset to ' + w + ' x ' + h);
+    }
+    if (confirmClear && hasContent) {
+      showModal('Reset Canvas', 'The canvas has content. Resizing will clear it and cannot be undone. Continue?', doResize);
+    } else {
+      doResize();
+    }
+  }
+
+  // ---------- 模态框 ----------
+  var modalMask = document.getElementById('modal-mask');
+  var modalOk = document.getElementById('modal-ok');
+  var modalCancel = document.getElementById('modal-cancel');
+  var modalBody = document.getElementById('modal-body');
+  var modalTitle = document.getElementById('modal-title');
+  var modalCallback = null;
+
+  function showModal(title, bodyHtml, onOk) {
+    modalTitle.textContent = title;
+    modalBody.innerHTML = bodyHtml;
+    modalCallback = onOk;
+    modalMask.classList.add('show');
+  }
+  modalOk.addEventListener('click', function () {
+    modalMask.classList.remove('show');
+    if (modalCallback) modalCallback();
+    modalCallback = null;
+  });
+  modalCancel.addEventListener('click', function () {
+    modalMask.classList.remove('show');
+    modalCallback = null;
+  });
+  modalMask.addEventListener('click', function (e) {
+    if (e.target === modalMask) {
+      modalMask.classList.remove('show');
+      modalCallback = null;
+    }
+  });
+
+  // ---------- Toast ----------
+  function showToast(msg, isError) {
+    toastEl.textContent = msg;
+    toastEl.className = isError ? 'show error' : 'show success';
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toastEl.className = ''; }, 3200);
+  }
+
+  // ---------- 快捷键 ----------
+  document.addEventListener('keydown', function (e) {
+    var tag = (e.target.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea') return;
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); undo(); }
+    else if ((e.ctrlKey || e.metaKey) && e.key === 'y') { e.preventDefault(); redo(); }
+  });
+
+  // ---------- 事件绑定 ----------
+  document.getElementById('btn-import').addEventListener('click', function () { fileInput.click(); });
+  fileInput.addEventListener('change', function () {
+    if (fileInput.files && fileInput.files.length) {
+      handleFile(fileInput.files[0]);
+      fileInput.value = '';
+    }
+  });
+
+  document.getElementById('btn-export-json').addEventListener('click', exportJSON);
+  document.getElementById('btn-export-txt').addEventListener('click', exportTXT);
+  document.getElementById('btn-export-png').addEventListener('click', exportPNG);
+  document.getElementById('btn-undo').addEventListener('click', undo);
+  document.getElementById('btn-redo').addEventListener('click', redo);
+  document.getElementById('btn-clear').addEventListener('click', function () {
+    var has = false;
+    for (var i = 0; i < state.pixels.length; i++) {
+      if (state.pixels[i] !== '') { has = true; break; }
+    }
+    if (has) {
+      showModal('Clear Canvas', 'All pixels will be cleared to transparent. Continue?', clearCanvas);
+    } else {
+      showToast('Canvas is already empty');
+    }
+  });
+  document.getElementById('btn-resize').addEventListener('click', function () { resizeCanvas(true); });
+  document.getElementById('canvas-width').addEventListener('keydown', function (e) { if (e.key === 'Enter') resizeCanvas(true); });
+  document.getElementById('canvas-height').addEventListener('keydown', function (e) { if (e.key === 'Enter') resizeCanvas(true); });
+
+  document.getElementById('btn-zoom-in').addEventListener('click', function () { applyScale(state.scale * 2); });
+  document.getElementById('btn-zoom-out').addEventListener('click', function () { applyScale(state.scale / 2); });
+  document.getElementById('btn-fit').addEventListener('click', fitToWindow);
+  document.getElementById('btn-grid').addEventListener('click', function () {
+    state.showGrid = !state.showGrid;
+    this.classList.toggle('active', state.showGrid);
+    render();
+  });
+
+  var toolBtns = document.querySelectorAll('#left-panel .tool-btn');
+  for (var ti = 0; ti < toolBtns.length; ti++) {
+    (function (btn) {
+      btn.addEventListener('click', function () {
+        state.tool = btn.getAttribute('data-tool');
+        updateToolUI();
+      });
+    })(toolBtns[ti]);
+  }
+
+  document.getElementById('color-picker').addEventListener('input', function () { setColor(this.value); });
+  document.getElementById('current-color-hex').addEventListener('change', function () {
+    var v = this.value.trim();
+    var n = normalizeColor(v);
+    if (n === null) {
+      showToast('Invalid color format; expected #RRGGBB', true);
+      this.value = state.color.toUpperCase();
+    } else {
+      setColor(n);
+    }
+  });
+
+  // ---------- 拖放导入 ----------
+  var dragDepth = 0;
+  document.addEventListener('dragenter', function (e) {
+    e.preventDefault();
+    dragDepth++;
+  });
+  document.addEventListener('dragover', function (e) { e.preventDefault(); });
+  document.addEventListener('dragleave', function (e) {
+    e.preventDefault();
+    dragDepth = Math.max(0, dragDepth - 1);
+  });
+  document.addEventListener('drop', function (e) {
+    e.preventDefault();
+    dragDepth = 0;
+    if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) {
+      var f = e.dataTransfer.files[0];
+      if (/\.(json|txt)$/i.test(f.name || '')) {
+        handleFile(f);
+      } else {
+        showToast('Only .json or .txt files can be imported', true);
+      }
+    }
+  });
+
+  // ---------- 初始化 ----------
+  buildPalette();
+  fillPixels('');
+  setColor('#000000');
+  document.getElementById('btn-grid').classList.add('active');
+  render();
+  updateHistoryButtons();
+  fitToWindow();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>创意工作台 · 启动页</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    min-height: 100vh;
+    font-family: "Segoe UI", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+    color: #e8ecf8;
+    background-color: #0b1020;
+    background-image:
+      radial-gradient(1200px 620px at 12% -12%, rgba(99, 102, 241, .30), transparent 62%),
+      radial-gradient(900px 520px at 92% -6%, rgba(56, 189, 248, .22), transparent 58%),
+      radial-gradient(820px 520px at 50% 112%, rgba(236, 72, 153, .16), transparent 62%);
+    background-attachment: fixed;
+    padding: 44px 24px 64px;
+    display: flex; justify-content: center;
+  }
+
+  .wrap { width: 100%; max-width: 980px; display: flex; flex-direction: column; gap: 24px; }
+
+  header .eyebrow { font-size: 12px; letter-spacing: 3px; text-transform: uppercase; color: #8ea2ff; margin-bottom: 10px; font-weight: 600; }
+  header h1 { font-size: clamp(24px, 3vw, 32px); font-weight: 700; letter-spacing: .5px; }
+  header p { margin-top: 10px; color: #9aa6c6; font-size: 13.5px; line-height: 1.8; }
+
+  .toolbar {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 16px 18px; border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, .08);
+    background: linear-gradient(140deg, rgba(31, 42, 74, .9), rgba(15, 21, 39, .9));
+  }
+  .primary {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 11px 18px; border-radius: 11px; cursor: pointer;
+    font-size: 13.5px; font-weight: 650; color: #fff; border: none;
+    background: linear-gradient(135deg, #5b6cff, #7c5cff 55%, #2fb6ff);
+    box-shadow: 0 12px 26px -16px rgba(92, 108, 255, .95);
+    transition: filter .16s ease, transform .16s ease;
+  }
+  .primary:hover { filter: brightness(1.08); transform: translateY(-1px); }
+  .primary:disabled { opacity: .55; cursor: progress; transform: none; }
+  .primary svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .ghost {
+    padding: 9px 15px; border-radius: 10px; cursor: pointer; font-size: 12.5px;
+    color: #b8c4e6; background: rgba(255, 255, 255, .06);
+    border: 1px solid rgba(255, 255, 255, .13); transition: background .16s ease;
+  }
+  .ghost:hover { background: rgba(255, 255, 255, .12); }
+  .status { font-size: 12.5px; color: #8ea2ff; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 22px; }
+
+  .card {
+    position: relative; display: flex; flex-direction: column; gap: 15px;
+    padding: 24px 24px 22px; border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, .085);
+    background: linear-gradient(160deg, rgba(31, 42, 74, .96), rgba(17, 23, 42, .96));
+    box-shadow: 0 14px 34px -26px rgba(0, 0, 0, .9);
+    transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+    overflow: hidden;
+  }
+  .card:hover { transform: translateY(-4px); border-color: rgba(129, 140, 248, .55); box-shadow: 0 22px 44px -22px rgba(79, 70, 229, .65); }
+  .card::before {
+    content: ""; position: absolute; inset: 0; border-radius: 20px; pointer-events: none;
+    background: radial-gradient(420px 170px at 18% -14%, rgba(255, 255, 255, .08), transparent 72%);
+  }
+  .card[data-state="missing"] { border-color: rgba(248, 113, 113, .32); }
+
+  .card-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .icon {
+    width: 46px; height: 46px; border-radius: 14px; flex: none; display: grid; place-items: center;
+    background: linear-gradient(145deg, rgba(99, 102, 241, .35), rgba(56, 189, 248, .22));
+    border: 1px solid rgba(144, 165, 255, .28);
+  }
+  .icon svg { width: 24px; height: 24px; stroke: #c7d2fe; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+
+  .badge {
+    font-size: 11.5px; padding: 5px 11px; border-radius: 999px; white-space: nowrap;
+    border: 1px solid rgba(255, 255, 255, .14); color: #a9b4d4; background: rgba(255, 255, 255, .05);
+  }
+  .badge[data-state="ok"] { color: #7ee2b8; border-color: rgba(52, 211, 153, .45); background: rgba(16, 185, 129, .12); }
+  .badge[data-state="warn"] { color: #ffd48a; border-color: rgba(251, 191, 36, .4); background: rgba(251, 191, 36, .1); }
+  .badge[data-state="missing"] { color: #ff9d9d; border-color: rgba(248, 113, 113, .45); background: rgba(239, 68, 68, .12); }
+
+  .card h2 { font-size: 18.5px; font-weight: 650; letter-spacing: .3px; }
+  .card .desc { font-size: 13.5px; line-height: 1.75; color: #97a3c2; }
+
+  .meta { display: flex; flex-direction: column; gap: 6px; }
+  .meta .label { font-size: 11.5px; letter-spacing: 1.2px; color: #7c88a8; text-transform: uppercase; }
+  .meta code {
+    display: block; font-family: "Cascadia Code", Consolas, "Courier New", monospace;
+    font-size: 12.5px; color: #bfe0ff; word-break: break-all;
+    padding: 9px 12px; border-radius: 10px;
+    background: rgba(8, 12, 26, .72); border: 1px solid rgba(255, 255, 255, .07);
+  }
+  .meta code.empty { color: #7c88a8; }
+
+  .btn {
+    margin-top: 2px;
+    display: inline-flex; align-items: center; justify-content: center; gap: 9px;
+    padding: 12px 18px; border-radius: 12px; font-size: 14px; font-weight: 600;
+    text-decoration: none; color: #fff;
+    background: linear-gradient(135deg, #5b6cff, #7c5cff 55%, #2fb6ff);
+    box-shadow: 0 12px 26px -14px rgba(92, 108, 255, .9);
+    transition: filter .16s ease, transform .16s ease;
+  }
+  .btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
+  .btn svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .btn.is-disabled { opacity: .42; pointer-events: none; filter: grayscale(.5); }
+
+  .fix { font-size: 12.5px; color: #8d99b8; }
+  .fix summary { cursor: pointer; list-style: none; color: #9fb0e0; }
+  .fix summary::-webkit-details-marker { display: none; }
+  .fix summary::before { content: "\25B8 "; }
+  .fix[open] summary::before { content: "\25BE "; }
+  .fix form { display: flex; gap: 8px; margin-top: 10px; }
+  .fix input {
+    flex: 1; min-width: 0; padding: 9px 11px; border-radius: 9px; font-size: 12.5px;
+    color: #dbe6ff; background: rgba(8, 12, 26, .8);
+    border: 1px solid rgba(255, 255, 255, .1); font-family: Consolas, monospace;
+  }
+  .fix input:focus { outline: none; border-color: rgba(129, 140, 248, .7); }
+  .fix button {
+    padding: 9px 14px; border-radius: 9px; cursor: pointer; font-size: 12.5px; font-weight: 600;
+    color: #dbe6ff; background: rgba(99, 102, 241, .28); border: 1px solid rgba(129, 140, 248, .45);
+  }
+  .fix button:hover { background: rgba(99, 102, 241, .42); }
+
+  .panel {
+    border-radius: 18px; padding: 20px 22px; display: flex; flex-direction: column; gap: 14px;
+    border: 1px solid rgba(255, 255, 255, .07); background: rgba(13, 19, 36, .78);
+  }
+  .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+  .panel-head h3 { font-size: 14px; font-weight: 600; color: #c8d2ec; letter-spacing: .4px; }
+
+  #log { list-style: none; display: flex; flex-direction: column; gap: 7px; font-size: 12.6px; line-height: 1.65; color: #93a0c0; max-height: 220px; overflow: auto; }
+  #log li { display: flex; gap: 9px; align-items: flex-start; }
+  #log li::before { content: "\00B7"; color: #6f7ca0; }
+  #log li.warn { color: #ffd48a; }
+  #log li.err { color: #ff9d9d; }
+  #log li.ok { color: #7ee2b8; }
+
+  #results { list-style: none; display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow: auto; }
+  #results li {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 9px 12px; border-radius: 10px;
+    background: rgba(255, 255, 255, .04); border: 1px solid rgba(255, 255, 255, .07);
+  }
+  #results a {
+    flex: 1; min-width: 190px; font-family: "Cascadia Code", Consolas, monospace;
+    font-size: 12.4px; color: #bfe0ff; text-decoration: none; word-break: break-all;
+  }
+  #results a:hover { text-decoration: underline; }
+  .mini {
+    padding: 6px 10px; border-radius: 8px; cursor: pointer; font-size: 11.8px;
+    color: #c9d4f2; background: rgba(255, 255, 255, .07);
+    border: 1px solid rgba(255, 255, 255, .12);
+  }
+  .mini:hover { background: rgba(129, 140, 248, .3); border-color: rgba(129, 140, 248, .5); }
+
+  #others { list-style: none; display: flex; flex-direction: column; gap: 8px; max-height: 240px; overflow: auto; }
+  #others li {
+    padding: 9px 12px; border-radius: 10px;
+    background: rgba(255, 255, 255, .04); border: 1px solid rgba(255, 255, 255, .07);
+  }
+  #others a {
+    font-family: "Cascadia Code", Consolas, monospace;
+    font-size: 12.4px; color: #bfe0ff; text-decoration: none; word-break: break-all;
+  }
+  #others a:hover { text-decoration: underline; }
+  .mode-note { font-size: 12px; color: #7ee2b8; }
+
+  footer { font-size: 12px; color: #6f7ca0; line-height: 1.9; text-align: center; }
+  footer code { font-family: Consolas, monospace; color: #93a6d6; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">Launch Pad</div>
+    <h1>创意工作台</h1>
+    <p>两个本地小工具的统一起点，不依赖写死路径。<strong>双击「启动引导页.bat」</strong>启动本地服务后打开本页：每次加载都会由服务端真实扫描所在目录（递归子文件夹）的全部 HTML，自动填充下方两个工具入口，并列出目录内其它页面。若直接用浏览器打开本地文件（file://），则改为手动选择目录扫描。</p>
+  </header>
+
+  <div class="toolbar">
+    <button class="primary" id="scanBtn" type="button">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      自动扫描所在目录
+    </button>
+    <button class="ghost" id="clearBtn" type="button">清除记忆</button>
+    <span class="status" id="scanState">尚未扫描</span>
+  </div>
+
+  <main class="grid">
+
+    <article class="card" data-app="paint" data-state="warn">
+      <div class="card-top">
+        <div class="icon">
+          <svg viewBox="0 0 24 24"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/></svg>
+        </div>
+        <span class="badge" data-state="warn">待扫描</span>
+      </div>
+      <h2>Pixel Paint · 像素画工具</h2>
+      <p class="desc">像素风格绘制工具，提供画布网格、调色板、画笔与橡皮、撤销以及 PNG 导出。</p>
+      <div class="meta">
+        <span class="label">当前相对路径</span>
+        <code data-role="path" class="empty">未确定</code>
+      </div>
+      <a class="btn is-disabled" data-role="open" href="#" target="_blank" rel="noopener">
+        打开 Pixel Paint
+        <svg viewBox="0 0 24 24"><path d="M7 17 17 7M9 7h8v8"/></svg>
+      </a>
+      <details class="fix">
+        <summary>路径不正确？手动校正</summary>
+        <form data-role="fix">
+          <input type="text" placeholder="例如 pixel-paint.html 或 新建文件夹/pixel-paint.html" autocomplete="off" />
+          <button type="submit">应用</button>
+        </form>
+      </details>
+    </article>
+
+    <article class="card" data-app="audio" data-state="warn">
+      <div class="card-top">
+        <div class="icon">
+          <svg viewBox="0 0 24 24"><path d="M3 12h2l2-6 3 12 3-16 3 14 2-4h3"/></svg>
+        </div>
+        <span class="badge" data-state="warn">待扫描</span>
+      </div>
+      <h2>Liquid Cutter · 音频剪辑器</h2>
+      <p class="desc">音频剪辑工具，可在浏览器中载入音频、试听播放、裁剪片段并导出为 WAV / MP3。</p>
+      <div class="meta">
+        <span class="label">当前相对路径</span>
+        <code data-role="path" class="empty">未确定</code>
+      </div>
+      <a class="btn is-disabled" data-role="open" href="#" target="_blank" rel="noopener">
+        打开 Liquid Cutter
+        <svg viewBox="0 0 24 24"><path d="M7 17 17 7M9 7h8v8"/></svg>
+      </a>
+      <details class="fix">
+        <summary>路径不正确？手动校正</summary>
+        <form data-role="fix">
+          <input type="text" placeholder="例如 Liquid Cutter.html 或 新建文件夹/Liquid Cutter.html" autocomplete="off" />
+          <button type="submit">应用</button>
+        </form>
+      </details>
+    </article>
+
+  </main>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h3>扫描到的 HTML 文件</h3>
+      <span class="status" id="resultCount">0 个</span>
+    </div>
+    <ul id="results"><li style="background:none;border:none;color:#7c88a8;">扫描后在此列出，可手动点选指定给某个入口。</li></ul>
+  </section>
+
+  <section class="panel" id="othersPanel" hidden>
+    <div class="panel-head">
+      <h3>目录内其它 HTML 文件</h3>
+      <span class="status" id="othersCount">0 个</span>
+    </div>
+    <ul id="others"><li style="background:none;border:none;color:#7c88a8;">扫描后在此列出。</li></ul>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><h3>运行日志</h3></div>
+    <ul id="log"><li>等待操作。推荐点击上方「自动扫描所在目录」。</li></ul>
+  </section>
+
+  <footer>
+    识别规则：文件名含 pixel / 像素 / paint 判为像素画工具；含 liquid / cutter / 音频剪辑 / 剪辑器 / audio 判为音频剪辑器。<br />
+    当前页所在目录：<code id="baseDir">—</code>
+  </footer>
+
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ==== PURE LOGIC START ==== */
+  function stripExt(name) { return String(name).replace(/\.html?$/i, ""); }
+
+  function norm(name) {
+    return stripExt(name).toLowerCase().replace(/[\s\-_.\u00b7]+/g, "").replace(/[^\w\u4e00-\u9fa5]/g, "");
+  }
+
+  function scorePaint(name) {
+    var n = norm(name);
+    if (n.indexOf("pixelpaint") >= 0) return 100;
+    if (n.indexOf("pixel") >= 0) return 90;
+    if (n.indexOf("\u50cf\u7d20") >= 0) return 80;
+    if (n.indexOf("paint") >= 0) return 60;
+    return 0;
+  }
+
+  function scoreCutter(name) {
+    var n = norm(name);
+    if (n.indexOf("liquidcutter") >= 0) return 100;
+    if (n.indexOf("liquid") >= 0) return 95;
+    if (n.indexOf("cutter") >= 0) return 90;
+    if (n.indexOf("\u97f3\u9891\u526a\u8f91") >= 0) return 85;
+    if (n.indexOf("\u526a\u8f91\u5668") >= 0) return 80;
+    if (n.indexOf("audio") >= 0) return 55;
+    if (n.indexOf("\u97f3\u9891") >= 0) return 50;
+    return 0;
+  }
+
+  function encodeRel(rel) {
+    return String(rel).split("/").map(function (part) {
+      return encodeURIComponent(part);
+    }).join("/");
+  }
+
+  function pickBest(files, scoreFn) {
+    var best = null;
+    for (var i = 0; i < files.length; i++) {
+      var rel = files[i].rel;
+      var name = files[i].name || rel;
+      var s = scoreFn(name);
+      if (s > 0 && (!best || s > best.score || (s === best.score && rel.length < best.rel.length))) {
+        best = { rel: rel, score: s, name: name };
+      }
+    }
+    return best;
+  }
+  /* ==== PURE LOGIC END ==== */
+
+  var KEY = "launchpad.paths.v2";
+  var MAX_DEPTH = 8;
+  var MAX_ENTRIES = 8000;
+  var JS_EXTS = /\.html?$/i;
+
+  var logEl = document.getElementById("log");
+  var resultsEl = document.getElementById("results");
+  var resultCountEl = document.getElementById("resultCount");
+  var scanStateEl = document.getElementById("scanState");
+  var scanBtn = document.getElementById("scanBtn");
+  var clearBtn = document.getElementById("clearBtn");
+
+  var APPS = [
+    { id: "paint", label: "Pixel Paint", score: scorePaint },
+    { id: "audio", label: "Liquid Cutter", score: scoreCutter }
+  ];
+
+  // ---------- 运行模式：http(s) 走本地服务，file:// 走目录选择器 ----------
+  var HTTP_MODE = location.protocol === "http:" || location.protocol === "https:";
+  var BEAT_MS = 2000;        // 心跳间隔，服务端 8 秒无请求即自关
+  var beatTimer = null;
+  var beatFails = 0;
+  var shuttingDown = false;
+
+  // ---------- 基础工具 ----------
+  function clearLog() { logEl.innerHTML = ""; }
+  function addLog(text, cls) {
+    var li = document.createElement("li");
+    if (cls) li.className = cls;
+    li.textContent = text;
+    logEl.appendChild(li);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+  function setScanState(text) { scanStateEl.textContent = text; }
+  function cardOf(appId) { return document.querySelector('.card[data-app="' + appId + '"]'); }
+
+  function currentDirName() {
+    var path = location.pathname;
+    var dir = path.replace(/\/[^\/]*$/, "");
+    var seg = dir.split("/").pop() || "";
+    try { return decodeURIComponent(seg); } catch (e) { return seg; }
+  }
+
+  // ---------- 卡片渲染 ----------
+  function setLink(appId, rel, badgeText, badgeKind) {
+    var card = cardOf(appId);
+    clearAlt(appId);
+    var anchor = card.querySelector('[data-role="open"]');
+    var pathEl = card.querySelector('[data-role="path"]');
+    var badge = card.querySelector(".badge");
+
+    anchor.setAttribute("href", encodeRel(rel));
+    anchor.classList.remove("is-disabled");
+    anchor.removeAttribute("aria-disabled");
+
+    pathEl.textContent = rel;
+    pathEl.classList.remove("empty");
+
+    badge.setAttribute("data-state", badgeKind);
+    badge.textContent = badgeText;
+    card.setAttribute("data-state", "ok");
+  }
+
+  function setMissing(appId, message) {
+    var card = cardOf(appId);
+    clearAlt(appId);
+    var anchor = card.querySelector('[data-role="open"]');
+    var pathEl = card.querySelector('[data-role="path"]');
+    var badge = card.querySelector(".badge");
+
+    anchor.setAttribute("href", "#");
+    anchor.classList.add("is-disabled");
+    anchor.setAttribute("aria-disabled", "true");
+    pathEl.textContent = message;
+    pathEl.classList.add("empty");
+    badge.setAttribute("data-state", "missing");
+    badge.textContent = "未找到";
+    card.setAttribute("data-state", "missing");
+  }
+
+  function currentRel(appId) {
+    var el = cardOf(appId).querySelector('[data-role="path"]');
+    if (!el || el.classList.contains("empty")) return null;
+    return el.textContent;
+  }
+
+  // ---------- 记忆 ----------
+  function saveCache() {
+    var data = { dir: currentDirName(), ts: Date.now(), entries: {} };
+    APPS.forEach(function (app) {
+      var rel = currentRel(app.id);
+      if (rel) data.entries[app.id] = rel;
+    });
+    try {
+      localStorage.setItem(KEY, JSON.stringify(data));
+      addLog("已记住本次路径（刷新或下次打开会自动复用）。");
+    } catch (e) {
+      addLog("当前浏览器禁止本地存储，本次结果不会被记住。", "warn");
+    }
+  }
+
+  function readCache() {
+    try {
+      var raw = localStorage.getItem(KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  }
+
+  function probe(url) {
+    if (typeof fetch !== "function") return Promise.resolve(null);
+    return fetch(url, { method: "HEAD", cache: "no-store" }).then(function (res) {
+      if (res.status === 405 || res.status === 501) return fetch(url, { method: "GET", cache: "no-store" });
+      return res;
+    }).then(function (res) { return !!(res && res.ok); })
+      .catch(function () { return null; });
+  }
+
+  // ---------- 兜底推测（多候选择优） ----------
+  // 每个目标维护两条候选：同级路径 + 子目录「新建文件夹/」路径。
+  // 排列顺序 = 构建时实测存在的那个在前（当前实测：两个目标与 index.html 同级）。
+  // 运行时会逐个 fetch 校验；能校验则用真实存在的那条，file:// 无法校验则用先后顺序兜底，
+  // 并把另一条渲染成卡片上的「另一个候选」链接，一键可试。
+  var GUESS_CANDIDATES = {
+    paint: ["pixel-paint.html", "新建文件夹/pixel-paint.html"],
+    audio: ["Liquid Cutter.html", "新建文件夹/Liquid Cutter.html"]
+  };
+  var GUESS_BADGE = "推测路径 · 建议点自动扫描确认";
+
+  function clearAlt(appId) {
+    var el = cardOf(appId).querySelector('[data-role="alt"]');
+    if (el && el.parentNode) el.parentNode.removeChild(el);
+  }
+
+  function setAlt(appId, rel) {
+    clearAlt(appId);
+    if (!rel) return;
+    var card = cardOf(appId);
+    var anchor = card.querySelector('[data-role="open"]');
+    var a = document.createElement("a");
+    a.setAttribute("data-role", "alt");
+    a.setAttribute("href", encodeRel(rel));
+    a.setAttribute("target", "_blank");
+    a.setAttribute("rel", "noopener");
+    a.textContent = "若上面打不开，试另一个候选：" + rel;
+    a.style.cssText = "display:block;margin-top:8px;font-size:12px;line-height:1.5;color:#8fb3ff;text-decoration:none;word-break:break-all;";
+    if (anchor && anchor.parentNode === card) card.insertBefore(a, anchor.nextSibling);
+    else card.appendChild(a);
+  }
+
+  function guessOne(appId, cands) {
+    if (!cands || !cands.length) return Promise.resolve();
+
+    function fill(rel, altRel, logText, logCls) {
+      setLink(appId, rel, GUESS_BADGE, "warn");
+      setAlt(appId, altRel);
+      if (logText) addLog(logText, logCls);
+    }
+
+    function step(i) {
+      if (i >= cands.length) {
+        fill(cands[0], cands[1], "「" + appId + "」全部候选在线校验均未命中，已按优先候选填入：" + cands[0] + "，请扫描确认。", "err");
+        return Promise.resolve();
+      }
+      var rel = cands[i];
+      var next = cands[i + 1] || null;
+      return probe(encodeRel(rel)).then(function (ok) {
+        if (ok === true) {
+          fill(rel, null, "「" + appId + "」推测路径在线校验命中：" + rel, "ok");
+          return;
+        }
+        if (ok === null) {
+          fill(rel, next,
+            "「" + appId + "」file:// 下浏览器禁止脚本读取文件，无法在线校验，已按优先候选填入：" + rel +
+            (next ? "；另一个候选「" + next + "」也挂在卡片上可直接点" : "") + "。", "warn");
+          return;
+        }
+        return step(i + 1);
+      });
+    }
+    return step(0);
+  }
+
+  function applyGuess() {
+    addLog("正在按候选路径推测目标位置（同级 与 子目录「新建文件夹/」两条候选逐一校验）…", "warn");
+    var seq = Promise.resolve();
+    APPS.forEach(function (app) {
+      var cands = GUESS_CANDIDATES[app.id] || [];
+      seq = seq.then(function () { return guessOne(app.id, cands); });
+    });
+    return seq.then(function () {
+      addLog("推测路径已填入，若跳转失败请点击「自动扫描所在目录」确认真实位置。", "warn");
+    });
+  }
+
+  function restoreCache() {
+    var cache = readCache();
+    if (!cache || !cache.entries) {
+      addLog("无历史记录，请点击「自动扫描所在目录」。", "warn");
+      applyGuess();
+      return;
+    }
+    var sameDir = cache.dir && cache.dir === currentDirName();
+    if (!sameDir) {
+      addLog("历史记录来自目录「" + (cache.dir || "未知") + "」，与当前页所在目录「" + currentDirName() + "」不一致，已忽略。", "warn");
+      applyGuess();
+      return;
+    }
+    var keys = Object.keys(cache.entries);
+    if (!keys.length) {
+      applyGuess();
+      return;
+    }
+
+    keys.forEach(function (appId) {
+      var rel = cache.entries[appId];
+      setLink(appId, rel, "缓存复用 · 校验中", "warn");
+    });
+    addLog("已从本地记忆恢复 " + keys.length + " 条路径，正在校验有效性…");
+
+    keys.forEach(function (appId) {
+      var rel = cache.entries[appId];
+      probe(encodeRel(rel)).then(function (ok) {
+        if (ok === true) {
+          setLink(appId, rel, "缓存命中 · 已验证", "ok");
+          addLog("「" + appId + "」缓存路径在线校验通过：" + rel, "ok");
+        } else if (ok === false) {
+          setMissing(appId, "缓存路径已失效：" + rel);
+          addLog("「" + appId + "」缓存路径已失效（文件不存在）：" + rel + "，请重新扫描。", "err");
+        } else {
+          setLink(appId, rel, "缓存复用 · 本地未校验", "warn");
+          addLog("「" + appId + "」本地 file:// 模式下浏览器禁止脚本读取文件，无法在线校验，已按记忆沿用：" + rel, "warn");
+        }
+      });
+    });
+  }
+
+  // ---------- 扫描：优先目录选择器 ----------
+  async function walkHandle(handle, prefix, out, depth, budget) {
+    if (depth > MAX_DEPTH) return;
+    for await (const entry of handle.values()) {
+      if (budget.count++ > MAX_ENTRIES) return;
+      if (entry.kind === "file") {
+        if (JS_EXTS.test(entry.name)) out.push({ name: entry.name, rel: prefix + entry.name });
+      } else if (entry.kind === "directory") {
+        await walkHandle(entry, prefix + entry.name + "/", out, depth + 1, budget);
+      }
+    }
+  }
+
+  async function scanViaPicker() {
+    var root = await window.showDirectoryPicker({ mode: "read" });
+    var files = [];
+    await walkHandle(root, "", files, 0, { count: 0 });
+    return { rootName: root.name, files: files, mode: "directory-picker" };
+  }
+
+  function scanViaInput() {
+    return new Promise(function (resolve) {
+      var input = document.createElement("input");
+      input.type = "file";
+      input.webkitdirectory = true;
+      input.multiple = true;
+      input.style.display = "none";
+      document.body.appendChild(input);
+
+      var settled = false;
+      input.addEventListener("change", function () {
+        settled = true;
+        var picked = Array.prototype.slice.call(input.files || []);
+        if (!picked.length) {
+          document.body.removeChild(input);
+          resolve(null);
+          return;
+        }
+        var rootName = (picked[0].webkitRelativePath || "").split("/")[0] || "";
+        var htmlFiles = picked.filter(function (f) { return JS_EXTS.test(f.name); });
+        var files = htmlFiles.map(function (f) {
+          var parts = (f.webkitRelativePath || f.name).split("/");
+          return { name: f.name, rel: parts.slice(1).join("/") || f.name };
+        });
+        document.body.removeChild(input);
+        resolve({ rootName: rootName, files: files, mode: "input-webkitdirectory" });
+      });
+
+      window.addEventListener("focus", function onFocus() {
+        setTimeout(function () {
+          if (!settled) {
+            window.removeEventListener("focus", onFocus);
+            if (document.body.contains(input)) document.body.removeChild(input);
+            resolve(null);
+          }
+        }, 900);
+      }, { once: true });
+
+      input.click();
+    });
+  }
+
+  // ---------- 扫描结果处理 ----------
+  function renderResults(files) {
+    resultsEl.innerHTML = "";
+    resultCountEl.textContent = files.length + " 个";
+    if (!files.length) {
+      var empty = document.createElement("li");
+      empty.style.background = "none";
+      empty.style.border = "none";
+      empty.style.color = "#7c88a8";
+      empty.textContent = "所选目录内没有 .html / .htm 文件。";
+      resultsEl.appendChild(empty);
+      return;
+    }
+    files.forEach(function (item) {
+      var li = document.createElement("li");
+
+      var link = document.createElement("a");
+      link.setAttribute("href", encodeRel(item.rel));
+      link.setAttribute("target", "_blank");
+      link.setAttribute("rel", "noopener");
+      link.textContent = item.rel;
+      li.appendChild(link);
+
+      APPS.forEach(function (app) {
+        var btn = document.createElement("button");
+        btn.className = "mini";
+        btn.type = "button";
+        btn.textContent = "设为 " + app.label;
+        btn.addEventListener("click", function () {
+          setLink(app.id, item.rel, "手动指定", "warn");
+          addLog("已将「" + item.rel + "」指定为 " + app.label + "。", "warn");
+          saveCache();
+        });
+        li.appendChild(btn);
+      });
+
+      resultsEl.appendChild(li);
+    });
+  }
+
+  function applyScan(result) {
+    var pageDir = currentDirName();
+    var files = result.files || [];
+
+    addLog("扫描方式：" + (result.mode === "directory-picker" ? "目录选择器（递归）" : "文件夹上传回退（递归）"));
+    addLog("所选目录：" + (result.rootName || "未知") + "；扫描到 HTML 文件 " + files.length + " 个。");
+
+    if (result.rootName && pageDir && result.rootName !== pageDir) {
+      addLog("警告：所选目录「" + result.rootName + "」与页面所在目录「" + pageDir + "」不一致，生成的相对路径很可能无法打开。请改选页面所在目录，或在卡片下方手动校正。", "err");
+      setScanState("目录不匹配：" + result.rootName + " ≠ " + pageDir);
+    } else {
+      addLog("目录校验通过：所选目录与页面所在目录一致。", "ok");
+      setScanState("扫描完成，共 " + files.length + " 个 HTML");
+    }
+
+    renderResults(files);
+
+    APPS.forEach(function (app) {
+      var hit = pickBest(files, app.score);
+      if (hit) {
+        setLink(app.id, hit.rel, "已自动识别", "ok");
+        addLog("「" + app.label + "」命中：" + hit.rel + "（匹配度 " + hit.score + "）", "ok");
+      } else {
+        setMissing(app.id, "扫描未命中，请从下方列表点选");
+        addLog("「" + app.label + "」未找到匹配文件，请从扫描结果中手动点选，或手动校正路径。", "err");
+      }
+    });
+
+    saveCache();
+  }
+
+  function doScan() {
+    if (HTTP_MODE) { runHttpScan(); return; }
+    if (!window.showDirectoryPicker && !("webkitdirectory" in document.createElement("input"))) {
+      addLog("当前浏览器既不支持目录选择器，也不支持 webkitdirectory，请改用 Chrome / Edge，或使用手动校正。", "err");
+      return;
+    }
+    scanBtn.disabled = true;
+    setScanState("正在请求目录权限…");
+
+    var task;
+    if (typeof window.showDirectoryPicker === "function") {
+      task = scanViaPicker().catch(function (err) {
+        if (err && (err.name === "AbortError" || err.name === "NotAllowedError")) {
+          addLog("已取消目录选择。", "warn");
+          return null;
+        }
+        addLog("目录选择器不可用（" + ((err && err.name) || "未知错误") + "），自动改用文件夹上传回退方案。", "warn");
+        return scanViaInput();
+      });
+    } else {
+      addLog("当前浏览器不支持 window.showDirectoryPicker，改用文件夹上传回退方案（会提示上传，文件不会被上传到任何服务器）。", "warn");
+      task = scanViaInput();
+    }
+
+    Promise.resolve(task).then(function (result) {
+      if (!result) {
+        setScanState("扫描已取消");
+        return;
+      }
+      applyScan(result);
+    }).catch(function (err) {
+      addLog("扫描失败：" + ((err && err.message) || err), "err");
+      setScanState("扫描失败");
+    }).then(function () {
+      scanBtn.disabled = false;
+    });
+  }
+
+  // ---------- HTTP 模式：服务端实时扫描 ----------
+  function httpScan() {
+    return fetch("/__scan", { cache: "no-store" }).then(function (res) {
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      return res.json();
+    });
+  }
+
+  function renderOthers(files, usedRels) {
+    var panel = document.getElementById("othersPanel");
+    var list = document.getElementById("others");
+    var countEl = document.getElementById("othersCount");
+    if (!panel || !list || !countEl) return;
+
+    var used = {};
+    var self = "index.html";
+    (usedRels || []).forEach(function (r) { if (r) used[r] = true; });
+
+    var others = files.filter(function (f) {
+      return f.rel !== self && !used[f.rel];
+    });
+
+    list.innerHTML = "";
+    countEl.textContent = others.length + " 个";
+
+    if (!others.length) {
+      var empty = document.createElement("li");
+      empty.style.cssText = "background:none;border:none;color:#7c88a8;";
+      empty.textContent = "除两个工具与 index.html 外，目录内没有其它 HTML 文件。";
+      list.appendChild(empty);
+      panel.hidden = false;
+      return;
+    }
+
+    others.forEach(function (item) {
+      var li = document.createElement("li");
+      var a = document.createElement("a");
+      a.setAttribute("href", encodeRel(item.rel));
+      a.setAttribute("target", "_blank");
+      a.setAttribute("rel", "noopener");
+      a.textContent = item.rel;
+      li.appendChild(a);
+      list.appendChild(li);
+    });
+    panel.hidden = false;
+  }
+
+  function applyHttpScan(data) {
+    var files = (data.files || []).map(function (f) {
+      return { name: f.name || f.rel, rel: f.rel };
+    });
+
+    addLog("扫描方式：本地 HTTP 服务 /__scan（页面每次加载都重新扫描，不使用本地记忆）");
+    addLog("服务根目录：" + (data.rootName || data.root || "未知") + "；命中 HTML 文件 " + files.length + " 个" +
+      (data.truncated ? "（已达上限，结果被截断）" : "") + "。");
+    setScanState("已自动扫描 · " + files.length + " 个 HTML");
+
+    renderResults(files);
+
+    var used = [];
+    APPS.forEach(function (app) {
+      var hit = pickBest(files, app.score);
+      if (hit) {
+        setLink(app.id, hit.rel, "已识别 · 服务端实时扫描", "ok");
+        used.push(hit.rel);
+        addLog("「" + app.label + "」命中：" + hit.rel + "（匹配度 " + hit.score + "）", "ok");
+      } else {
+        setMissing(app.id, "目录内没有匹配的 HTML，请手动校正");
+        addLog("「" + app.label + "」未在目录内找到匹配的 HTML，请在下方手动指定或校正路径。", "err");
+      }
+    });
+
+    renderOthers(files, used);
+
+    if (data.truncated) {
+      var lim = data.limits || {};
+      addLog("注意：扫描已达层数上限（" + (lim.maxDepth || MAX_DEPTH) + " 层）或条目上限（" +
+        (lim.maxFiles || MAX_ENTRIES) + " 条），结果可能不完整。", "warn");
+    }
+  }
+
+  function runHttpScan() {
+    scanBtn.disabled = true;
+    setScanState("正在向本地服务请求目录清单…");
+    return httpScan().then(function (data) {
+      applyHttpScan(data);
+    }).catch(function (err) {
+      addLog("无法连接本地服务：" + ((err && err.message) || err) + "。请双击运行「启动引导页.bat」后重试。", "err");
+      setScanState("本地服务不可用");
+    }).then(function () {
+      scanBtn.disabled = false;
+    });
+  }
+
+  // ---------- HTTP 模式：心跳与自动关停 ----------
+  function beat() {
+    if (!HTTP_MODE || shuttingDown) return;
+    fetch("/__ping", { cache: "no-store" }).then(function (res) {
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      beatFails = 0;
+    }).catch(function () {
+      beatFails++;
+      if (beatFails >= 3) {
+        if (beatTimer) { clearInterval(beatTimer); beatTimer = null; }
+        addLog("本地服务已断开（心跳连续失败），请重新双击「启动引导页.bat」。", "err");
+        setScanState("本地服务已断开");
+      }
+    });
+  }
+
+  function startHeartbeat() {
+    if (!HTTP_MODE) return;
+    beat();
+    if (beatTimer) clearInterval(beatTimer);
+    beatTimer = setInterval(beat, BEAT_MS);
+  }
+
+  function notifyShutdown() {
+    if (!HTTP_MODE || shuttingDown) return;
+    shuttingDown = true;
+    if (beatTimer) { clearInterval(beatTimer); beatTimer = null; }
+    try {
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon("/__shutdown", "close");
+      } else if (typeof fetch === "function") {
+        fetch("/__shutdown", { method: "POST", cache: "no-store", keepalive: true }).catch(function () {});
+      }
+    } catch (e) { /* 忽略 */ }
+  }
+
+  // ---------- 事件 ----------
+  scanBtn.addEventListener("click", doScan);
+
+  // 关闭标签页 / 刷新页面时通知服务退出（服务端有 1 秒宽限，刷新不会误杀）
+  window.addEventListener("pagehide", notifyShutdown);
+  window.addEventListener("beforeunload", notifyShutdown);
+
+  clearBtn.addEventListener("click", function () {
+    try { localStorage.removeItem(KEY); } catch (e) { /* 忽略 */ }
+    APPS.forEach(function (app) { setMissing(app.id, "未确定（请扫描或手动校正）"); });
+    resultsEl.innerHTML = "";
+    resultCountEl.textContent = "0 个";
+    clearLog();
+    if (HTTP_MODE) {
+      addLog("HTTP 模式不使用本地记忆，已清空显示，正在重新扫描目录…", "warn");
+      runHttpScan();
+      return;
+    }
+    addLog("已清除记忆与扫描结果。", "warn");
+    setScanState("尚未扫描");
+  });
+
+  APPS.forEach(function (app) {
+    var form = cardOf(app.id).querySelector('[data-role="fix"]');
+    form.addEventListener("submit", function (event) {
+      event.preventDefault();
+      var input = form.querySelector("input");
+      var value = (input.value || "").trim().replace(/\\/g, "/").replace(/^\.\//, "");
+      if (!value) return;
+      setLink(app.id, value, "手动指定", "warn");
+      addLog("「" + app.label + "」已手动指定：" + value, "warn");
+      saveCache();
+    });
+  });
+
+  // ---------- 初始化 ----------
+  (function init() {
+    var base = location.href.replace(/[^\/]*$/, "");
+    var baseEl = document.getElementById("baseDir");
+    try { baseEl.textContent = decodeURI(base); } catch (e) { baseEl.textContent = base; }
+
+    if (HTTP_MODE) {
+      // 按钮文案微调（保留 svg 图标，只改末尾文本节点）
+      var labelNode = scanBtn.lastChild;
+      if (labelNode && labelNode.nodeType === 3) labelNode.nodeValue = "\n      重新扫描目录\n    ";
+      clearBtn.textContent = "清空并重扫";
+
+      setScanState("本地服务模式 · 正在自动扫描…");
+      addLog("检测到 " + location.protocol + "// 环境：已启用本地服务模式，本次加载会重新扫描一遍目录（不读本地记忆）。", "ok");
+      startHeartbeat();
+      runHttpScan();
+      return;
+    }
+
+    // file:// 环境：保留原有目录选择器扫描 + 兜底推测
+    addLog("当前为本地文件（file://）模式：浏览器安全限制下无法自动读取目录，请点击「自动扫描所在目录」手动选择本页所在文件夹；也可以双击「启动引导页.bat」改用本地服务模式自动扫描。", "warn");
+    restoreCache();
+  })();
+})();
+</script>
+</body>
+</html>

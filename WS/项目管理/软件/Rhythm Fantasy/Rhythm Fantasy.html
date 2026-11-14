@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>传统下落式音游 | 钢琴节奏 · 长按音符</title>
+    <style>
+        * {
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: radial-gradient(circle at 20% 30%, #0a0f1e, #03060c);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', 'Poppins', 'Orbitron', monospace;
+        }
+
+        .game-wrapper {
+            background: rgba(0, 0, 0, 0.55);
+            backdrop-filter: blur(4px);
+            border-radius: 3rem;
+            padding: 1.2rem 2rem 1.8rem 2rem;
+            box-shadow: 0 20px 35px rgba(0,0,0,0.6), inset 0 1px 1px rgba(255,255,255,0.1);
+            border: 1px solid #5f9eff55;
+        }
+
+        canvas {
+            display: block;
+            margin: 0 auto;
+            border-radius: 1.8rem;
+            box-shadow: 0 10px 25px black;
+            cursor: pointer;
+        }
+
+        .info-panel {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 1.2rem;
+            gap: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .score-card, .combo-card {
+            background: #010a12aa;
+            backdrop-filter: blur(8px);
+            padding: 0.3rem 1.2rem;
+            border-radius: 2rem;
+            border-left: 3px solid #7ac7ff;
+        }
+
+        .score-label, .combo-label {
+            font-size: 0.7rem;
+            letter-spacing: 2px;
+            color: #bbe4ff;
+        }
+
+        .score-value, .combo-value {
+            font-size: 2rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #f0f9ff, #c5e9ff);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            line-height: 1;
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        button, .level-btn {
+            background: linear-gradient(105deg, #1f2c3c, #0e1622);
+            border: none;
+            font-family: inherit;
+            font-weight: bold;
+            font-size: 0.9rem;
+            padding: 0.45rem 1.2rem;
+            border-radius: 2.5rem;
+            color: #e0f0ff;
+            cursor: pointer;
+            transition: 0.15s;
+            box-shadow: 0 3px 8px black;
+            border-bottom: 2px solid #4aa0ff;
+        }
+
+        button:active, .level-btn:active {
+            transform: scale(0.96);
+        }
+
+        .level-selector {
+            display: flex;
+            gap: 0.7rem;
+            background: #00000044;
+            padding: 0.3rem 0.8rem;
+            border-radius: 3rem;
+        }
+
+        .active-level {
+            background: #2b5f8a;
+            border-bottom-color: #ffde9e;
+            color: white;
+            box-shadow: 0 0 6px #77ddff;
+        }
+
+        .key-hint {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 1rem;
+            font-size: 0.75rem;
+            background: #00000077;
+            padding: 0.3rem 1rem;
+            border-radius: 2rem;
+            width: fit-content;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .key {
+            background: #11161f;
+            padding: 0.2rem 0.8rem;
+            border-radius: 1rem;
+            font-weight: bold;
+            color: #8effc2;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 1rem;
+            font-size: 0.65rem;
+            color: #7d9bc3;
+        }
+    </style>
+</head>
+<body>
+<div>
+    <div class="game-wrapper">
+        <canvas id="gameCanvas" width="800" height="520"></canvas>
+        <div class="info-panel">
+            <div class="score-card"><div class="score-label">🎹 钢琴积分</div><div class="score-value" id="scoreDisplay">0</div></div>
+            <div class="combo-card"><div class="combo-label">✨ 连奏</div><div class="combo-value" id="comboDisplay">0</div></div>
+            <div class="controls">
+                <button id="startResetBtn">▶ 开始演奏</button>
+                <div class="level-selector" id="levelSelector">
+                    <button data-level="0" class="level-btn">月光前奏</button>
+                    <button data-level="1" class="level-btn">蓝色练习曲</button>
+                </div>
+            </div>
+        </div>
+        <div class="key-hint">
+            <span class="key">A</span> <span>❄️ 左</span>
+            <span class="key">S</span> <span>🍃 中左</span>
+            <span class="key">D</span> <span>🌟 中右</span>
+            <span class="key">F</span> <span>🔥 右</span>
+            <span style="margin-left: 8px;">💙 长条音符需长按至尾端</span>
+        </div>
+        <footer>🎵 音符从顶部下落，到达底端判定线时按下 | 长按条需要按住直到尾部通过判定线</footer>
+    </div>
+</div>
+
+<script>
+    (function(){
+        // ---------- 画布元素 ----------
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // ---------- 轨道配置 ----------
+        const LANE_COUNT = 4;
+        const LANE_KEYS = ['a', 's', 'd', 'f'];
+        const LANE_WIDTH = canvas.width / LANE_COUNT;   // 200px
+        const JUDGE_LINE_Y = canvas.height - 70;         // 判定线Y坐标
+        const NOTE_WIDTH = LANE_WIDTH * 0.68;
+        const NOTE_HEIGHT = 28;
+        
+        // 下落时间 (从生成到判定线的时间，毫秒)
+        const FALL_DURATION = 500;
+        
+        // 判定窗口 (毫秒)
+        const PERFECT_WINDOW = 50;
+        const GOOD_WINDOW = 110;
+        const MAX_HIT_WINDOW = 150;
+        
+        // 得分
+        const SCORE_PERFECT = 100;
+        const SCORE_GOOD = 55;
+        const SCORE_HOLD_PERFECT = 120;
+        const SCORE_HOLD_GOOD = 70;
+        
+        // ---------- 全局状态 ----------
+        let gameActive = false;
+        let animationId = null;
+        let gameStartTime = 0;
+        
+        let totalScore = 0;
+        let combo = 0;
+        let maxCombo = 0;
+        
+        let currentLevel = 0;
+        let chartNotes = [];
+        let activeNotes = [];
+        let holdStates = new Array(LANE_COUNT).fill(null).map(() => ({ active: false, note: null, pressStartTime: 0 }));
+        let keyPressed = new Array(LANE_COUNT).fill(false);
+        
+        // UI 元素
+        const scoreSpan = document.getElementById('scoreDisplay');
+        const comboSpan = document.getElementById('comboDisplay');
+        const startResetBtn = document.getElementById('startResetBtn');
+        const levelBtns = document.querySelectorAll('.level-btn');
+        
+        // 浮动评分特效 (增加生命周期自动消失)
+        let floatingJudgements = [];
+        
+        // ---------- 音频引擎 (钢琴音色) ----------
+        let audioCtx = null;
+        function initAudio() {
+            if (audioCtx) return audioCtx;
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            return audioCtx;
+        }
+        
+        function playPianoNote(freq, volume = 0.3, duration = 0.6) {
+            if (!audioCtx || audioCtx.state !== 'running') return;
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gainEnv = audioCtx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.value = freq;
+            osc.connect(gainEnv);
+            gainEnv.connect(audioCtx.destination);
+            gainEnv.gain.setValueAtTime(volume, now);
+            gainEnv.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+            osc.start(now);
+            osc.stop(now + duration);
+            // 二次谐波
+            const osc2 = audioCtx.createOscillator();
+            const gain2 = audioCtx.createGain();
+            osc2.type = 'sine';
+            osc2.frequency.value = freq * 2.02;
+            gain2.gain.setValueAtTime(volume * 0.25, now);
+            gain2.gain.exponentialRampToValueAtTime(0.0001, now + duration * 0.7);
+            osc2.connect(gain2);
+            gain2.connect(audioCtx.destination);
+            osc2.start(now);
+            osc2.stop(now + duration * 0.7);
+        }
+        
+        function getPitchFromLane(lane) {
+            const base = [261.63, 329.63, 392.00, 523.25];
+            return base[lane % base.length];
+        }
+        
+        function playHitSound(lane, isHoldHead = false) {
+            playPianoNote(getPitchFromLane(lane), isHoldHead ? 0.35 : 0.3, 0.45);
+        }
+        
+        function playMissSound() {
+            if (!audioCtx || audioCtx.state !== 'running') return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.value = 180;
+            gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime+0.25);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime+0.25);
+        }
+        
+        // ---------- 谱面定义 (时间单位:毫秒) ----------
+        function tap(time, lane) { return { time, lane, type: 'tap', duration: 0 }; }
+        function hold(time, lane, duration) { return { time, lane, type: 'hold', duration }; }
+        
+        const chart0 = [
+            tap(0, 0), tap(500, 1), tap(1000, 2), tap(1500, 3),
+            hold(2000, 1, 800),
+            tap(2800, 0), tap(3300, 2),
+            hold(3800, 3, 1000),
+            tap(4800, 1), tap(5300, 0), tap(5800, 2), tap(6300, 3),
+            hold(7000, 0, 900), hold(7900, 2, 600),
+            tap(8700, 1), tap(9200, 3), hold(9800, 2, 700), tap(10500, 0)
+        ];
+        
+        const chart1 = [
+            hold(200, 0, 600), tap(800, 1), tap(1300, 2),
+            hold(1800, 3, 1000), tap(2800, 0), hold(3300, 1, 750),
+            tap(4100, 2), hold(4700, 3, 850), tap(5600, 0),
+            hold(6200, 1, 900), hold(7200, 2, 800), tap(8000, 3),
+            hold(8600, 0, 1100), tap(9700, 1), hold(10300, 2, 700), tap(11000, 3)
+        ];
+        
+        const levelMaps = [chart0, chart1];
+        
+        function loadLevel(levelIdx) {
+            const raw = levelMaps[levelIdx];
+            return raw.map(n => ({
+                time: n.time,
+                lane: n.lane,
+                type: n.type,
+                duration: n.duration || 0,
+                hit: false,
+                holdHeadHit: false,
+                holdCompleted: false
+            }));
+        }
+        
+        // ---------- 游戏核心逻辑 (下落式) ----------
+        function fullReset() {
+            if (animationId) cancelAnimationFrame(animationId);
+            gameActive = false;
+            activeNotes = [];
+            for (let i=0; i<LANE_COUNT; i++) {
+                holdStates[i] = { active: false, note: null, pressStartTime: 0 };
+                keyPressed[i] = false;
+            }
+            totalScore = 0;
+            combo = 0;
+            floatingJudgements = [];
+            updateUI();
+            drawStatic();
+        }
+        
+        function startGame() {
+            if (gameActive) {
+                addJudgeEffect("游戏进行中", canvas.width/2, JUDGE_LINE_Y-50, "#ffd966");
+                return;
+            }
+            fullReset();
+            initAudio();
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            chartNotes = loadLevel(currentLevel);
+            if (chartNotes.length === 0) return;
+            gameActive = true;
+            gameStartTime = performance.now();
+            chartNotes.sort((a,b) => a.time - b.time);
+            
+            let nextNoteIdx = 0;
+            
+            function gameLoop() {
+                if (!gameActive) return;
+                const nowPerf = performance.now();
+                const elapsed = nowPerf - gameStartTime;
+                
+                // 1. 生成新音符 (从顶部)
+                while (nextNoteIdx < chartNotes.length && chartNotes[nextNoteIdx].time <= elapsed + FALL_DURATION) {
+                    const note = chartNotes[nextNoteIdx];
+                    const noteObj = {
+                        ref: note,
+                        lane: note.lane,
+                        type: note.type,
+                        duration: note.duration,
+                        spawnTime: elapsed,
+                        arriveTime: note.time,
+                        hit: false,
+                        holdHeadHit: false,
+                        holdCompleted: false,
+                        holdActive: false,
+                        currentY: 20
+                    };
+                    activeNotes.push(noteObj);
+                    nextNoteIdx++;
+                }
+                
+                // 2. 更新音符位置 & 判定
+                for (let i=0; i<activeNotes.length; i++) {
+                    const note = activeNotes[i];
+                    const noteTime = note.arriveTime;
+                    const now = elapsed;
+                    
+                    // 计算Y坐标
+                    let y = 20;
+                    if (now <= noteTime) {
+                        const t = (now - (noteTime - FALL_DURATION)) / FALL_DURATION;
+                        y = 20 + (JUDGE_LINE_Y - NOTE_HEIGHT/2 - 20) * Math.min(1, Math.max(0, t));
+                    } else {
+                        y = JUDGE_LINE_Y - NOTE_HEIGHT/2;
+                    }
+                    note.currentY = y;
+                    
+                    // 判定逻辑
+                    if (note.type === 'tap') {
+                        if (!note.hit) {
+                            if (now > noteTime + MAX_HIT_WINDOW) {
+                                produceMiss(note, now);
+                                activeNotes.splice(i,1);
+                                i--;
+                                continue;
+                            }
+                            if (keyPressed[note.lane] && now >= noteTime - MAX_HIT_WINDOW && now <= noteTime + MAX_HIT_WINDOW) {
+                                const diff = Math.abs(now - noteTime);
+                                let grade = diff <= PERFECT_WINDOW ? 'perfect' : (diff <= GOOD_WINDOW ? 'good' : 'good');
+                                let points = grade === 'perfect' ? SCORE_PERFECT : SCORE_GOOD;
+                                totalScore += points;
+                                combo++;
+                                if (combo > maxCombo) maxCombo = combo;
+                                updateUI();
+                                const xPos = note.lane * LANE_WIDTH + LANE_WIDTH/2;
+                                addJudgeEffect(grade === 'perfect' ? "PERFECT" : "GOOD", xPos, JUDGE_LINE_Y-15, grade==='perfect'?"#ffffaa":"#b4ffb0");
+                                playHitSound(note.lane, false);
+                                note.hit = true;
+                                activeNotes.splice(i,1);
+                                i--;
+                            }
+                        }
+                    } 
+                    else if (note.type === 'hold') {
+                        const headTime = noteTime;
+                        const tailTime = noteTime + note.duration;
+                        
+                        if (!note.holdHeadHit && !note.hit) {
+                            if (now > headTime + MAX_HIT_WINDOW) {
+                                produceMiss(note, now);
+                                activeNotes.splice(i,1);
+                                i--;
+                                continue;
+                            }
+                            if (keyPressed[note.lane] && now >= headTime - MAX_HIT_WINDOW && now <= headTime + GOOD_WINDOW) {
+                                note.holdHeadHit = true;
+                                note.holdActive = true;
+                                note.holdStartTime = now;
+                                addJudgeEffect("HOLD", note.lane*LANE_WIDTH+LANE_WIDTH/2, JUDGE_LINE_Y-15, "#88ddff");
+                                playHitSound(note.lane, true);
+                                holdStates[note.lane].active = true;
+                                holdStates[note.lane].note = note;
+                            }
+                        }
+                        else if (note.holdHeadHit && !note.holdCompleted) {
+                            if (!keyPressed[note.lane] && now < tailTime - 20) {
+                                produceMiss(note, now);
+                                activeNotes.splice(i,1);
+                                holdStates[note.lane].active = false;
+                                i--;
+                                continue;
+                            }
+                            if (now >= tailTime - PERFECT_WINDOW && now <= tailTime + MAX_HIT_WINDOW) {
+                                if (keyPressed[note.lane] || (now >= tailTime - 15 && keyPressed[note.lane])) {
+                                    let accuracy = Math.abs(now - tailTime);
+                                    let perfect = accuracy <= PERFECT_WINDOW;
+                                    let points = perfect ? SCORE_HOLD_PERFECT : SCORE_HOLD_GOOD;
+                                    totalScore += points;
+                                    combo++;
+                                    if (combo > maxCombo) maxCombo = combo;
+                                    updateUI();
+                                    const xPos = note.lane * LANE_WIDTH + LANE_WIDTH/2;
+                                    addJudgeEffect(perfect ? "HOLD PERFECT" : "HOLD GOOD", xPos, JUDGE_LINE_Y-15, perfect?"#c0ffd0":"#8fe0ff");
+                                    playPianoNote(getPitchFromLane(note.lane), 0.25, 0.4);
+                                    note.holdCompleted = true;
+                                    note.hit = true;
+                                    activeNotes.splice(i,1);
+                                    holdStates[note.lane].active = false;
+                                    i--;
+                                } else if (now > tailTime + MAX_HIT_WINDOW) {
+                                    produceMiss(note, now);
+                                    activeNotes.splice(i,1);
+                                    holdStates[note.lane].active = false;
+                                    i--;
+                                }
+                            }
+                            else if (now > tailTime + MAX_HIT_WINDOW) {
+                                produceMiss(note, now);
+                                activeNotes.splice(i,1);
+                                holdStates[note.lane].active = false;
+                                i--;
+                            }
+                        }
+                    }
+                }
+                
+                // 3. 更新浮动评分的生命周期（关键修复：让评分自动消失）
+                for (let i=0; i<floatingJudgements.length; i++) {
+                    floatingJudgements[i].life -= 0.016; // 每帧约16ms，约0.8秒消失
+                    if (floatingJudgements[i].life <= 0) {
+                        floatingJudgements.splice(i,1);
+                        i--;
+                    }
+                }
+                
+                drawGame(elapsed);
+                animationId = requestAnimationFrame(gameLoop);
+            }
+            animationId = requestAnimationFrame(gameLoop);
+        }
+        
+        function produceMiss(note, nowTime) {
+            if (note.hit) return;
+            const xPos = note.lane * LANE_WIDTH + LANE_WIDTH/2;
+            if (note.type === 'tap') {
+                addJudgeEffect("MISS", xPos, JUDGE_LINE_Y-15, "#ff8a7a");
+                combo = 0;
+                updateUI();
+                playMissSound();
+            } else {
+                if (!note.holdHeadHit) addJudgeEffect("MISS", xPos, JUDGE_LINE_Y-15, "#ff8a7a");
+                else addJudgeEffect("INCOMPLETE", xPos, JUDGE_LINE_Y-15, "#ffae70");
+                combo = 0;
+                updateUI();
+                playMissSound();
+            }
+            note.hit = true;
+        }
+        
+        // ---------- 键盘事件 ----------
+        function onKeyDown(e) {
+            const key = e.key.toLowerCase();
+            const lane = LANE_KEYS.indexOf(key);
+            if (lane !== -1) {
+                e.preventDefault();
+                if (!gameActive) {
+                    addJudgeEffect("🎵 请先开始游戏", lane*LANE_WIDTH+LANE_WIDTH/2, JUDGE_LINE_Y-40, "#aad4ff");
+                    return;
+                }
+                if (!keyPressed[lane]) {
+                    keyPressed[lane] = true;
+                }
+            }
+        }
+        
+        function onKeyUp(e) {
+            const key = e.key.toLowerCase();
+            const lane = LANE_KEYS.indexOf(key);
+            if (lane !== -1) {
+                e.preventDefault();
+                keyPressed[lane] = false;
+            }
+        }
+        
+        // ---------- UI 辅助 ----------
+        function addJudgeEffect(text, x, y, color) {
+            floatingJudgements.push({ text, x, y, life: 0.85, color }); // life 0.85秒
+        }
+        
+        function updateUI() {
+            scoreSpan.innerText = totalScore;
+            comboSpan.innerText = combo;
+        }
+        
+        // ---------- 绘图模块 ----------
+        function drawBackgroundAndLanes() {
+            const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            grad.addColorStop(0, '#0b1120');
+            grad.addColorStop(1, '#151e2c');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.lineWidth = 1.8;
+            ctx.strokeStyle = "#6c8effaa";
+            for (let i=1; i<LANE_COUNT; i++) {
+                ctx.beginPath();
+                ctx.moveTo(i*LANE_WIDTH, 0);
+                ctx.lineTo(i*LANE_WIDTH, canvas.height);
+                ctx.stroke();
+            }
+            ctx.beginPath();
+            ctx.moveTo(0, JUDGE_LINE_Y);
+            ctx.lineTo(canvas.width, JUDGE_LINE_Y);
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = "#f5c542";
+            ctx.shadowBlur = 6;
+            ctx.shadowColor = "#ffb347";
+            ctx.stroke();
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = "#ffeca2";
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+            for (let i=0;i<LANE_COUNT;i++) {
+                ctx.font = "bold 16px monospace";
+                ctx.fillStyle = "#c2e0ff";
+                ctx.fillText(LANE_KEYS[i].toUpperCase(), i*LANE_WIDTH+LANE_WIDTH/2-7, JUDGE_LINE_Y-12);
+            }
+        }
+        
+        function drawTapNote(note) {
+            const lane = note.lane;
+            const xCenter = lane * LANE_WIDTH + LANE_WIDTH/2;
+            const x = xCenter - NOTE_WIDTH/2;
+            const y = note.currentY;
+            const grad = ctx.createLinearGradient(x, y, x+NOTE_WIDTH, y+NOTE_HEIGHT);
+            grad.addColorStop(0, '#ffb468');
+            grad.addColorStop(1, '#ff8c5a');
+            ctx.fillStyle = grad;
+            ctx.shadowBlur = 4;
+            ctx.beginPath();
+            ctx.roundRect(x, y, NOTE_WIDTH, NOTE_HEIGHT, 9);
+            ctx.fill();
+            ctx.fillStyle = "#ffffbb";
+            ctx.font = "bold 15px monospace";
+            ctx.fillText(LANE_KEYS[lane].toUpperCase(), xCenter-7, y+22);
+            ctx.shadowBlur = 0;
+        }
+        
+        function drawHoldNote(note, nowTime) {
+            const lane = note.lane;
+            const headTime = note.arriveTime;
+            const tailTime = note.arriveTime + note.duration;
+            let headY = 20, tailY = 20;
+            if (nowTime <= headTime) {
+                const t = (nowTime - (headTime - FALL_DURATION)) / FALL_DURATION;
+                headY = 20 + (JUDGE_LINE_Y - NOTE_HEIGHT/2 - 20) * Math.min(1, Math.max(0, t));
+            } else {
+                headY = JUDGE_LINE_Y - NOTE_HEIGHT/2;
+            }
+            if (nowTime <= tailTime) {
+                const t = (nowTime - (tailTime - FALL_DURATION)) / FALL_DURATION;
+                tailY = 20 + (JUDGE_LINE_Y - NOTE_HEIGHT/2 - 20) * Math.min(1, Math.max(0, t));
+            } else {
+                tailY = JUDGE_LINE_Y - NOTE_HEIGHT/2;
+            }
+            const yTop = Math.min(headY, tailY);
+            const yBottom = Math.max(headY, tailY);
+            const height = Math.max(8, yBottom - yTop + NOTE_HEIGHT);
+            const xCenter = lane * LANE_WIDTH + LANE_WIDTH/2;
+            const x = xCenter - NOTE_WIDTH/2;
+            const gradient = ctx.createLinearGradient(x, yTop, x+NOTE_WIDTH, yBottom);
+            gradient.addColorStop(0, '#3c9eff');
+            gradient.addColorStop(1, '#1f6ad0');
+            ctx.fillStyle = gradient;
+            ctx.shadowBlur = 8;
+            ctx.shadowColor = "#00a6ff";
+            ctx.beginPath();
+            ctx.roundRect(x, yTop, NOTE_WIDTH, height, 12);
+            ctx.fill();
+            ctx.fillStyle = "#b0e0ffaa";
+            ctx.beginPath();
+            ctx.roundRect(x+3, yTop+2, NOTE_WIDTH-6, 6, 4);
+            ctx.fill();
+            ctx.fillStyle = "white";
+            ctx.font = "bold 14px monospace";
+            ctx.fillText("⏤", xCenter-5, yTop+height/2+4);
+            ctx.shadowBlur = 0;
+        }
+        
+        function drawGame(nowTime) {
+            drawBackgroundAndLanes();
+            for (let note of activeNotes) {
+                if (note.type === 'tap') drawTapNote(note);
+                else if (note.type === 'hold') drawHoldNote(note, nowTime);
+            }
+            // 长按高亮
+            for (let i=0;i<LANE_COUNT;i++) {
+                if (holdStates[i].active && keyPressed[i]) {
+                    ctx.beginPath();
+                    ctx.rect(i*LANE_WIDTH, JUDGE_LINE_Y-15, LANE_WIDTH, 10);
+                    ctx.fillStyle = "#ffd966aa";
+                    ctx.shadowBlur = 6;
+                    ctx.fill();
+                }
+            }
+            // 浮动评分 (已自动消失)
+            for (let f of floatingJudgements) {
+                ctx.font = "bold 28px 'Segoe UI'";
+                ctx.fillStyle = f.color;
+                ctx.shadowBlur = 4;
+                ctx.fillText(f.text, f.x-35, f.y - 20 - (1-f.life)*25);
+            }
+            if (combo >= 4) {
+                ctx.font = "bold 28px monospace";
+                ctx.fillStyle = "#f5ffb0";
+                ctx.fillText(`${combo} COMBO`, canvas.width-130, 55);
+            }
+            ctx.shadowBlur = 0;
+        }
+        
+        function drawStatic() {
+            drawBackgroundAndLanes();
+            ctx.font = "bold 22px 'Segoe UI'";
+            ctx.fillStyle = "#d6ecff";
+            ctx.fillText("🎹 点击 [开始演奏] 🎹", canvas.width/2-160, canvas.height/2);
+            ctx.font = "14px monospace";
+            ctx.fillStyle = "#9ac6ff";
+            ctx.fillText("音符从顶部下落，到达底端判定线时按下", canvas.width/2-190, canvas.height/2+55);
+        }
+        
+        if (!CanvasRenderingContext2D.prototype.roundRect) {
+            CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
+                if (w < 2*r) r = w/2;
+                if (h < 2*r) r = h/2;
+                this.moveTo(x+r, y);
+                this.lineTo(x+w-r, y);
+                this.quadraticCurveTo(x+w, y, x+w, y+r);
+                this.lineTo(x+w, y+h-r);
+                this.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
+                this.lineTo(x+r, y+h);
+                this.quadraticCurveTo(x, y+h, x, y+h-r);
+                this.lineTo(x, y+r);
+                this.quadraticCurveTo(x, y, x+r, y);
+                return this;
+            };
+        }
+        
+        function setLevel(levelIdx) {
+            if (currentLevel === levelIdx && gameActive) return;
+            currentLevel = levelIdx;
+            document.querySelectorAll('.level-btn').forEach((btn, idx) => {
+                if (idx == levelIdx) btn.classList.add('active-level');
+                else btn.classList.remove('active-level');
+            });
+            if (gameActive) fullReset();
+            startGame();
+        }
+        
+        window.addEventListener('keydown', onKeyDown);
+        window.addEventListener('keyup', onKeyUp);
+        startResetBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            startGame();
+        });
+        levelBtns.forEach((btn, idx) => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                setLevel(idx);
+            });
+        });
+        
+        fullReset();
+        setLevel(0);
+    })();
+</script>
+</body>
+</html>

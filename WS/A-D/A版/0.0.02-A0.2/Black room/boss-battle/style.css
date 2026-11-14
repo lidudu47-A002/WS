@@ -1,0 +1,136 @@
+* {
+    margin: 0; padding: 0; box-sizing: border-box;
+}
+body {
+    background: #000; overflow: hidden; font-family: monospace;
+}
+canvas {
+    display: block; position: absolute; top: 0; left: 0;
+}
+.message {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 3rem; font-weight: bold; text-align: center;
+    display: none; z-index: 10; text-shadow: 0 0 20px currentColor;
+}
+.victory { color: gold; }
+.gameover { color: #ff4444; }
+
+/* 返回按钮（隐藏） */
+#returnBtn {
+    position: absolute;
+    top: 60%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 15px 40px;
+    background: gold;
+    color: black;
+    font-size: 1.5rem;
+    font-weight: bold;
+    border-radius: 10px;
+    cursor: pointer;
+    display: none;
+    z-index: 20;
+    border: 3px solid white;
+    text-align: center;
+    user-select: none;
+}
+#returnBtn:hover {
+    background: #ffd700;
+    border-color: black;
+}
+
+/* 前往监狱按钮 */
+#nextBtn {
+    position: absolute;
+    top: 60%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 15px 40px;
+    background: gold;
+    color: black;
+    font-size: 1.5rem;
+    font-weight: bold;
+    border-radius: 10px;
+    cursor: pointer;
+    display: none;      /* 默认隐藏，胜利后显示 */
+    z-index: 20;
+    border: 3px solid white;
+    text-align: center;
+    user-select: none;
+}
+#nextBtn:hover {
+    background: #ffd700;
+    border-color: black;
+}
+
+/* 全局设置面板 */
+.settings-panel {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #1e1e2e;
+    border: 2px solid gold;
+    border-radius: 16px;
+    padding: 20px;
+    width: 320px;
+    z-index: 3000;
+    color: white;
+    box-shadow: 0 0 30px black;
+}
+.settings-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #555;
+    padding-bottom: 8px;
+}
+.settings-header button {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.5rem;
+    cursor: pointer;
+}
+.settings-item {
+    margin-bottom: 20px;
+}
+.settings-item label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+}
+.settings-item select, .settings-item input {
+    padding: 6px;
+    width: 100%;
+    background: #2a2a3a;
+    color: white;
+    border: 1px solid #5a5a8a;
+    border-radius: 8px;
+}
+.hint {
+    font-size: 0.7rem;
+    color: #aaa;
+    margin-top: 5px;
+}
+.settings-footer {
+    text-align: center;
+    margin-top: 20px;
+}
+.settings-footer button {
+    background: #2a6d4c;
+    border: none;
+    padding: 6px 20px;
+    border-radius: 20px;
+    color: white;
+    cursor: pointer;
+}
+.btn-settings {
+    background: #3d3d5c !important;
+    border-color: #7a7a9a !important;
+    font-size: 1rem !important;
+    padding: 0.6rem !important;
+    margin-top: 10px;
+}
