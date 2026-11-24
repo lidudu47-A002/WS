@@ -783,21 +783,21 @@ function saveImageOverrides() {
 // 应用覆盖：image A = B
 function applyImageOverride(targetInput, sourceInput) {
     const target = resolveImageTarget(targetInput);
-    if (!target) { alert(`未找到物品：${targetInput}`); return false; }
+    if (!target) { showToast(`未找到物品：${targetInput}`); return false; }
     if (target.ambiguous) {
-        alert(`「${targetInput}」命中多个物品：${target.ambiguous.map(displayNameOf).join(' / ')}\n请改用 ID 指定`);
+        showToast(`「${targetInput}」命中多个物品：${target.ambiguous.map(displayNameOf).join(' / ')}\n请改用 ID 指定`);
         return false;
     }
     const source = resolveImageTarget(sourceInput);
-    if (!source) { alert(`未找到物品：${sourceInput}`); return false; }
+    if (!source) { showToast(`未找到物品：${sourceInput}`); return false; }
     if (source.ambiguous) {
-        alert(`「${sourceInput}」命中多个物品：${source.ambiguous.map(displayNameOf).join(' / ')}\n请改用 ID 指定`);
+        showToast(`「${sourceInput}」命中多个物品：${source.ambiguous.map(displayNameOf).join(' / ')}\n请改用 ID 指定`);
         return false;
     }
-    if (target === source) { alert('前后是同一个物品，贴图未变化'); return false; }
+    if (target === source) { showToast('前后是同一个物品，贴图未变化'); return false; }
 
     const srcIcon = getIconOf(source);
-    if (!srcIcon) { alert(`${displayNameOf(source)} 没有可用的贴图`); return false; }
+    if (!srcIcon) { showToast(`${displayNameOf(source)} 没有可用的贴图`); return false; }
 
     if (!imageOverrideMap[target]) {
         imageOverrideMap[target] = { icon: srcIcon, orig: getIconOf(target) };
@@ -806,7 +806,7 @@ function applyImageOverride(targetInput, sourceInput) {
     }
     setIconOf(target, srcIcon);
     saveImageOverrides();
-    alert(`✅ 已将 ${displayNameOf(target)} 的贴图替换为 ${displayNameOf(source)} 的贴图`);
+    showToast(`✅ 已将 ${displayNameOf(target)} 的贴图替换为 ${displayNameOf(source)} 的贴图`);
     return true;
 }
 
@@ -823,7 +823,7 @@ function resetImageOverrides() {
     } catch (e) {
         console.warn('[image] 覆盖记录清除失败', e);
     }
-    alert(keys.length ? `✅ 已还原 ${keys.length} 个物品的贴图` : '当前没有贴图覆盖');
+    showToast(keys.length ? `✅ 已还原 ${keys.length} 个物品的贴图` : '当前没有贴图覆盖');
 }
 
 // 页面加载后重放存档中的覆盖（等所有物品/武器/宠物定义脚本执行完）

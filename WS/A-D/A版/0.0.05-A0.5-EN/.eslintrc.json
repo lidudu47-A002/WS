@@ -1,0 +1,17 @@
+{
+  "root": true,
+  "env": { "browser": true, "es2021": true },
+  "parserOptions": { "ecmaVersion": 2021, "sourceType": "script" },
+  "globals": {
+    "ctx": "readonly", "canvas": "readonly", "WS_KEYS": "readonly", "WS_STORAGE": "readonly",
+    "WS_VERSION": "readonly", "GUEST_MODE": "writable", "player": "writable"
+  },
+  "rules": {
+    "no-unused-vars": ["warn", { "args": "none" }],
+    "no-undef": "error",
+    "no-redeclare": "warn",
+    "eqeqeq": ["warn", "smart"],
+    "no-empty": ["warn", { "allowEmptyCatch": true }],
+    "no-implicit-globals": "off"
+  }
+}

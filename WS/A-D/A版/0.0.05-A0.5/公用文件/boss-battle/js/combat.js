@@ -82,6 +82,23 @@ const Combat = {
                 BossAI.moveBoss(nx * k, nz * k);
             }
         }
+        // 召唤物 block：同样在扇形内受击
+        if (typeof Summon !== 'undefined' && Summon.list.length) {
+            for (let i = Summon.list.length - 1; i >= 0; i--) {
+                const b = Summon.list[i];
+                const bd = dist(b.x, b.z, player.x, player.z);
+                if (bd > MELEE_RANGE + b.r) continue;
+                const bx = (b.x - player.x) / (bd || 1);
+                const bz = (b.z - player.z) / (bd || 1);
+                const bdot = bx * player.dirX + bz * player.dirZ;
+                const bang = Math.acos(clamp(bdot, -1, 1));
+                if (bang < MELEE_ARC * 0.5) {
+                    Summon.damage(b, dmg);
+                    swung.push(b.x, b.z);
+                }
+            }
+        }
+
         // 刀光粒子
         for (let i = 0; i < 7; i++) {
             const a = Math.atan2(player.dirZ, player.dirX) + rnd(-MELEE_ARC / 2, MELEE_ARC / 2);

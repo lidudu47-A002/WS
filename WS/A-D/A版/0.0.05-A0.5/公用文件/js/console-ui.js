@@ -1,5 +1,31 @@
 // ---------- 游戏控制台界面 (UI & 编辑器) ----------
+// 优化清单第 21 条：控制台能用 new Function 执行任意字符串并改写 20+ 个游戏全局，
+// 单机场景下属于设计内的作弊/调试面板，但必须显式可控，避免上线后被当作漏洞入口。
+// 开关优先级：URL 参数 console=off/0/false 关闭 > localStorage ws_console_enabled === '0' 关闭 > 默认开启。
+// 关闭后仅屏蔽 UI 与执行入口，不影响游戏本体；如需彻底移除，构建时剔除本文件与 console-hijack.js。
 (function() {
+    let enabled = true;
+    try {
+        const q = new URLSearchParams(window.location.search).get('console');
+        if (q !== null && ['off', '0', 'false', 'no'].indexOf(String(q).toLowerCase()) >= 0) enabled = false;
+        if (localStorage.getItem('ws_console_enabled') === '0') enabled = false;
+    } catch (e) { /* 存储或 URL 不可用时保持默认开启 */ }
+    window.WS_CONSOLE_ENABLED = enabled;
+    window.WS_setConsoleEnabled = function (on) {
+        window.WS_CONSOLE_ENABLED = !!on;
+        try { localStorage.setItem('ws_console_enabled', on ? '1' : '0'); } catch (e) {}
+        console.log('[WS] 控制台已' + (on ? '开启' : '关闭') + '，刷新页面生效');
+        return window.WS_CONSOLE_ENABLED;
+    };
+    if (!enabled) {
+        // 关闭时补齐被屏蔽的全局，避免其它模块（command-system / console-hijack）因缺符号而抛错
+        window.codeEditorOpen = false;
+        window.pythonEditorActive = false;
+        window.openCodeEditor = function () { console.warn('[WS] 控制台已关闭，openCodeEditor 不执行'); };
+        window.closeCodeEditor = function () { /* no-op */ };
+        console.log('[WS] 控制台已按开关关闭（?console=on 或 WS_setConsoleEnabled(true) 可恢复）。');
+        return;
+    }
     // 动态注入控制台样式
     const style = document.createElement('style');
     style.textContent = `

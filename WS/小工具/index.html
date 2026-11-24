@@ -144,35 +144,39 @@
   #log li.err { color: #ff9d9d; }
   #log li.ok { color: #7ee2b8; }
 
-  #results { list-style: none; display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow: auto; }
-  #results li {
-    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-    padding: 9px 12px; border-radius: 10px;
-    background: rgba(255, 255, 255, .04); border: 1px solid rgba(255, 255, 255, .07);
+  /* 未识别页面的选择卡片：标题即文件名，整卡可点 */
+  #results {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 10px; max-height: 420px; overflow: auto;
   }
-  #results a {
-    flex: 1; min-width: 190px; font-family: "Cascadia Code", Consolas, monospace;
-    font-size: 12.4px; color: #bfe0ff; text-decoration: none; word-break: break-all;
+  .page-card {
+    display: block; padding: 12px 14px; border-radius: 12px; text-decoration: none;
+    background: rgba(255, 255, 255, .04); border: 1px solid rgba(255, 255, 255, .08);
+    transition: background .15s ease, border-color .15s ease, transform .15s ease;
   }
-  #results a:hover { text-decoration: underline; }
+  .page-card:hover {
+    background: rgba(129, 140, 248, .16); border-color: rgba(129, 140, 248, .45);
+    transform: translateY(-1px);
+  }
+  .page-card .pc-title {
+    display: block; font-size: 13.4px; font-weight: 600; color: #e8eeff;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .page-card .pc-sub {
+    display: block; margin-top: 5px; font-size: 11.4px; color: #7c88a8;
+    font-family: "Cascadia Code", Consolas, monospace; word-break: break-all;
+  }
+  .page-empty {
+    grid-column: 1 / -1; padding: 14px; border-radius: 10px; text-align: center;
+    font-size: 12.6px; color: #7c88a8; background: rgba(255, 255, 255, .03);
+    border: 1px dashed rgba(255, 255, 255, .1);
+  }
   .mini {
     padding: 6px 10px; border-radius: 8px; cursor: pointer; font-size: 11.8px;
     color: #c9d4f2; background: rgba(255, 255, 255, .07);
     border: 1px solid rgba(255, 255, 255, .12);
   }
   .mini:hover { background: rgba(129, 140, 248, .3); border-color: rgba(129, 140, 248, .5); }
-
-  #others { list-style: none; display: flex; flex-direction: column; gap: 8px; max-height: 240px; overflow: auto; }
-  #others li {
-    padding: 9px 12px; border-radius: 10px;
-    background: rgba(255, 255, 255, .04); border: 1px solid rgba(255, 255, 255, .07);
-  }
-  #others a {
-    font-family: "Cascadia Code", Consolas, monospace;
-    font-size: 12.4px; color: #bfe0ff; text-decoration: none; word-break: break-all;
-  }
-  #others a:hover { text-decoration: underline; }
-  .mode-note { font-size: 12px; color: #7ee2b8; }
 
   footer { font-size: 12px; color: #6f7ca0; line-height: 1.9; text-align: center; }
   footer code { font-family: Consolas, monospace; color: #93a6d6; }
@@ -250,22 +254,40 @@
       </details>
     </article>
 
+    <article class="card" data-app="qr" data-state="warn">
+      <div class="card-top">
+        <div class="icon">
+          <svg viewBox="0 0 24 24"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4z"/><path d="M14 14h3v3h-3zM20 14v6h-6"/></svg>
+        </div>
+        <span class="badge" data-state="warn">待扫描</span>
+      </div>
+      <h2>QR Studio · 二维码生成器</h2>
+      <p class="desc">二维码生成工具，输入文本或链接即可生成二维码，支持样式调整与图片导出。</p>
+      <div class="meta">
+        <span class="label">当前相对路径</span>
+        <code data-role="path" class="empty">未确定</code>
+      </div>
+      <a class="btn is-disabled" data-role="open" href="#" target="_blank" rel="noopener">
+        打开 QR Studio
+        <svg viewBox="0 0 24 24"><path d="M7 17 17 7M9 7h8v8"/></svg>
+      </a>
+      <details class="fix">
+        <summary>路径不正确？手动校正</summary>
+        <form data-role="fix">
+          <input type="text" placeholder="例如 QR-Studio.html 或 -/QR-Studio.html" autocomplete="off" />
+          <button type="submit">应用</button>
+        </form>
+      </details>
+    </article>
+
   </main>
 
   <section class="panel">
     <div class="panel-head">
-      <h3>扫描到的 HTML 文件</h3>
+      <h3>其它页面 · 点击直接打开</h3>
       <span class="status" id="resultCount">0 个</span>
     </div>
-    <ul id="results"><li style="background:none;border:none;color:#7c88a8;">扫描后在此列出，可手动点选指定给某个入口。</li></ul>
-  </section>
-
-  <section class="panel" id="othersPanel" hidden>
-    <div class="panel-head">
-      <h3>目录内其它 HTML 文件</h3>
-      <span class="status" id="othersCount">0 个</span>
-    </div>
-    <ul id="others"><li style="background:none;border:none;color:#7c88a8;">扫描后在此列出。</li></ul>
+    <div id="results"><div class="page-empty">扫描后，这里会列出未归入上面三个入口的其它 HTML 页面。</div></div>
   </section>
 
   <section class="panel">
@@ -274,7 +296,7 @@
   </section>
 
   <footer>
-    识别规则：文件名含 pixel / 像素 / paint 判为像素画工具；含 liquid / cutter / 音频剪辑 / 剪辑器 / audio 判为音频剪辑器。<br />
+    识别规则：文件名含 pixel / 像素 / paint 判为像素画工具；含 liquid / cutter / 音频剪辑 / 剪辑器 / audio 判为音频剪辑器；含 qr / qrcode / QR-Studio / 二维码 判为二维码生成器（qrstudio 优先级最高）。<br />
     当前页所在目录：<code id="baseDir">—</code>
   </footer>
 
@@ -312,6 +334,17 @@
     return 0;
   }
 
+  // 二维码生成器：qrstudio 最高分，其次 qrcode / qr / \u4e8c\u7ef4\u7801
+  function scoreQr(name) {
+    var n = norm(name);
+    if (n.indexOf("qrstudio") >= 0) return 100;
+    if (n.indexOf("qrcode") >= 0) return 95;
+    if (n.indexOf("\u4e8c\u7ef4\u7801") >= 0) return 90;
+    if (n.indexOf("\u4e8c\u7ef4") >= 0) return 80;
+    if (n.indexOf("qr") >= 0) return 70;
+    return 0;
+  }
+
   function encodeRel(rel) {
     return String(rel).split("/").map(function (part) {
       return encodeURIComponent(part);
@@ -346,7 +379,8 @@
 
   var APPS = [
     { id: "paint", label: "Pixel Paint", score: scorePaint },
-    { id: "audio", label: "Liquid Cutter", score: scoreCutter }
+    { id: "audio", label: "Liquid Cutter", score: scoreCutter },
+    { id: "qr", label: "QR Studio", score: scoreQr }
   ];
 
   // ---------- 运行模式：http(s) 走本地服务，file:// 走目录选择器 ----------
@@ -455,8 +489,9 @@
   // 运行时会逐个 fetch 校验；能校验则用真实存在的那条，file:// 无法校验则用先后顺序兜底，
   // 并把另一条渲染成卡片上的「另一个候选」链接，一键可试。
   var GUESS_CANDIDATES = {
-    paint: ["pixel-paint.html", "新建文件夹/pixel-paint.html"],
-    audio: ["Liquid Cutter.html", "新建文件夹/Liquid Cutter.html"]
+    paint: ["-/pixel-paint.html", "pixel-paint.html", "新建文件夹/pixel-paint.html"],
+    audio: ["-/Liquid Cutter.html", "Liquid Cutter.html", "新建文件夹/Liquid Cutter.html"],
+    qr: ["-/QR-Studio.html", "QR-Studio.html", "新建文件夹/QR-Studio.html"]
   };
   var GUESS_BADGE = "推测路径 · 建议点自动扫描确认";
 
@@ -515,7 +550,7 @@
   }
 
   function applyGuess() {
-    addLog("正在按候选路径推测目标位置（同级 与 子目录「新建文件夹/」两条候选逐一校验）…", "warn");
+    addLog("正在按候选路径推测目标位置（子目录「-」、同级、子目录「新建文件夹/」三条候选逐一校验）…", "warn");
     var seq = Promise.resolve();
     APPS.forEach(function (app) {
       var cands = GUESS_CANDIDATES[app.id] || [];
@@ -630,43 +665,82 @@
     });
   }
 
-  // ---------- 扫描结果处理 ----------
-  function renderResults(files) {
+  // ---------- 扫描结果处理：未识别页面渲染为可点击选择卡片 ----------
+  var SELF_PAGE = "index.html";
+
+  function fileNameOf(rel) {
+    var parts = String(rel).split("/");
+    return parts[parts.length - 1] || String(rel);
+  }
+
+  // 文件名自然排序：数字按数值比较，英文在前、中文在后，结果稳定，不随浏览器语言设置漂移
+  function naturalKey(name) {
+    return String(name).toLowerCase().replace(/\d+/g, function (m) {
+      return ("0000000000" + m).slice(-10);
+    });
+  }
+
+  function compareByFileName(a, b) {
+    var x = naturalKey(fileNameOf(a.rel));
+    var y = naturalKey(fileNameOf(b.rel));
+    if (x !== y) return x < y ? -1 : 1;
+    var rx = naturalKey(a.rel), ry = naturalKey(b.rel);
+    if (rx !== ry) return rx < ry ? -1 : 1;
+    return 0;
+  }
+
+  function sortByFileName(list) {
+    return list.slice().sort(compareByFileName);
+  }
+
+  // files：本次扫描到的全部 HTML；usedRels：已归入 Pixel Paint / Liquid Cutter / QR Studio 三个入口的文件
+  // HTTP（/__scan）与 file://（目录选择器）两条路径统一走这里，保证表现一致
+  function renderResults(files, usedRels) {
+    var all = files || [];
+    var used = {};
+    (usedRels || []).forEach(function (r) { if (r) used[r] = true; });
+
+    var others = sortByFileName(all.filter(function (f) {
+      if (!f || !f.rel) return false;
+      if (f.rel === SELF_PAGE) return false;                             // 排除本页自身
+      if (fileNameOf(f.rel).toLowerCase() === SELF_PAGE) return false;   // 排除目录列表页
+      return !used[f.rel];                                               // 排除已被三个入口占用的文件
+    }));
+
     resultsEl.innerHTML = "";
-    resultCountEl.textContent = files.length + " 个";
-    if (!files.length) {
-      var empty = document.createElement("li");
-      empty.style.background = "none";
-      empty.style.border = "none";
-      empty.style.color = "#7c88a8";
-      empty.textContent = "所选目录内没有 .html / .htm 文件。";
+    resultCountEl.textContent = others.length + " 个";
+
+    if (!others.length) {
+      var empty = document.createElement("div");
+      empty.className = "page-empty";
+      empty.textContent = all.length
+        ? "目录内没有其它未识别的 HTML 页面，扫描到的页面都已归入上面三个入口。"
+        : "所选目录内没有 .html / .htm 文件。";
       resultsEl.appendChild(empty);
       return;
     }
-    files.forEach(function (item) {
-      var li = document.createElement("li");
 
-      var link = document.createElement("a");
-      link.setAttribute("href", encodeRel(item.rel));
-      link.setAttribute("target", "_blank");
-      link.setAttribute("rel", "noopener");
-      link.textContent = item.rel;
-      li.appendChild(link);
+    others.forEach(function (item) {
+      var a = document.createElement("a");
+      a.className = "page-card";
+      a.setAttribute("href", encodeRel(item.rel));
+      a.setAttribute("target", "_blank");
+      a.setAttribute("rel", "noopener");
+      a.setAttribute("title", "打开 " + item.rel);
 
-      APPS.forEach(function (app) {
-        var btn = document.createElement("button");
-        btn.className = "mini";
-        btn.type = "button";
-        btn.textContent = "设为 " + app.label;
-        btn.addEventListener("click", function () {
-          setLink(app.id, item.rel, "手动指定", "warn");
-          addLog("已将「" + item.rel + "」指定为 " + app.label + "。", "warn");
-          saveCache();
-        });
-        li.appendChild(btn);
-      });
+      var title = document.createElement("span");
+      title.className = "pc-title";
+      title.textContent = fileNameOf(item.rel);
+      a.appendChild(title);
 
-      resultsEl.appendChild(li);
+      if (String(item.rel).indexOf("/") !== -1) {
+        var sub = document.createElement("span");
+        sub.className = "pc-sub";
+        sub.textContent = item.rel;
+        a.appendChild(sub);
+      }
+
+      resultsEl.appendChild(a);
     });
   }
 
@@ -685,18 +759,20 @@
       setScanState("扫描完成，共 " + files.length + " 个 HTML");
     }
 
-    renderResults(files);
-
+    var used = [];
     APPS.forEach(function (app) {
       var hit = pickBest(files, app.score);
       if (hit) {
         setLink(app.id, hit.rel, "已自动识别", "ok");
+        used.push(hit.rel);
         addLog("「" + app.label + "」命中：" + hit.rel + "（匹配度 " + hit.score + "）", "ok");
       } else {
-        setMissing(app.id, "扫描未命中，请从下方列表点选");
-        addLog("「" + app.label + "」未找到匹配文件，请从扫描结果中手动点选，或手动校正路径。", "err");
+        setMissing(app.id, "未识别到对应页面，请在卡片下方手动填写路径");
+        addLog("「" + app.label + "」未找到匹配文件，请在对应卡片下方手动校正路径。", "err");
       }
     });
+
+    renderResults(files, used);
 
     saveCache();
   }
@@ -747,45 +823,6 @@
     });
   }
 
-  function renderOthers(files, usedRels) {
-    var panel = document.getElementById("othersPanel");
-    var list = document.getElementById("others");
-    var countEl = document.getElementById("othersCount");
-    if (!panel || !list || !countEl) return;
-
-    var used = {};
-    var self = "index.html";
-    (usedRels || []).forEach(function (r) { if (r) used[r] = true; });
-
-    var others = files.filter(function (f) {
-      return f.rel !== self && !used[f.rel];
-    });
-
-    list.innerHTML = "";
-    countEl.textContent = others.length + " 个";
-
-    if (!others.length) {
-      var empty = document.createElement("li");
-      empty.style.cssText = "background:none;border:none;color:#7c88a8;";
-      empty.textContent = "除两个工具与 index.html 外，目录内没有其它 HTML 文件。";
-      list.appendChild(empty);
-      panel.hidden = false;
-      return;
-    }
-
-    others.forEach(function (item) {
-      var li = document.createElement("li");
-      var a = document.createElement("a");
-      a.setAttribute("href", encodeRel(item.rel));
-      a.setAttribute("target", "_blank");
-      a.setAttribute("rel", "noopener");
-      a.textContent = item.rel;
-      li.appendChild(a);
-      list.appendChild(li);
-    });
-    panel.hidden = false;
-  }
-
   function applyHttpScan(data) {
     var files = (data.files || []).map(function (f) {
       return { name: f.name || f.rel, rel: f.rel };
@@ -796,8 +833,6 @@
       (data.truncated ? "（已达上限，结果被截断）" : "") + "。");
     setScanState("已自动扫描 · " + files.length + " 个 HTML");
 
-    renderResults(files);
-
     var used = [];
     APPS.forEach(function (app) {
       var hit = pickBest(files, app.score);
@@ -806,12 +841,12 @@
         used.push(hit.rel);
         addLog("「" + app.label + "」命中：" + hit.rel + "（匹配度 " + hit.score + "）", "ok");
       } else {
-        setMissing(app.id, "目录内没有匹配的 HTML，请手动校正");
-        addLog("「" + app.label + "」未在目录内找到匹配的 HTML，请在下方手动指定或校正路径。", "err");
+        setMissing(app.id, "未识别到对应页面，请在卡片下方手动填写路径");
+        addLog("「" + app.label + "」未在目录内找到匹配的 HTML，请在对应卡片下方手动校正路径。", "err");
       }
     });
 
-    renderOthers(files, used);
+    renderResults(files, used);
 
     if (data.truncated) {
       var lim = data.limits || {};
@@ -879,8 +914,7 @@
   clearBtn.addEventListener("click", function () {
     try { localStorage.removeItem(KEY); } catch (e) { /* 忽略 */ }
     APPS.forEach(function (app) { setMissing(app.id, "未确定（请扫描或手动校正）"); });
-    resultsEl.innerHTML = "";
-    resultCountEl.textContent = "0 个";
+    renderResults([], []);
     clearLog();
     if (HTTP_MODE) {
       addLog("HTTP 模式不使用本地记忆，已清空显示，正在重新扫描目录…", "warn");

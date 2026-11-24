@@ -37,7 +37,7 @@ const Music = (function () {
         audio = new Audio();
         audio.src = encodeURI(trackSrc());
         audio.loop = true;
-        audio.preload = 'auto';
+        audio.preload = 'none';   // 清单第14条：本地 2.3MB 曲目改为按需加载，首次 play() 时才读盘，避免进入场景即占用带宽/解码
         audio.volume = 0;
         audio.addEventListener('error', function () {
             console.warn('[Music] 曲目加载失败：' + audio.src);

@@ -1,0 +1,308 @@
+/* ===== 新手关 · newbie.css ===== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html,
+body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #07080d;
+    font-family: "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+    color: #f2f4f8;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+#game {
+    display: block;
+    width: 100%;
+    height: 100%;
+    cursor: crosshair;
+}
+
+/* ---------- HUD ---------- */
+.nb-hud {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 16px 20px;
+    pointer-events: none;
+    z-index: 20;
+}
+
+.hud-left,
+.hud-right {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.hud-right {
+    align-items: flex-end;
+}
+
+.hearts {
+    display: flex;
+    gap: 6px;
+}
+
+.heart {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    background: linear-gradient(150deg, #ff7a7a, #e0324b);
+    box-shadow: 0 0 10px rgba(255, 90, 110, 0.55);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.heart.lost {
+    background: rgba(255, 255, 255, 0.12);
+    box-shadow: none;
+    transform: scale(0.82);
+}
+
+.level-tag {
+    font-size: 0.78rem;
+    letter-spacing: 2px;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.goal-chip {
+    font-size: 0.82rem;
+    letter-spacing: 1px;
+    padding: 7px 16px;
+    border-radius: 999px;
+    color: rgba(255, 240, 200, 0.92);
+    background: rgba(20, 22, 34, 0.72);
+    border: 1px solid rgba(255, 215, 0, 0.28);
+    backdrop-filter: blur(6px);
+}
+
+.exit-btn {
+    pointer-events: auto;
+    font-family: inherit;
+    font-size: 0.78rem;
+    letter-spacing: 1px;
+    padding: 7px 16px;
+    border-radius: 999px;
+    color: rgba(255, 255, 255, 0.72);
+    background: rgba(20, 22, 34, 0.72);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    cursor: pointer;
+    backdrop-filter: blur(6px);
+    transition: all 0.2s ease;
+}
+
+.exit-btn:hover {
+    color: #ffd966;
+    border-color: rgba(255, 215, 0, 0.5);
+}
+
+/* ---------- 关卡进度 ---------- */
+.nb-progress {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.07);
+    z-index: 20;
+}
+
+.nb-progress-fill {
+    height: 100%;
+    width: 0;
+    background: linear-gradient(90deg, #7ea5ff, #ffd966);
+    box-shadow: 0 0 14px rgba(255, 215, 0, 0.45);
+    transition: width 0.12s linear;
+}
+
+/* ---------- 教学横幅 ---------- */
+.nb-banner {
+    position: fixed;
+    top: 92px;
+    left: 50%;
+    transform: translate(-50%, -10px);
+    padding: 10px 24px;
+    border-radius: 999px;
+    font-size: 0.92rem;
+    letter-spacing: 1px;
+    color: #fff6d8;
+    background: rgba(18, 20, 32, 0.86);
+    border: 1px solid rgba(255, 215, 0, 0.4);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 22;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.nb-banner.show {
+    opacity: 1;
+    transform: translate(-50%, 0);
+}
+
+/* ---------- 底部按键提示 ---------- */
+.nb-keys {
+    position: fixed;
+    left: 50%;
+    bottom: 16px;
+    transform: translateX(-50%);
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px 20px;
+    padding: 9px 22px;
+    border-radius: 14px;
+    font-size: 0.76rem;
+    letter-spacing: 0.5px;
+    color: rgba(255, 255, 255, 0.5);
+    background: rgba(10, 12, 20, 0.66);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(6px);
+    pointer-events: none;
+    z-index: 20;
+}
+
+.nb-keys b {
+    color: #ffd966;
+    font-weight: 600;
+}
+
+/* ---------- 通关面板 ---------- */
+.nb-win {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(4, 5, 10, 0.74);
+    backdrop-filter: blur(7px);
+    z-index: 40;
+}
+
+.nb-win.show {
+    display: flex;
+    animation: nbFade 0.25s ease both;
+}
+
+@keyframes nbFade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.nb-win-card {
+    width: 100%;
+    max-width: 400px;
+    padding: 1.9rem 1.6rem 1.4rem;
+    text-align: center;
+    border-radius: 26px;
+    border: 1px solid rgba(255, 215, 0, 0.35);
+    background: linear-gradient(160deg, rgba(28, 30, 46, 0.97), rgba(13, 14, 22, 0.98));
+    box-shadow: 0 26px 66px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    animation: nbRise 0.3s cubic-bezier(0.22, 1.05, 0.4, 1) both;
+}
+
+@keyframes nbRise {
+    from { opacity: 0; transform: translateY(16px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.nb-win-icon {
+    font-size: 2.1rem;
+    line-height: 1;
+    margin-bottom: 0.6rem;
+    filter: drop-shadow(0 0 12px rgba(255, 200, 60, 0.5));
+}
+
+.nb-win-card h2 {
+    font-size: 1.24rem;
+    letter-spacing: 2px;
+    color: #ffd966;
+    margin-bottom: 0.6rem;
+}
+
+.nb-win-card p {
+    font-size: 0.88rem;
+    line-height: 1.7;
+    color: rgba(240, 240, 240, 0.72);
+    margin-bottom: 1.3rem;
+}
+
+.nb-win-actions {
+    display: flex;
+    gap: 0.7rem;
+}
+
+.nb-btn {
+    flex: 1;
+    padding: 0.72rem 0;
+    font-family: inherit;
+    font-size: 0.95rem;
+    font-weight: 600;
+    letter-spacing: 1px;
+    border-radius: 14px;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+
+.nb-btn:active {
+    transform: translateY(1px);
+}
+
+.nb-btn.nb-primary {
+    color: #1b1400;
+    background: linear-gradient(135deg, #ffe184, #ffbe3d);
+    border: 1px solid rgba(255, 215, 0, 0.7);
+    box-shadow: 0 8px 20px rgba(255, 180, 40, 0.28);
+}
+
+.nb-btn.nb-primary:hover {
+    box-shadow: 0 10px 26px rgba(255, 180, 40, 0.44);
+}
+
+.nb-btn.nb-ghost {
+    color: rgba(255, 255, 255, 0.75);
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.nb-btn.nb-ghost:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.32);
+}
+
+/* ---------- 窄屏适配 ---------- */
+@media (max-width: 720px) {
+    .nb-banner {
+        top: 76px;
+        font-size: 0.8rem;
+        padding: 8px 16px;
+        max-width: 92vw;
+        text-align: center;
+        border-radius: 14px;
+    }
+
+    .nb-keys {
+        font-size: 0.68rem;
+        gap: 4px 12px;
+        padding: 7px 14px;
+        bottom: 10px;
+    }
+
+    .goal-chip {
+        font-size: 0.72rem;
+        padding: 6px 12px;
+    }
+}

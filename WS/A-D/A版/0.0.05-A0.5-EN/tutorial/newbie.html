@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Tutorial level · The Adventure of the White Block</title>
+<link rel="stylesheet" href="css/newbie.css">
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div class="nb-hud">
+    <div class="hud-left">
+        <div class="hearts" id="hearts"></div>
+        <div class="level-tag">Tutorial level · First adventure</div>
+    </div>
+    <div class="hud-right">
+        <div class="goal-chip" id="goalChip">Goal: defeat the enemies in your way and reach the finish</div>
+        <button class="exit-btn" id="exitBtn">Exit level →</button>
+    </div>
+</div>
+
+<div class="nb-progress"><div class="nb-progress-fill" id="progFill"></div></div>
+
+<div class="nb-banner" id="banner"><span id="bannerText"></span></div>
+
+<div class="nb-keys">
+    <span><b>A / D</b> or <b>← →</b> Move</span>
+    <span><b>Space</b> Jump (hold for a higher jump, press again in mid-air)</span>
+    <span><b>Left mouse / J</b> Melee attack</span>
+    <span><b>Flag</b> is a checkpoint; you respawn at the nearest flag</span>
+    <span><b>R</b> Restart</span>
+</div>
+
+<div class="nb-win" id="winPanel">
+    <div class="nb-win-card">
+        <div class="nb-win-icon">🏁</div>
+        <h2>Tutorial level cleared</h2>
+        <p id="winText">You have mastered moving, jumping and attacking. The real adventure starts here.</p>
+        <div class="nb-win-actions">
+            <button class="nb-btn nb-primary" id="goGameBtn">Enter the game</button>
+            <button class="nb-btn nb-ghost" id="replayBtn">Play again</button>
+        </div>
+    </div>
+</div>
+
+<script src="js/newbie.js"></script>
+</body>
+</html>

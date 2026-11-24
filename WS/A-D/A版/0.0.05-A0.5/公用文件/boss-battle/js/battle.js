@@ -85,18 +85,17 @@ function updateAim() {
 function updatePlayer(dt) {
     updateAim();
 
-    // 等距方向：屏幕上 = 世界 (-1,-1)
+    // 斜轴测方向：屏幕上 = 世界 -z，屏幕右 = 世界 +x
     let dx = 0, dz = 0;
     if (typeof Touch !== 'undefined' && Touch.hasMove()) {
-        // 摇杆（屏幕系）→ 世界等距方向
-        const ax = Touch.axis.x, ay = Touch.axis.y;
-        dx = ax + ay;
-        dz = ay - ax;
+        // 摇杆（屏幕系）→ 世界方向（x 水平、z 纵深）
+        dx = Touch.axis.x;
+        dz = Touch.axis.y;
     } else {
-        if (keys['w'] || keys['arrowup']) { dx -= 1; dz -= 1; }
-        if (keys['s'] || keys['arrowdown']) { dx += 1; dz += 1; }
-        if (keys['a'] || keys['arrowleft']) { dx -= 1; dz += 1; }
-        if (keys['d'] || keys['arrowright']) { dx += 1; dz -= 1; }
+        if (keys['w'] || keys['arrowup']) { dz -= 1; }
+        if (keys['s'] || keys['arrowdown']) { dz += 1; }
+        if (keys['a'] || keys['arrowleft']) { dx -= 1; }
+        if (keys['d'] || keys['arrowright']) { dx += 1; }
     }
 
     player.moving = (dx !== 0 || dz !== 0);
@@ -198,10 +197,9 @@ function loop(now) {
     } else if (gameState === 'fight') {
         fightTime += dt;
 
-        // 唤醒距离：场地缩为 24 格后按比例收敛（原 64 场地 = 26 格，
-        // 保留"先向北走几步再唤醒 BOSS"的节奏），不影响 BOSS 数值与伤害
-        const wakeDist = Math.min(26, WORLD_H * 0.4);
-        if (!bossAwake && dist(player.x, player.z, boss.x, boss.z) < wakeDist) {
+        // 全程索敌：进入战斗即视为已被 BOSS 锁定，
+        // 玩家无论在场地任何位置都会被主动追击（不再有 26 格唤醒距离门限）
+        if (!bossAwake) {
             bossAwake = true;
             showMsg(SCENE.bossTitle, 2.6);
             shake = Math.max(shake, 4);
@@ -209,8 +207,9 @@ function loop(now) {
 
         if (player.hp > 0) updatePlayer(dt);
         Combat.update(dt);
-        if (bossAwake) BossAI.update(dt);
+        BossAI.update(dt);
         BossAI.updateBullets(dt);
+        Summon.update(dt);
         updateCamera(dt);
         updateFx(dt);
     } else {
@@ -246,6 +245,12 @@ function initBattle() {
     boss.dead = false;
     if (boss.dots) boss.dots.length = 0;
     boss.dotPending = 0;
+
+    // 召唤物：清空旧 block，开场自动召唤 1 个（静默，不刷提示）
+    if (typeof Summon !== 'undefined') {
+        Summon.reset();
+        Summon.spawn(true);
+    }
 
     if (typeof Iso !== 'undefined' && Iso.isSmallArena && Iso.isSmallArena()) {
         // 小方场：开场就把相机摆到场心，避免 intro 期间画面从南向北漂移

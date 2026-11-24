@@ -332,6 +332,24 @@ const BossAI = {
                 Combat.damageBoss(b.dmg, b.x, b.z);
                 this.spark(b.x, b.z, '#cfefff', 6);
                 bullets.splice(i, 1);
+                continue;
+            }
+
+            // 召唤物 block 也能被能量弹命中
+            if (typeof Summon !== 'undefined' && Summon.list.length) {
+                let hitBlock = false;
+                for (let k = Summon.list.length - 1; k >= 0; k--) {
+                    const blk = Summon.list[k];
+                    if (dist(b.x, b.z, blk.x, blk.z) < blk.r + 0.3) {
+                        Summon.damage(blk, b.dmg);
+                        this.spark(b.x, b.z, '#cfefff', 6);
+                        hitBlock = true;
+                        break;
+                    }
+                }
+                if (hitBlock) {
+                    bullets.splice(i, 1);
+                }
             }
         }
 

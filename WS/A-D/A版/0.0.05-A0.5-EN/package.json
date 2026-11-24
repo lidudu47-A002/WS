@@ -1,0 +1,16 @@
+{
+  "name": "white-square",
+  "version": "0.0.05-A0.5",
+  "private": true,
+  "description": "白色方块的冒险（纯前端，无构建）",
+  "scripts": {
+    "lint": "eslint \"Black room/**/*.js\" \"prison/**/*.js\" \"forest/**/*.js\" \"主页/**/*.js\" \"公用文件/**/*.js\"",
+    "lint:fix": "eslint --fix \"Black room/**/*.js\" \"prison/**/*.js\" \"公用文件/**/*.js\"",
+    "format": "prettier --write \"**/*.{js,html,css}\" --ignore-path .gitignore",
+    "check": "node tools/check-syntax.js"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0",
+    "prettier": "^3.3.0"
+  }
+}

@@ -74,7 +74,7 @@
             <div class="settings-item">
                 <label>Frame Rate Limit (fps)</label>
                 <select id="fpsLimitSelect">
-                    <option value="0">无限制</option>
+                    <option value="0">Unlimited</option>
                     <option value="30">30</option>
                     <option value="60">60</option>
                     <option value="144">144</option>
@@ -83,7 +83,7 @@
             </div>
             <div class="settings-item">
                 <label>BOSS Battle Music</label>
-                <input type="checkbox" id="bossMusicCheckbox"> 开启
+                <input type="checkbox" id="bossMusicCheckbox"> On
             </div>
             <div class="settings-footer">
                 <button id="saveSettingsBtn">Save</button>

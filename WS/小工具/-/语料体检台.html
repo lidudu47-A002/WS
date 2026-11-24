@@ -1,0 +1,1369 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>语料体检台</title>
+
+<style>
+:root{
+  --line: rgba(255,255,255,.16);
+  --text: #e9eefc;
+  --muted: #93a0c0;
+  --accent: #5eead4;
+  --accent-2: #a78bfa;
+  --danger: #fb7185;
+  --panel: rgba(255,255,255,.055);
+}
+*{ box-sizing:border-box; }
+html,body{ height:100%; margin:0; }
+body{
+  background:
+    radial-gradient(1200px 700px at 12% 8%, #1a1033 0%, transparent 62%),
+    radial-gradient(900px 640px at 88% 92%, #062a3a 0%, transparent 60%),
+    #05060c;
+  color:var(--text);
+  font-family:"Segoe UI","Microsoft YaHei UI","Microsoft YaHei",system-ui,-apple-system,sans-serif;
+  overflow:hidden;
+  user-select:none;
+  -webkit-font-smoothing:antialiased;
+}
+body::before{
+  content:'';position:fixed;inset:0;z-index:1;pointer-events:none;opacity:.05;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+}
+.aura{ position:fixed; z-index:0; border-radius:50%; filter:blur(90px); opacity:.5; pointer-events:none; }
+.aura.a1{ width:520px; height:520px; left:-140px; top:-160px;
+  background:radial-gradient(circle, rgba(94,234,212,.30), transparent 65%);
+  animation:drift1 22s ease-in-out infinite alternate; }
+.aura.a2{ width:640px; height:640px; right:-180px; bottom:-220px;
+  background:radial-gradient(circle, rgba(167,139,250,.32), transparent 65%);
+  animation:drift2 26s ease-in-out infinite alternate; }
+@keyframes drift1{ from{ transform:translate3d(0,0,0) scale(1);} to{ transform:translate3d(70px,50px,0) scale(1.12);} }
+@keyframes drift2{ from{ transform:translate3d(0,0,0) scale(1.06);} to{ transform:translate3d(-60px,-46px,0) scale(1);} }
+
+.glass{
+  background:linear-gradient(160deg, rgba(255,255,255,.10), rgba(255,255,255,.035));
+  border:1px solid rgba(255,255,255,.16);
+  border-radius:20px;
+  backdrop-filter:blur(22px) saturate(160%);
+  -webkit-backdrop-filter:blur(22px) saturate(160%);
+  box-shadow:0 18px 48px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.18);
+}
+.shell{ position:relative; z-index:2; height:100%; display:flex; flex-direction:column; gap:14px; padding:16px; }
+
+/* 顶栏 */
+.topbar{ display:flex; align-items:center; justify-content:space-between; gap:14px; padding:11px 18px; flex:none; }
+.brand{ display:flex; align-items:center; gap:12px; min-width:0; }
+.logo{
+  width:40px;height:40px;border-radius:13px;flex:none;display:grid;place-items:center;
+  background:linear-gradient(135deg,#5eead4,#a78bfa);
+  box-shadow:0 0 24px rgba(94,234,212,.45), inset 0 0 12px rgba(255,255,255,.35);
+}
+.logo svg{ width:24px; height:24px; }
+h1{ font-size:16px; margin:0; font-weight:600; letter-spacing:.6px; }
+.brand p{ margin:3px 0 0; font-size:12px; color:var(--muted); max-width:52vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.topbar-actions{ display:flex; align-items:center; gap:9px; flex:none; }
+.btn{
+  border:1px solid var(--line); background:rgba(255,255,255,.06); color:var(--text);
+  padding:9px 17px; border-radius:12px; font-size:13px; cursor:pointer; font-family:inherit;
+  transition:transform .16s, background .16s, box-shadow .16s;
+}
+.btn:hover{ background:rgba(255,255,255,.14); transform:translateY(-1px); }
+.btn:active{ transform:translateY(0) scale(.98); }
+.btn.primary{
+  background:linear-gradient(135deg, rgba(94,234,212,.28), rgba(167,139,250,.34));
+  border-color:rgba(167,139,250,.5);
+  box-shadow:0 0 22px rgba(167,139,250,.22);
+}
+.btn.danger:hover{ background:rgba(251,113,133,.2); border-color:rgba(251,113,133,.55); }
+.btn:disabled{ opacity:.4; cursor:not-allowed; transform:none; }
+.divider{ width:1px; height:20px; background:rgba(255,255,255,.14); }
+
+/* 主体 */
+.main{ flex:1; display:flex; gap:14px; min-height:0; }
+.sidebar{ width:352px; flex:none; display:flex; flex-direction:column; min-height:0; padding:15px 15px 6px; }
+.side-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:11px; flex:none; }
+.side-head h2{ font-size:13px; margin:0; color:var(--muted); letter-spacing:1px; font-weight:500; }
+.badge{
+  font-size:11px; padding:3px 10px; border-radius:20px; font-variant-numeric:tabular-nums;
+  background:rgba(94,234,212,.16); border:1px solid rgba(94,234,212,.35); color:var(--accent);
+  white-space:nowrap;
+}
+.badge.warn{ background:rgba(251,191,36,.14); border-color:rgba(251,191,36,.4); color:#fcd34d; }
+.badge.bad{ background:rgba(251,113,133,.14); border-color:rgba(251,113,133,.4); color:#fda4af; }
+.side-scroll{ flex:1; overflow-y:auto; padding-right:5px; padding-bottom:12px; }
+.side-scroll::-webkit-scrollbar,.panel::-webkit-scrollbar,.tbl-wrap::-webkit-scrollbar{ width:6px; height:6px; }
+.side-scroll::-webkit-scrollbar-thumb,.panel::-webkit-scrollbar-thumb,.tbl-wrap::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.16); border-radius:6px; }
+.side-scroll::-webkit-scrollbar-track,.panel::-webkit-scrollbar-track,.tbl-wrap::-webkit-scrollbar-track{ background:transparent; }
+
+.group{ padding-bottom:13px; margin-bottom:13px; border-bottom:1px solid rgba(255,255,255,.08); }
+.group:last-of-type{ border-bottom:none; margin-bottom:4px; }
+.group-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:9px; }
+.group-head > span:first-child{ font-size:12px; color:var(--muted); letter-spacing:.7px; }
+.counter{ font-size:11px; color:rgba(147,160,192,.85); font-variant-numeric:tabular-nums; }
+.hint{ font-size:11px; color:rgba(147,160,192,.75); line-height:1.55; }
+.muted{ color:var(--muted); }
+.small{ font-size:11.5px; }
+code{ font-family:Consolas,"Cascadia Mono",monospace; font-size:11px; background:rgba(255,255,255,.08);
+  padding:1px 5px; border-radius:5px; color:#c8fff5; }
+
+.dropzone{
+  border:1px dashed rgba(255,255,255,.24); border-radius:14px; padding:18px 14px; text-align:center;
+  cursor:pointer; transition:.16s; background:rgba(255,255,255,.03); margin-bottom:12px;
+}
+.dropzone:hover{ border-color:rgba(94,234,212,.5); background:rgba(94,234,212,.06); }
+.dropzone.over{ border-color:rgba(94,234,212,.75); background:rgba(94,234,212,.1); }
+.dropzone .dz-title{ font-size:13px; margin-bottom:5px; }
+.dropzone .dz-sub{ font-size:11px; color:var(--muted); }
+
+.file-item{ padding:8px 10px; border-radius:11px; background:rgba(255,255,255,.045);
+  border:1px solid rgba(255,255,255,.09); margin-bottom:7px; }
+.file-item .fi-top{ display:flex; align-items:center; gap:8px; }
+.file-item .fi-name{ font-size:12px; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.file-item .fi-size{ font-size:10.5px; color:var(--muted); font-variant-numeric:tabular-nums; flex:none; }
+.file-item .fi-x{ border:none; background:none; color:rgba(147,160,192,.8); cursor:pointer; font-size:13px; padding:0 2px; flex:none; }
+.file-item .fi-x:hover{ color:var(--danger); }
+.file-item .fi-bar{ height:3px; border-radius:3px; background:rgba(255,255,255,.1); margin-top:6px; overflow:hidden; }
+.file-item .fi-bar i{ display:block; height:100%; width:0%; border-radius:3px;
+  background:linear-gradient(90deg,var(--accent),var(--accent-2)); transition:width .2s; }
+.file-item .fi-meta{ font-size:10.5px; color:var(--muted); margin-top:5px; font-variant-numeric:tabular-nums; }
+
+.switch{ display:inline-flex; align-items:center; gap:7px; cursor:pointer; font-size:11.5px;
+  color:var(--muted); margin:0 12px 9px 0; }
+.switch input{ display:none; }
+.switch i{ width:34px; height:18px; border-radius:20px; background:rgba(255,255,255,.14);
+  border:1px solid rgba(255,255,255,.16); position:relative; transition:.18s; flex:none; }
+.switch i::after{ content:''; position:absolute; left:2px; top:2px; width:12px; height:12px;
+  border-radius:50%; background:#cfd8ee; transition:.18s; }
+.switch input:checked + i{ background:linear-gradient(90deg, rgba(94,234,212,.75), rgba(167,139,250,.75)); border-color:rgba(94,234,212,.5); }
+.switch input:checked + i::after{ transform:translateX(16px); background:#06211d; }
+.switch em{ font-style:normal; }
+
+input[type="text"], input[type="number"]{
+  width:100%; padding:8px 10px; font-size:12px; color:var(--text); font-family:inherit;
+  background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.14);
+  border-radius:10px; outline:none; user-select:text; transition:border-color .16s;
+}
+input[type="text"]:focus{ border-color:rgba(94,234,212,.6); }
+input::placeholder{ color:rgba(147,160,192,.55); }
+
+.chip{
+  border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.05); color:var(--text);
+  padding:6px 11px; border-radius:10px; font-size:11.5px; cursor:pointer; font-family:inherit; transition:.16s;
+}
+.chip:hover{ background:rgba(255,255,255,.14); border-color:rgba(94,234,212,.45); }
+.chip:active{ transform:scale(.96); }
+.chip:disabled{ opacity:.42; cursor:not-allowed; transform:none; }
+.chip.static{ cursor:default; pointer-events:none; font-variant-numeric:tabular-nums; }
+.chip.accent{ color:#04211d; background:linear-gradient(180deg,#7ff0dd,#41d8bd); border-color:transparent; font-weight:600; }
+.chip.danger:hover{ background:rgba(251,113,133,.22); border-color:rgba(251,113,133,.6); }
+
+/* 舞台 */
+.stage{ flex:1; display:flex; flex-direction:column; min-width:0; padding:14px; }
+.stage-head{ display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:10px; flex:none; }
+.stage-title{ font-size:13px; color:var(--muted); letter-spacing:1px; }
+.stage-tools{ display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
+.seg{ display:flex; gap:6px; flex-wrap:wrap; }
+.seg button{
+  font-family:inherit; font-size:12px; padding:7px 14px; border-radius:10px; cursor:pointer;
+  color:var(--text); background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.13); transition:.16s;
+}
+.seg button:hover{ background:rgba(255,255,255,.12); }
+.seg button.active{ color:#04211d; font-weight:600; border-color:transparent;
+  background:linear-gradient(180deg,#7ff0dd,#41d8bd); box-shadow:0 0 18px rgba(94,234,212,.28); }
+
+.cap-bar{ height:4px; border-radius:4px; background:rgba(255,255,255,.10); overflow:hidden; flex:none; }
+.cap-bar i{ display:block; height:100%; width:0%; border-radius:4px;
+  background:linear-gradient(90deg, var(--accent), var(--accent-2)); transition:width .22s; }
+.cap-text{ display:flex; justify-content:space-between; margin:6px 0 10px; font-size:11.5px; color:var(--muted); font-variant-numeric:tabular-nums; flex:none; }
+
+.panel{ display:none; flex:1; min-height:0; overflow:auto; padding-right:4px; }
+.panel.active{ display:block; }
+
+.kpi{ display:grid; grid-template-columns:repeat(auto-fit,minmax(148px,1fr)); gap:10px; margin-bottom:12px; }
+.kpi .card{ background:rgba(255,255,255,.045); border:1px solid rgba(255,255,255,.10);
+  border-radius:13px; padding:11px 13px; }
+.kpi .num{ font-size:20px; font-weight:600; font-variant-numeric:tabular-nums; letter-spacing:.4px; }
+.kpi .num small{ font-size:11px; color:var(--muted); font-weight:400; margin-left:3px; }
+.kpi .lbl{ font-size:11px; color:var(--muted); margin-top:4px; letter-spacing:.5px; }
+
+.block{ margin-bottom:14px; }
+.block h3{ font-size:12px; color:var(--muted); margin:0 0 8px; letter-spacing:.8px; font-weight:500;
+  display:flex; align-items:center; gap:8px; }
+.block h3 .badge{ font-size:10px; padding:2px 8px; }
+
+.tbl-wrap{ overflow-x:auto; border-radius:12px; border:1px solid rgba(255,255,255,.09); }
+table.tbl{ width:100%; border-collapse:collapse; font-size:12px; }
+table.tbl th{ text-align:left; padding:8px 11px; color:var(--muted); font-weight:500;
+  background:rgba(255,255,255,.05); font-size:11px; letter-spacing:.5px; white-space:nowrap; }
+table.tbl td{ padding:7px 11px; border-top:1px solid rgba(255,255,255,.07);
+  font-variant-numeric:tabular-nums; vertical-align:top; }
+table.tbl td.num{ text-align:right; }
+table.tbl tr:hover td{ background:rgba(255,255,255,.035); }
+.tbl .mono{ font-family:Consolas,"Cascadia Mono",monospace; font-size:11.5px; color:#c8fff5; }
+.tbl .ell{ max-width:420px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:rgba(233,238,252,.9); }
+
+.hist{ display:flex; align-items:flex-end; gap:8px; height:180px; padding:12px 14px 6px;
+  background:rgba(255,255,255,.035); border:1px solid rgba(255,255,255,.09); border-radius:13px; }
+.hist .col{ flex:1; display:flex; flex-direction:column; justify-content:flex-end; align-items:center; height:100%; gap:5px; min-width:0; }
+.hist .col .bar{ width:100%; border-radius:6px 6px 3px 3px; min-height:2px;
+  background:linear-gradient(180deg, rgba(94,234,212,.95), rgba(167,139,250,.75));
+  box-shadow:0 0 14px rgba(94,234,212,.18); transition:height .3s; }
+.hist .col .cnt{ font-size:10px; color:var(--muted); font-variant-numeric:tabular-nums; }
+.hist .col .rg{ font-size:10px; color:rgba(147,160,192,.8); white-space:nowrap; }
+
+.notice{
+  display:none; padding:9px 11px; border-radius:11px; font-size:11.5px; line-height:1.55;
+  background:rgba(251,113,133,.12); border:1px solid rgba(251,113,133,.38); color:#ffd6dd; margin-bottom:10px;
+}
+.notice.show{ display:block; }
+.notice.info{ background:rgba(94,234,212,.10); border-color:rgba(94,234,212,.32); color:#c8fff5; }
+
+.stat-inline{ font-size:11.5px; color:var(--muted); font-variant-numeric:tabular-nums; }
+.stage-foot{ display:flex; align-items:center; justify-content:space-between; gap:10px;
+  margin-top:10px; flex-wrap:wrap; flex:none; }
+.hidden{ display:none !important; }
+
+#toast{
+  position:fixed; left:50%; bottom:38px; transform:translate(-50%, 22px);
+  background:rgba(16,20,34,.9); border:1px solid rgba(255,255,255,.18);
+  color:var(--text); font-size:12.5px; padding:10px 18px; border-radius:12px;
+  backdrop-filter:blur(14px); opacity:0; pointer-events:none; transition:.24s; z-index:99;
+  max-width:min(680px, 84vw); text-align:center; line-height:1.5;
+}
+#toast.show{ opacity:1; transform:translate(-50%, 0); }
+
+@media (max-width: 1040px){
+  .main{ flex-direction:column; }
+  .sidebar{ width:auto; max-height:46vh; }
+  .brand p{ max-width:56vw; }
+}
+@media (max-width: 720px){
+  .topbar{ flex-wrap:wrap; }
+  .brand p{ display:none; }
+}
+</style>
+</head>
+
+<body>
+<div class="aura a1"></div>
+<div class="aura a2"></div>
+
+<div class="shell">
+  <header class="topbar glass">
+    <div class="brand">
+      <div class="logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#04211d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 3v6"/><path d="M3 3h6"/><path d="M21 3h-6"/><path d="M21 3v6"/>
+          <path d="M3 21v-6"/><path d="M3 21h6"/><path d="M21 21h-6"/><path d="M21 21v-6"/>
+          <path d="M7 12h10"/>
+        </svg>
+      </div>
+      <div>
+        <h1>语料体检台</h1>
+        <p>本地训练语料体检 · 流式分块读取 · 全部在本机处理，文件不会离开这台电脑</p>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <span class="badge" id="localBadge">离线 · 不外传</span>
+      <div class="divider"></div>
+      <button class="btn" id="btnPick">选择文件</button>
+      <button class="btn primary" id="btnScan">开始体检</button>
+      <button class="btn danger" id="btnStop" disabled>停止</button>
+    </div>
+  </header>
+
+  <div class="main">
+    <aside class="sidebar glass">
+      <div class="side-head">
+        <h2>语料文件</h2>
+        <span class="badge" id="fileBadge">0 个文件</span>
+      </div>
+      <div class="side-scroll">
+        <div class="dropzone" id="dropZone">
+          <div class="dz-title">把 .jsonl / .json / .txt / .md 拖到这里</div>
+          <div class="dz-sub">支持多选；大文件按 1 MB 分块流式读取，不会整文件载入内存</div>
+        </div>
+        <div class="group">
+          <div class="group-head"><span>文件队列</span><span class="counter" id="queueSize">0 / 0 B</span></div>
+          <div id="fileList"><div class="hint">还没有文件。拖入或点右上角「选择文件」。</div></div>
+        </div>
+        <div class="group">
+          <div class="group-head"><span>清洗选项（导出时生效）</span></div>
+          <label class="switch"><input type="checkbox" id="optDropEmpty" checked><i></i><em>去空行</em></label>
+          <label class="switch"><input type="checkbox" id="optDedupe" checked><i></i><em>去重</em></label>
+          <label class="switch"><input type="checkbox" id="optDropBad"><i></i><em>剔除解析失败行</em></label>
+          <div class="group-head" style="margin-top:6px"><span>专项文本字段</span></div>
+          <input type="text" id="optFields" value="content,text,messages" placeholder="content,text,messages">
+          <div class="hint" style="margin-top:6px">用英文逗号分隔；支持 <code>content</code> / <code>text</code> / <code>messages</code> 等，messages 会自动抽取每条 content。</div>
+        </div>
+        <div class="group">
+          <div class="group-head"><span>说明</span></div>
+          <div class="hint">
+            行长度分位数基于逐行精确计数（0–1024 字符精确，超出归入 ≥1025 桶）。<br>
+            去重按「内容哈希 + 样本比对」进行，唯一行超过 30 万条后仅按哈希判定并给出提示。<br>
+            导出清洗结果时会二次流式重读文件，磁盘与内存均不会一次性载入整份语料。
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <section class="stage glass">
+      <div class="stage-head">
+        <div class="stage-title">体检结果</div>
+        <div class="stage-tools">
+          <div class="seg" id="tabBar">
+            <button data-panel="pOverview" class="active">概览</button>
+            <button data-panel="pLen">长度分布</button>
+            <button data-panel="pField">字段质量</button>
+            <button data-panel="pDup">重复与失败</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="cap-bar"><i id="capBar"></i></div>
+      <div class="cap-text">
+        <span id="capLabel">等待开始</span>
+        <span id="capPct">0%</span>
+      </div>
+
+      <div class="panel active" id="pOverview">
+        <div class="notice info show" id="emptyNotice">还没有开始体检。把语料文件拖进左侧队列，点右上角「开始体检」。</div>
+        <div class="kpi" id="kpiBox"></div>
+        <div class="block">
+          <h3>单文件明细 <span class="badge" id="fileStatBadge">0</span></h3>
+          <div class="tbl-wrap"><table class="tbl" id="fileTable">
+            <thead><tr><th>文件</th><th>格式</th><th>行数</th><th>字符数</th><th>中文字符</th><th>记录数</th><th>解析失败</th><th>状态</th></tr></thead>
+            <tbody></tbody>
+          </table></div>
+        </div>
+      </div>
+
+      <div class="panel" id="pLen">
+        <div class="block">
+          <h3>行长度直方图 <span class="badge" id="histBadge">未统计</span></h3>
+          <div class="hist" id="hist"></div>
+        </div>
+        <div class="block">
+          <h3>长度分位与极值</h3>
+          <div class="tbl-wrap"><table class="tbl" id="pctTable">
+            <thead><tr><th>指标</th><th>数值</th><th>指标</th><th>数值</th></tr></thead>
+            <tbody></tbody>
+          </table></div>
+        </div>
+        <div class="block">
+          <h3>字符构成</h3>
+          <div class="tbl-wrap"><table class="tbl" id="charTable">
+            <thead><tr><th>类别</th><th>数量</th><th>占比</th></tr></thead>
+            <tbody></tbody>
+          </table></div>
+        </div>
+      </div>
+
+      <div class="panel" id="pField">
+        <div class="block">
+          <h3>字段集合与质量 <span class="badge" id="fieldBadge">未统计</span></h3>
+          <div class="tbl-wrap"><table class="tbl" id="fieldTable">
+            <thead><tr><th>字段</th><th>出现次数</th><th>缺失率</th><th>空值率</th><th>主要类型</th></tr></thead>
+            <tbody></tbody>
+          </table></div>
+          <div class="hint" style="margin-top:7px">缺失率 = 未出现该字段的记录占比；空值率 = 字段存在但为 null / 空串 / 空数组的占比。仅统计顶层字段。</div>
+        </div>
+        <div class="block">
+          <h3>专项文本字段 <span class="badge" id="tfBadge">未统计</span></h3>
+          <div class="tbl-wrap"><table class="tbl" id="tfTable">
+            <thead><tr><th>字段</th><th>命中记录</th><th>非空</th><th>空值率</th><th>总字符</th><th>平均字符</th><th>中位字符</th></tr></thead>
+            <tbody></tbody>
+          </table></div>
+        </div>
+      </div>
+
+      <div class="panel" id="pDup">
+        <div class="block">
+          <h3>重复行 <span class="badge" id="dupBadge">未统计</span></h3>
+          <div class="tbl-wrap"><table class="tbl" id="dupTable">
+            <thead><tr><th>重复次数</th><th>行长度</th><th>内容预览</th></tr></thead>
+            <tbody></tbody>
+          </table></div>
+        </div>
+        <div class="block">
+          <h3>解析失败行 <span class="badge" id="errBadge">0</span></h3>
+          <div class="tbl-wrap"><table class="tbl" id="errTable">
+            <thead><tr><th>文件</th><th>行号</th><th>原因</th><th>内容预览</th></tr></thead>
+            <tbody></tbody>
+          </table></div>
+        </div>
+      </div>
+
+      <div class="stage-foot">
+        <span class="stat-inline" id="footStat">尚未体检</span>
+        <div class="stage-tools">
+          <button class="chip" id="btnReport" disabled>导出体检报告（.md）</button>
+          <button class="chip accent" id="btnClean" disabled>导出清洗后语料</button>
+          <button class="chip danger" id="btnClear">清空队列</button>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+<input type="file" id="filePicker" multiple accept=".jsonl,.json,.txt,.md,.ndjson,text/plain,application/json" class="hidden">
+<div id="toast"></div>
+
+
+<script>
+(function(){
+'use strict';
+function $(id){ return document.getElementById(id); }
+
+var CHUNK = 1024 * 1024;          // 1 MB 分块，避免整文件入内存
+var MAX_ERRORS = 200;
+var MAX_DUP_KEYS = 300000;
+var SAMPLE_LEN = 120;
+var MAX_TF_LENS = 400000;
+var JSON_SIZE_LIMIT = 64 * 1024 * 1024;
+
+var state = null;
+var seq = 0;
+
+function freshState(){
+  return {
+    files: [], running:false, abort:false,
+    lines:0, chars:0, cn:0, en:0, digits:0, space:0, other:0,
+    emptyLines:0, records:0, objRecords:0, jsonOk:0, jsonFail:0,
+    hist:new Uint32Array(1026), lenSum:0, lenMax:0,
+    dup:new Map(), dupExtra:0, dupOverflow:false,
+    fields:new Map(), tf:new Map(),
+    errors:[], notes:[],
+    totalBytes:0, doneBytes:0,
+    lastExt:'jsonl'
+  };
+}
+state = freshState();
+
+/* ============ 工具 ============ */
+function fmtNum(n){
+  if(n === null || n === undefined) return '-';
+  return Number(n).toLocaleString('en-US');
+}
+function fmtBytes(b){
+  if(!b) return '0 B';
+  var u = ['B','KB','MB','GB','TB'], i = 0, v = b;
+  while(v >= 1024 && i < u.length-1){ v /= 1024; i++; }
+  return (i === 0 ? v : v.toFixed(v >= 100 ? 0 : 1)) + ' ' + u[i];
+}
+function pctStr(a, b){
+  if(!b) return '0%';
+  var v = a / b * 100;
+  return (v >= 10 ? v.toFixed(1) : v.toFixed(2)) + '%';
+}
+function esc(s){
+  return String(s === null || s === undefined ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function clip(s, n){
+  s = String(s === null || s === undefined ? '' : s).replace(/\r/g,'');
+  return s.length > (n || SAMPLE_LEN) ? s.slice(0, n || SAMPLE_LEN) + '…' : s;
+}
+function yieldUI(){ return new Promise(function(r){ setTimeout(r, 0); }); }
+function pad2(n){ return n < 10 ? '0' + n : '' + n; }
+function stamp(){
+  var d = new Date();
+  return '' + d.getFullYear() + pad2(d.getMonth()+1) + pad2(d.getDate()) + '_' + pad2(d.getHours()) + pad2(d.getMinutes()) + pad2(d.getSeconds());
+}
+function toast(msg){
+  var t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(function(){ t.classList.remove('show'); }, 2600);
+}
+function extOf(name){
+  var i = name.lastIndexOf('.');
+  return i < 0 ? '' : name.slice(i+1).toLowerCase();
+}
+
+/* ============ 文件队列 ============ */
+function addFiles(list){
+  if(state.running){ toast('正在体检中，先停止或等待完成'); return; }
+  var added = 0, skipped = 0;
+  Array.prototype.forEach.call(list, function(file){
+    var ext = extOf(file.name);
+    if(['jsonl','json','txt','md','ndjson'].indexOf(ext) < 0){ skipped++; return; }
+    var dupName = state.files.some(function(f){ return f.name === file.name && f.size === file.size; });
+    if(dupName){ skipped++; return; }
+    state.files.push({
+      id:'f' + (++seq), file:file, name:file.name, ext:ext, size:file.size,
+      bytesRead:0, lines:0, chars:0, cn:0, en:0, records:0, parseFail:0,
+      status:'待处理', note:''
+    });
+    added++;
+  });
+  state.totalBytes = state.files.reduce(function(s, f){ return s + f.size; }, 0);
+  renderQueue();
+  renderFiles();
+  if(added) toast('已加入 ' + added + ' 个文件' + (skipped ? '（忽略 ' + skipped + ' 个重复或不支持的项）' : ''));
+  else if(skipped) toast('没有可加入的文件（仅支持 .jsonl/.json/.txt/.md）');
+}
+
+function renderQueue(){
+  $('fileBadge').textContent = state.files.length + ' 个文件';
+  $('queueSize').textContent = state.files.length + ' / ' + fmtBytes(state.totalBytes);
+  var box = $('fileList');
+  if(!state.files.length){
+    box.innerHTML = '<div class="hint">还没有文件。拖入或点右上角「选择文件」。</div>';
+    return;
+  }
+  box.innerHTML = state.files.map(function(f){
+    var pct = f.size ? Math.min(100, f.bytesRead / f.size * 100) : 100;
+    return '<div class="file-item" data-id="' + f.id + '">'
+      + '<div class="fi-top"><span class="fi-name" title="' + esc(f.name) + '">' + esc(f.name) + '</span>'
+      + '<span class="fi-size">' + fmtBytes(f.size) + '</span>'
+      + '<button class="fi-x" data-del="' + f.id + '" title="移出队列">×</button></div>'
+      + '<div class="fi-bar"><i style="width:' + pct.toFixed(1) + '%"></i></div>'
+      + '<div class="fi-meta">' + esc(f.status) + ' · ' + fmtNum(f.lines) + ' 行 · ' + fmtNum(f.chars) + ' 字符'
+      + (f.parseFail ? ' · 失败 ' + fmtNum(f.parseFail) : '') + '</div>'
+      + '</div>';
+  }).join('');
+}
+
+function removeFile(id){
+  if(state.running){ toast('体检进行中，暂时不能移出文件'); return; }
+  state.files = state.files.filter(function(f){ return f.id !== id; });
+  state.totalBytes = state.files.reduce(function(s, f){ return s + f.size; }, 0);
+  renderQueue(); renderFiles();
+  resetResults();
+}
+
+/* ============ 统计内核 ============ */
+function countLine(f, line){
+  state.lines++; f.lines++;
+  var len = line.length;
+  state.chars += len; f.chars += len;
+  state.lenSum += len;
+  if(len > state.lenMax) state.lenMax = len;
+  state.hist[len > 1024 ? 1025 : len]++;
+
+  var cn = 0, en = 0, dg = 0, sp = 0, ot = 0;
+  for(var i = 0; i < len; i++){
+    var c = line.charCodeAt(i);
+    if((c >= 0x4e00 && c <= 0x9fff) || (c >= 0x3400 && c <= 0x4dbf) || (c >= 0xf900 && c <= 0xfaff) || (c >= 0x3040 && c <= 0x30ff)) cn++;
+    else if((c >= 65 && c <= 90) || (c >= 97 && c <= 122)) en++;
+    else if(c >= 48 && c <= 57) dg++;
+    else if(c === 32 || c === 9 || c === 13 || c === 10) sp++;
+    else ot++;
+  }
+  state.cn += cn; state.en += en; state.digits += dg; state.space += sp; state.other += ot;
+  f.cn += cn; f.en += en;
+
+  if(len === 0 || !line.trim()) state.emptyLines++;
+
+  if(len > 0){
+    var key = hashKey(line);
+    var e = state.dup.get(key);
+    if(e){ e.c++; state.dupExtra++; }
+    else if(state.dup.size < MAX_DUP_KEYS){
+      state.dup.set(key, { c:1, s: line.length > 200 ? line.slice(0, 200) : line, l: len });
+    } else {
+      state.dupOverflow = true;
+    }
+  }
+}
+
+function hashKey(s){
+  var h = 5381, i = s.length;
+  while(i){ h = ((h * 33) ^ s.charCodeAt(--i)) >>> 0; }
+  return h.toString(36) + ':' + s.length;
+}
+
+function pushError(f, lineNo, reason, content){
+  if(state.errors.length >= MAX_ERRORS) return;
+  state.errors.push({ file:f.name, line:lineNo, reason:String(reason), content:clip(content, 100) });
+}
+
+function tfNames(){
+  return $('optFields').value.split(',').map(function(s){ return s.trim(); }).filter(Boolean).slice(0, 8);
+}
+
+function extractText(obj, fn){
+  var v = obj[fn];
+  if(v === undefined || v === null) return null;
+  if(typeof v === 'string') return v;
+  if(Array.isArray(v)){
+    return v.map(function(it){
+      if(it === null || it === undefined) return '';
+      if(typeof it === 'string') return it;
+      if(typeof it === 'object'){
+        if(it.content !== undefined && it.content !== null) return String(it.content);
+        if(it.text !== undefined && it.text !== null) return String(it.text);
+        if(it.value !== undefined && it.value !== null) return String(it.value);
+      }
+      return '';
+    }).join('\n');
+  }
+  if(typeof v === 'object') return JSON.stringify(v);
+  return String(v);
+}
+
+function recordObject(f, obj){
+  state.records++; f.records++;
+  if(!obj || typeof obj !== 'object' || Array.isArray(obj)) return;
+  state.objRecords++;
+
+  var keys = Object.keys(obj);
+  for(var i = 0; i < keys.length; i++){
+    var k = keys[i], v = obj[k];
+    var e = state.fields.get(k);
+    if(!e){ e = { present:0, nulls:0, empties:0, types:{} }; state.fields.set(k, e); }
+    e.present++;
+    var t = v === null ? 'null' : (Array.isArray(v) ? 'array' : typeof v);
+    e.types[t] = (e.types[t] || 0) + 1;
+    if(v === null) e.nulls++;
+    else if(v === '' || (Array.isArray(v) && v.length === 0)) e.empties++;
+  }
+
+  var names = state.tfNamesCache || (state.tfNamesCache = tfNames());
+  for(var j = 0; j < names.length; j++){
+    var fn = names[j];
+    if(!(fn in obj)) continue;
+    var t2 = state.tf.get(fn);
+    if(!t2){ t2 = { hit:0, nonEmpty:0, chars:0, lens:[], truncated:false }; state.tf.set(fn, t2); }
+    t2.hit++;
+    var text = extractText(obj, fn);
+    if(text === null) continue;
+    if(text.length > 0){
+      t2.nonEmpty++;
+      t2.chars += text.length;
+      if(t2.lens.length < MAX_TF_LENS) t2.lens.push(text.length);
+      else t2.truncated = true;
+    }
+  }
+}
+
+function parseRecordLine(f, lineNo, line){
+  var s = line.trim();
+  if(!s) return;
+  try{
+    var v = JSON.parse(s);
+    state.jsonOk++; f.jsonOk = (f.jsonOk || 0) + 1;
+    recordObject(f, v);
+  }catch(err){
+    state.jsonFail++; f.parseFail++;
+    pushError(f, lineNo, (err && err.message) || 'JSON 解析失败', line);
+  }
+}
+
+/* ============ 流式读取 ============ */
+function readSlice(file, start, end){
+  return new Promise(function(resolve, reject){
+    try{
+      var slice = file.slice(start, end);
+      if(slice.arrayBuffer){
+        slice.arrayBuffer().then(resolve, reject);
+        return;
+      }
+      var fr = new FileReader();
+      fr.onload = function(){ resolve(fr.result); };
+      fr.onerror = function(){ reject(fr.error || new Error('读取失败')); };
+      fr.readAsArrayBuffer(slice);
+    }catch(e){ reject(e); }
+  });
+}
+
+function updateProgress(){
+  var pct = state.totalBytes ? (state.doneBytes / state.totalBytes * 100) : 0;
+  if(pct > 100) pct = 100;
+  $('capBar').style.width = pct.toFixed(1) + '%';
+  $('capPct').textContent = pct.toFixed(1) + '%';
+}
+
+function bumpDone(){
+  state.doneBytes = state.files.reduce(function(s, f){ return s + f.bytesRead; }, 0);
+  updateProgress();
+}
+
+async function processJsonl(f){
+  var size = f.file.size, offset = 0, buf = '', lineNo = 0, guard = 0;
+  var dec = new TextDecoder('utf-8', { fatal:false });
+  while(offset < size){
+    if(state.abort) throw new Error('__abort__');
+    var end = Math.min(offset + CHUNK, size);
+    var ab = await readSlice(f.file, offset, end);
+    offset = end;
+    buf += dec.decode(ab, { stream:true });
+    var start = 0, idx;
+    while((idx = buf.indexOf('\n', start)) !== -1){
+      var line = buf.slice(start, idx);
+      start = idx + 1;
+      if(line.charCodeAt(line.length - 1) === 13) line = line.slice(0, -1);
+      lineNo++;
+      countLine(f, line);
+      parseRecordLine(f, lineNo, line);
+      if((++guard % 2000) === 0) await yieldUI();
+    }
+    buf = buf.slice(start);
+    f.bytesRead = offset;
+    bumpDone(); renderQueue();
+    await yieldUI();
+  }
+  buf += dec.decode();
+  if(buf.length){
+    var last = buf.charCodeAt(buf.length - 1) === 13 ? buf.slice(0, -1) : buf;
+    lineNo++;
+    countLine(f, last);
+    parseRecordLine(f, lineNo, last);
+  }
+}
+
+async function processText(f){
+  var size = f.file.size, offset = 0, buf = '', lineNo = 0, guard = 0;
+  var dec = new TextDecoder('utf-8', { fatal:false });
+  while(offset < size){
+    if(state.abort) throw new Error('__abort__');
+    var end = Math.min(offset + CHUNK, size);
+    var ab = await readSlice(f.file, offset, end);
+    offset = end;
+    buf += dec.decode(ab, { stream:true });
+    var start = 0, idx;
+    while((idx = buf.indexOf('\n', start)) !== -1){
+      var line = buf.slice(start, idx);
+      start = idx + 1;
+      if(line.charCodeAt(line.length - 1) === 13) line = line.slice(0, -1);
+      lineNo++;
+      countLine(f, line);
+      if((++guard % 2000) === 0) await yieldUI();
+    }
+    buf = buf.slice(start);
+    f.bytesRead = offset;
+    bumpDone(); renderQueue();
+    await yieldUI();
+  }
+  buf += dec.decode();
+  if(buf.length) countLine(f, buf.charCodeAt(buf.length - 1) === 13 ? buf.slice(0, -1) : buf);
+}
+
+async function processJsonDoc(f){
+  var size = f.file.size, offset = 0, buf = '', lineNo = 0, guard = 0;
+  var dec = new TextDecoder('utf-8', { fatal:false });
+  var keep = size <= JSON_SIZE_LIMIT;
+  var parts = [];
+  while(offset < size){
+    if(state.abort) throw new Error('__abort__');
+    var end = Math.min(offset + CHUNK, size);
+    var ab = await readSlice(f.file, offset, end);
+    offset = end;
+    var text = dec.decode(ab, { stream:true });
+    if(keep) parts.push(text);
+    buf += text;
+    var start = 0, idx;
+    while((idx = buf.indexOf('\n', start)) !== -1){
+      var line = buf.slice(start, idx);
+      start = idx + 1;
+      if(line.charCodeAt(line.length - 1) === 13) line = line.slice(0, -1);
+      lineNo++;
+      countLine(f, line);
+      if((++guard % 2000) === 0) await yieldUI();
+    }
+    buf = buf.slice(start);
+    f.bytesRead = offset;
+    bumpDone(); renderQueue();
+    await yieldUI();
+  }
+  buf += dec.decode();
+  if(buf.length) countLine(f, buf.charCodeAt(buf.length - 1) === 13 ? buf.slice(0, -1) : buf);
+
+  if(!keep){
+    f.note = '超过 64 MB，已跳过整体 JSON 解析';
+    state.notes.push(f.name + '：' + f.note);
+    return;
+  }
+  var whole = parts.join('');
+  try{
+    var val = JSON.parse(whole);
+    if(Array.isArray(val)){ val.forEach(function(it){ recordObject(f, it); }); }
+    else if(val && typeof val === 'object'){ recordObject(f, val); }
+    else { state.notes.push(f.name + '：顶层不是对象或数组，未做字段统计'); }
+    state.jsonOk++;
+    f.jsonOk = 1;
+  }catch(e){
+    var recovered = 0, failedMsg = (e && e.message) || 'JSON 解析失败';
+    whole.split('\n').forEach(function(ln, i){
+      var s = ln.trim();
+      if(!s) return;
+      try{ var v = JSON.parse(s); recordObject(f, v); recovered++; state.jsonOk++; }
+      catch(err){
+        state.jsonFail++; f.parseFail++;
+        pushError(f, i + 1, (err && err.message) || 'JSON 解析失败', ln);
+      }
+    });
+    f.note = '整体解析失败（' + clip(failedMsg, 60) + '），已按行回退';
+    state.notes.push(f.name + '：' + f.note);
+  }
+}
+
+async function runScan(){
+  if(state.running) return;
+  if(!state.files.length){ toast('先从左侧加入语料文件'); return; }
+
+  if(!state.running) resetResults(true);
+  // 每次体检都完整重扫队列，保证全局统计与文件明细始终一致
+  var pending = state.files.slice();
+  state.running = true;
+  state.abort = false;
+  $('btnScan').disabled = true;
+  $('btnStop').disabled = false;
+  $('btnClean').disabled = true;
+  $('btnReport').disabled = true;
+  $('capLabel').textContent = '正在体检…';
+  $('emptyNotice').classList.remove('show');
+  state.totalBytes = state.files.reduce(function(s, f){ return s + f.size; }, 0);
+  bumpDone();
+
+  try{
+    for(var i = 0; i < pending.length; i++){
+      var f = pending[i];
+      if(state.abort) break;
+      f.status = '读取中';
+      renderQueue();
+      if(f.ext === 'json') await processJsonDoc(f);
+      else if(f.ext === 'jsonl' || f.ext === 'ndjson') await processJsonl(f);
+      else await processText(f);
+      f.status = state.abort ? '已中断' : '完成';
+      f.bytesRead = f.size;
+      bumpDone(); renderQueue();
+      renderFiles();
+      await yieldUI();
+    }
+  }catch(err){
+    if(String(err && err.message) === '__abort__'){
+      state.files.forEach(function(f){ if(f.status === '读取中') f.status = '已中断'; });
+    } else {
+      toast('体检中断：' + ((err && err.message) || err));
+      state.files.forEach(function(f){ if(f.status === '读取中') f.status = '出错'; });
+    }
+  }finally{
+    state.running = false;
+    state.abort = false;
+    $('btnScan').disabled = false;
+    $('btnStop').disabled = true;
+    renderQueue();
+    renderAll();
+    var ok = state.lines > 0;
+    var interrupted = state.files.some(function(f){ return f.status === '已中断'; });
+    $('btnReport').disabled = !ok;
+    $('btnClean').disabled = !ok;
+    $('capLabel').textContent = interrupted ? '已中断（已统计部分结果，可再次体检续跑）'
+      : (ok ? '体检完成' : '没有读到内容');
+    updateProgress();
+    if(ok) toast('体检完成：' + fmtNum(state.lines) + ' 行 / ' + fmtNum(state.records) + ' 条记录');
+  }
+}
+
+function resetResults(silent){
+  var keepFiles = state.files;
+  state = freshState();
+  state.files = keepFiles;
+  state.totalBytes = keepFiles.reduce(function(s, f){ return s + f.size; }, 0);
+  state.files.forEach(function(f){
+    f.bytesRead = 0; f.lines = 0; f.chars = 0; f.cn = 0; f.en = 0;
+    f.records = 0; f.parseFail = 0; f.status = '待处理'; f.note = ''; f.jsonOk = 0;
+  });
+  $('capBar').style.width = '0%';
+  $('capPct').textContent = '0%';
+  $('capLabel').textContent = '等待开始';
+  $('emptyNotice').classList.add('show');
+  $('btnReport').disabled = true;
+  $('btnClean').disabled = true;
+  renderFiles();
+  if(!silent){ renderAll(); renderQueue(); }
+}
+
+
+/* ============ 渲染 ============ */
+var BINS = [
+  { from:0, to:20, label:'0–20' },
+  { from:21, to:50, label:'21–50' },
+  { from:51, to:100, label:'51–100' },
+  { from:101, to:200, label:'101–200' },
+  { from:201, to:500, label:'201–500' },
+  { from:501, to:1000, label:'501–1K' },
+  { from:1001, to:2000, label:'1K–2K' },
+  { from:2001, to:1e9, label:'2K+' }
+];
+
+function binCount(b){
+  var total = 0;
+  for(var i = b.from; i <= Math.min(b.to, 1024); i++) total += state.hist[i];
+  if(b.to >= 1e9) total += state.hist[1025];
+  return total;
+}
+
+function percentile(p){
+  var total = state.lines;
+  if(!total) return 0;
+  var target = Math.ceil(total * p / 100);
+  var acc = 0;
+  for(var i = 0; i <= 1024; i++){
+    acc += state.hist[i];
+    if(acc >= target) return i;
+  }
+  return -1;   // -1 表示落在 ≥1025 桶
+}
+
+function renderKpi(){
+  var avg = state.lines ? (state.lenSum / state.lines) : 0;
+  var p50 = percentile(50), p90 = percentile(90), p95 = percentile(95), p99 = percentile(99);
+  var cards = [
+    { n: fmtNum(state.files.length), l:'文件数' },
+    { n: fmtNum(state.lines), l:'总行数' },
+    { n: fmtNum(state.chars), l:'总字符数' },
+    { n: avg ? avg.toFixed(1) : '0', l:'平均行长度（字符）' },
+    { n: p50 < 0 ? '≥1025' : fmtNum(p50), l:'行长度 P50' },
+    { n: p95 < 0 ? '≥1025' : fmtNum(p95), l:'行长度 P95' },
+    { n: pctStr(state.cn, state.chars), l:'中文字符占比' },
+    { n: pctStr(state.en, state.chars), l:'英文字符占比' },
+    { n: fmtNum(state.records), l:'JSON 记录数' },
+    { n: pctStr(state.jsonOk, state.jsonOk + state.jsonFail), l:'JSON 解析成功率' },
+    { n: fmtNum(state.dupExtra), l:'重复行（多余份数）' },
+    { n: fmtNum(state.emptyLines), l:'空行数' }
+  ];
+  $('kpiBox').innerHTML = cards.map(function(c){
+    return '<div class="card"><div class="num">' + c.n + '</div><div class="lbl">' + c.l + '</div></div>';
+  }).join('');
+}
+
+function renderFiles(){
+  var tb = document.querySelector('#fileTable tbody');
+  if(!tb) return;
+  $('fileStatBadge').textContent = state.files.length;
+  if(!state.files.length){
+    tb.innerHTML = '<tr><td colspan="8" style="color:var(--muted)">暂无文件</td></tr>';
+    return;
+  }
+  tb.innerHTML = state.files.map(function(f){
+    return '<tr><td class="ell" title="' + esc(f.name) + '">' + esc(f.name) + '</td>'
+      + '<td>' + esc(f.ext) + '</td>'
+      + '<td class="num">' + fmtNum(f.lines) + '</td>'
+      + '<td class="num">' + fmtNum(f.chars) + '</td>'
+      + '<td class="num">' + fmtNum(f.cn) + '</td>'
+      + '<td class="num">' + fmtNum(f.records) + '</td>'
+      + '<td class="num">' + (f.parseFail ? '<span style="color:#fda4af">' + fmtNum(f.parseFail) + '</span>' : '0') + '</td>'
+      + '<td>' + esc(f.status) + (f.note ? ' <span class="small muted">（' + esc(f.note) + '）</span>' : '') + '</td></tr>';
+  }).join('');
+}
+
+function renderHist(){
+  var counts = BINS.map(binCount);
+  var max = Math.max.apply(null, counts.concat([1]));
+  $('hist').innerHTML = BINS.map(function(b, i){
+    var h = counts[i] ? Math.max(2, counts[i] / max * 118) : 2;
+    return '<div class="col"><span class="cnt">' + fmtNum(counts[i]) + '</span>'
+      + '<div class="bar" style="height:' + h.toFixed(1) + 'px"></div>'
+      + '<span class="rg">' + b.label + '</span></div>';
+  }).join('');
+  $('histBadge').textContent = state.lines ? (fmtNum(state.lines) + ' 行') : '未统计';
+}
+
+function renderPct(){
+  var tb = document.querySelector('#pctTable tbody');
+  var f = function(v){ return v < 0 ? '≥1025' : fmtNum(v); };
+  var rows = [
+    ['平均行长度', state.lines ? (state.lenSum / state.lines).toFixed(1) : '0', '最长行', fmtNum(state.lenMax)],
+    ['P50（中位）', f(percentile(50)), 'P75', f(percentile(75))],
+    ['P90', f(percentile(90)), 'P95', f(percentile(95))],
+    ['P99', f(percentile(99)), '空行数', fmtNum(state.emptyLines)]
+  ];
+  tb.innerHTML = rows.map(function(r){
+    return '<tr><td>' + r[0] + '</td><td class="num">' + r[1] + '</td><td>' + r[2] + '</td><td class="num">' + r[3] + '</td></tr>';
+  }).join('');
+}
+
+function renderChar(){
+  var tb = document.querySelector('#charTable tbody');
+  var rows = [
+    ['中文字符（含日文假名）', state.cn],
+    ['英文字母', state.en],
+    ['数字', state.digits],
+    ['空白（空格/制表/换行）', state.space],
+    ['其它符号', state.other]
+  ];
+  tb.innerHTML = rows.map(function(r){
+    return '<tr><td>' + r[0] + '</td><td class="num">' + fmtNum(r[1]) + '</td><td class="num">' + pctStr(r[1], state.chars) + '</td></tr>';
+  }).join('');
+}
+
+function renderFields(){
+  var tb = document.querySelector('#fieldTable tbody');
+  var keys = Array.from(state.fields.keys());
+  $('fieldBadge').textContent = keys.length ? (keys.length + ' 个字段') : '未统计';
+  if(!keys.length){
+    tb.innerHTML = '<tr><td colspan="5" style="color:var(--muted)">没有解析到 JSON 记录（仅 .json / .jsonl 参与字段统计）</td></tr>';
+    return;
+  }
+  var denom = state.objRecords || 1;
+  keys.sort(function(a, b){ return state.fields.get(b).present - state.fields.get(a).present; });
+  tb.innerHTML = keys.slice(0, 60).map(function(k){
+    var e = state.fields.get(k);
+    var missing = denom - e.present;
+    var types = Object.keys(e.types).sort(function(a, b){ return e.types[b] - e.types[a]; }).slice(0, 2)
+      .map(function(t){ return t + ' ' + pctStr(e.types[t], e.present); }).join(' / ');
+    var nullRate = (e.nulls + e.empties) / Math.max(1, e.present);
+    return '<tr><td class="mono">' + esc(k) + '</td>'
+      + '<td class="num">' + fmtNum(e.present) + '</td>'
+      + '<td class="num">' + pctStr(missing, denom) + '</td>'
+      + '<td class="num">' + (nullRate * 100).toFixed(2) + '%</td>'
+      + '<td>' + esc(types) + '</td></tr>';
+  }).join('');
+}
+
+function renderTf(){
+  var tb = document.querySelector('#tfTable tbody');
+  var keys = Array.from(state.tf.keys());
+  $('tfBadge').textContent = keys.length ? (keys.length + ' 个字段') : '未统计';
+  if(!keys.length){
+    tb.innerHTML = '<tr><td colspan="7" style="color:var(--muted)">未命中指定文本字段；可在左侧修改「专项文本字段」后重新体检</td></tr>';
+    return;
+  }
+  tb.innerHTML = keys.map(function(k){
+    var e = state.tf.get(k);
+    var lens = e.lens.slice().sort(function(a, b){ return a - b; });
+    var median = lens.length ? lens[Math.floor(lens.length / 2)] : 0;
+    return '<tr><td class="mono">' + esc(k) + '</td>'
+      + '<td class="num">' + fmtNum(e.hit) + '</td>'
+      + '<td class="num">' + fmtNum(e.nonEmpty) + '</td>'
+      + '<td class="num">' + pctStr(e.hit - e.nonEmpty, Math.max(1, e.hit)) + '</td>'
+      + '<td class="num">' + fmtNum(e.chars) + '</td>'
+      + '<td class="num">' + (e.nonEmpty ? (e.chars / e.nonEmpty).toFixed(1) : '0') + '</td>'
+      + '<td class="num">' + fmtNum(median) + (e.truncated ? ' <span class="muted">(抽样)</span>' : '') + '</td></tr>';
+  }).join('');
+}
+
+function renderDup(){
+  var tb = document.querySelector('#dupTable tbody');
+  var arr = [];
+  state.dup.forEach(function(v){ if(v.c > 1) arr.push(v); });
+  arr.sort(function(a, b){ return b.c - a.c; });
+  $('dupBadge').textContent = arr.length ? (fmtNum(arr.length) + ' 种重复') : (state.lines ? '无重复' : '未统计');
+  if(!arr.length){
+    tb.innerHTML = '<tr><td colspan="3" style="color:var(--muted)">' + (state.lines ? '没有检测到重复行' : '未统计') + '</td></tr>';
+    return;
+  }
+  tb.innerHTML = arr.slice(0, 50).map(function(v){
+    return '<tr><td class="num">' + fmtNum(v.c) + '</td><td class="num">' + fmtNum(v.l) + '</td>'
+      + '<td class="ell" title="' + esc(clip(v.s, 200)) + '">' + esc(clip(v.s, 110)) + '</td></tr>';
+  }).join('');
+}
+
+function renderErr(){
+  var tb = document.querySelector('#errTable tbody');
+  $('errBadge').textContent = state.jsonFail ? (fmtNum(state.jsonFail) + (state.jsonFail > MAX_ERRORS ? '（仅列前 ' + MAX_ERRORS + ' 条）' : '')) : '0';
+  if(!state.errors.length){
+    tb.innerHTML = '<tr><td colspan="4" style="color:var(--muted)">' + (state.jsonFail ? '详情已超出展示上限' : '没有解析失败的行') + '</td></tr>';
+    return;
+  }
+  tb.innerHTML = state.errors.map(function(e){
+    return '<tr><td class="ell" title="' + esc(e.file) + '">' + esc(e.file) + '</td>'
+      + '<td class="num">' + fmtNum(e.line) + '</td>'
+      + '<td class="ell" title="' + esc(e.reason) + '">' + esc(clip(e.reason, 60)) + '</td>'
+      + '<td class="ell" title="' + esc(e.content) + '">' + esc(e.content) + '</td></tr>';
+  }).join('');
+}
+
+function renderAll(){
+  renderKpi(); renderFiles(); renderHist(); renderPct(); renderChar();
+  renderFields(); renderTf(); renderDup(); renderErr();
+  var foot = state.lines
+    ? ('共 ' + fmtNum(state.lines) + ' 行 · ' + fmtBytes(state.totalBytes) + ' 源文件 · ' + fmtNum(state.records) + ' 条 JSON 记录'
+       + (state.dupOverflow ? ' · 唯一行超出 30 万，去重仅按哈希' : ''))
+    : '尚未体检';
+  $('footStat').textContent = foot;
+  if(state.lines) $('emptyNotice').classList.remove('show');
+}
+
+/* ============ 导出 ============ */
+function download(name, text, mime){
+  var blob = new Blob([text], { type: mime || 'text/plain;charset=utf-8' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(function(){ URL.revokeObjectURL(url); a.remove(); }, 1500);
+}
+
+function buildReport(){
+  var L = [];
+  var now = new Date();
+  var timeStr = '' + now.getFullYear() + '-' + pad2(now.getMonth()+1) + '-' + pad2(now.getDate())
+    + ' ' + pad2(now.getHours()) + ':' + pad2(now.getMinutes()) + ':' + pad2(now.getSeconds());
+  var avg = state.lines ? (state.lenSum / state.lines).toFixed(2) : '0';
+  var pv = function(p){ var v = percentile(p); return v < 0 ? '≥1025' : String(v); };
+
+  L.push('# 语料体检报告');
+  L.push('');
+  L.push('- 生成时间：' + timeStr);
+  L.push('- 处理方式：本地分块流式读取（1 MB/块），未上传任何文件');
+  L.push('');
+  L.push('## 一、总体规模');
+  L.push('');
+  L.push('| 指标 | 数值 |');
+  L.push('| --- | --- |');
+  L.push('| 文件数 | ' + fmtNum(state.files.length) + ' |');
+  L.push('| 总行数 | ' + fmtNum(state.lines) + ' |');
+  L.push('| 总字符数 | ' + fmtNum(state.chars) + ' |');
+  L.push('| 空行数 | ' + fmtNum(state.emptyLines) + ' |');
+  L.push('| 平均行长度 | ' + avg + ' |');
+  L.push('| 最长行 | ' + fmtNum(state.lenMax) + ' |');
+  L.push('| P50 / P90 / P95 / P99 行长度 | ' + pv(50) + ' / ' + pv(90) + ' / ' + pv(95) + ' / ' + pv(99) + ' |');
+  L.push('| 中文字符占比 | ' + pctStr(state.cn, state.chars) + ' |');
+  L.push('| 英文字符占比 | ' + pctStr(state.en, state.chars) + ' |');
+  L.push('| 数字字符占比 | ' + pctStr(state.digits, state.chars) + ' |');
+  L.push('| JSON 记录数 | ' + fmtNum(state.records) + ' |');
+  L.push('| JSON 解析成功 / 失败 | ' + fmtNum(state.jsonOk) + ' / ' + fmtNum(state.jsonFail) + ' |');
+  L.push('| 重复行多余份数 | ' + fmtNum(state.dupExtra) + ' |');
+  L.push('');
+  L.push('## 二、文件明细');
+  L.push('');
+  L.push('| 文件 | 格式 | 大小 | 行数 | 字符数 | 记录数 | 解析失败 | 备注 |');
+  L.push('| --- | --- | --- | --- | --- | --- | --- | --- |');
+  state.files.forEach(function(f){
+    L.push('| ' + f.name + ' | ' + f.ext + ' | ' + fmtBytes(f.size) + ' | ' + fmtNum(f.lines) + ' | '
+      + fmtNum(f.chars) + ' | ' + fmtNum(f.records) + ' | ' + fmtNum(f.parseFail) + ' | ' + (f.note || f.status) + ' |');
+  });
+  L.push('');
+  L.push('## 三、行长度分布');
+  L.push('');
+  L.push('| 区间（字符） | 行数 | 占比 |');
+  L.push('| --- | --- | --- |');
+  BINS.forEach(function(b){
+    var c = binCount(b);
+    L.push('| ' + b.label + ' | ' + fmtNum(c) + ' | ' + pctStr(c, state.lines) + ' |');
+  });
+  L.push('');
+  L.push('## 四、字段质量');
+  L.push('');
+  if(!state.fields.size){
+    L.push('没有解析到 JSON 记录。');
+  } else {
+    var denom = state.objRecords || 1;
+    L.push('| 字段 | 出现次数 | 缺失率 | 空值率 | 主要类型 |');
+    L.push('| --- | --- | --- | --- | --- |');
+    Array.from(state.fields.keys())
+      .sort(function(a, b){ return state.fields.get(b).present - state.fields.get(a).present; })
+      .forEach(function(k){
+        var e = state.fields.get(k);
+        var types = Object.keys(e.types).sort(function(a, b){ return e.types[b] - e.types[a]; }).slice(0, 2)
+          .map(function(t){ return t + ' ' + pctStr(e.types[t], e.present); }).join(' / ');
+        L.push('| ' + k + ' | ' + fmtNum(e.present) + ' | ' + pctStr(denom - e.present, denom) + ' | '
+          + ((e.nulls + e.empties) / Math.max(1, e.present) * 100).toFixed(2) + '% | ' + types + ' |');
+      });
+  }
+  L.push('');
+  L.push('## 五、专项文本字段');
+  L.push('');
+  if(!state.tf.size){
+    L.push('未命中指定文本字段。');
+  } else {
+    L.push('| 字段 | 命中 | 非空 | 空值率 | 总字符 | 平均字符 | 中位字符 |');
+    L.push('| --- | --- | --- | --- | --- | --- | --- |');
+    state.tf.forEach(function(e, k){
+      var lens = e.lens.slice().sort(function(a, b){ return a - b; });
+      var med = lens.length ? lens[Math.floor(lens.length / 2)] : 0;
+      L.push('| ' + k + ' | ' + fmtNum(e.hit) + ' | ' + fmtNum(e.nonEmpty) + ' | '
+        + pctStr(e.hit - e.nonEmpty, Math.max(1, e.hit)) + ' | ' + fmtNum(e.chars) + ' | '
+        + (e.nonEmpty ? (e.chars / e.nonEmpty).toFixed(1) : '0') + ' | ' + fmtNum(med) + ' |');
+    });
+  }
+  L.push('');
+  L.push('## 六、重复行 Top');
+  L.push('');
+  var dups = [];
+  state.dup.forEach(function(v){ if(v.c > 1) dups.push(v); });
+  dups.sort(function(a, b){ return b.c - a.c; });
+  if(!dups.length){
+    L.push('未检测到重复行。');
+  } else {
+    L.push('| 序号 | 重复次数 | 行长度 | 内容预览 |');
+    L.push('| --- | --- | --- | --- |');
+    dups.slice(0, 50).forEach(function(v, i){
+      L.push('| ' + (i + 1) + ' | ' + fmtNum(v.c) + ' | ' + fmtNum(v.l) + ' | ' + clip(v.s, 90).replace(/\|/g, '\\|') + ' |');
+    });
+  }
+  L.push('');
+  L.push('## 七、解析失败行');
+  L.push('');
+  if(!state.errors.length){
+    L.push('没有解析失败的记录。');
+  } else {
+    L.push('| 文件 | 行号 | 原因 | 内容预览 |');
+    L.push('| --- | --- | --- | --- |');
+    state.errors.forEach(function(e){
+      L.push('| ' + e.file + ' | ' + e.line + ' | ' + String(e.reason).replace(/\|/g, '\\|') + ' | ' + String(e.content).replace(/\|/g, '\\|') + ' |');
+    });
+  }
+  if(state.notes.length){
+    L.push('');
+    L.push('## 八、处理备注');
+    L.push('');
+    state.notes.forEach(function(n){ L.push('- ' + n); });
+  }
+  L.push('');
+  L.push('> 说明：行长度为字符数（UTF-16 计数）；分位数在 0–1024 内精确，超出统一计入 ≥1025 桶；去重按内容哈希并结合样本比对。');
+  return L.join('\n');
+}
+
+function exportReport(){
+  if(!state.lines) return;
+  download('语料体检报告_' + stamp() + '.md', buildReport(), 'text/markdown;charset=utf-8');
+  toast('体检报告已导出');
+}
+
+function cleanName(){
+  var hasJsonl = state.files.some(function(f){ return f.ext === 'jsonl' || f.ext === 'ndjson'; });
+  return '语料清洗结果_' + stamp() + (hasJsonl ? '.jsonl' : '.txt');
+}
+
+async function exportClean(){
+  if(!state.lines || state.running) return;
+  var dropEmpty = $('optDropEmpty').checked;
+  var dedupe = $('optDedupe').checked;
+  var dropBad = $('optDropBad').checked;
+  var seen = new Set(), overflow = false;
+  var out = [], kept = 0, skipEmpty = 0, skipDup = 0, skipBad = 0;
+
+  $('btnClean').disabled = true;
+  $('btnReport').disabled = true;
+  state.doneBytes = 0;
+  $('capLabel').textContent = '正在重读文件生成清洗语料…';
+  updateProgress();
+
+  function judge(line, ext){
+    if(!line.trim()){ if(dropEmpty){ skipEmpty++; return false; } return true; }
+    if(dropBad && (ext === 'jsonl' || ext === 'ndjson' || ext === 'json')){
+      try{ JSON.parse(line.trim()); }
+      catch(e){ skipBad++; return false; }
+    }
+    if(dedupe){
+      var k = hashKey(line);
+      if(seen.has(k)){ skipDup++; return false; }
+      if(seen.size < MAX_DUP_KEYS) seen.add(k); else overflow = true;
+    }
+    return true;
+  }
+
+  try{
+    for(var i = 0; i < state.files.length; i++){
+      var f = state.files[i];
+      var size = f.file.size, offset = 0, buf = '', guard = 0;
+      var dec = new TextDecoder('utf-8', { fatal:false });
+      while(offset < size){
+        var end = Math.min(offset + CHUNK, size);
+        var ab = await readSlice(f.file, offset, end);
+        offset = end;
+        buf += dec.decode(ab, { stream:true });
+        var start = 0, idx;
+        while((idx = buf.indexOf('\n', start)) !== -1){
+          var line = buf.slice(start, idx);
+          start = idx + 1;
+          if(line.charCodeAt(line.length - 1) === 13) line = line.slice(0, -1);
+          if(judge(line, f.ext)){ out.push(line); kept++; }
+          if((++guard % 2000) === 0) await yieldUI();
+        }
+        buf = buf.slice(start);
+        f.bytesRead = offset;
+        bumpDone();
+        await yieldUI();
+      }
+      buf += dec.decode();
+      if(buf.length){
+        var last = buf.charCodeAt(buf.length - 1) === 13 ? buf.slice(0, -1) : buf;
+        if(judge(last, f.ext)){ out.push(last); kept++; }
+      }
+    }
+    download(cleanName(), out.join('\n'), 'text/plain;charset=utf-8');
+    var msg = '已导出 ' + fmtNum(kept) + ' 行（去空行 ' + fmtNum(skipEmpty) + ' / 去重 ' + fmtNum(skipDup) + ' / 剔除失败 ' + fmtNum(skipBad) + '）';
+    if(overflow) msg += '；唯一行超限，去重仅按哈希';
+    toast(msg);
+  }catch(err){
+    toast('导出失败：' + ((err && err.message) || err));
+  }finally{
+    state.files.forEach(function(f){ f.bytesRead = f.size; f.status = f.status === '出错' ? '出错' : '完成'; });
+    bumpDone();
+    $('btnClean').disabled = false;
+    $('btnReport').disabled = false;
+    $('capLabel').textContent = '体检完成';
+    renderQueue(); renderFiles();
+  }
+}
+
+/* ============ 事件 ============ */
+function switchPanel(id){
+  Array.prototype.forEach.call($('tabBar').children, function(b){
+    b.classList.toggle('active', b.getAttribute('data-panel') === id);
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.panel'), function(p){
+    p.classList.toggle('active', p.id === id);
+  });
+}
+
+function bind(){
+  $('btnPick').addEventListener('click', function(){ $('filePicker').click(); });
+  $('filePicker').addEventListener('change', function(e){
+    addFiles(e.target.files);
+    e.target.value = '';
+  });
+  $('btnScan').addEventListener('click', function(){ runScan(); });
+  $('btnStop').addEventListener('click', function(){
+    if(!state.running) return;
+    state.abort = true;
+    $('capLabel').textContent = '正在停止…';
+  });
+  $('btnClear').addEventListener('click', function(){
+    if(state.running){ toast('体检进行中，先停止再清空'); return; }
+    state.files = [];
+    resetResults();
+    renderQueue();
+    toast('队列已清空');
+  });
+  $('btnReport').addEventListener('click', exportReport);
+  $('btnClean').addEventListener('click', function(){ exportClean(); });
+
+  $('fileList').addEventListener('click', function(e){
+    var b = e.target.closest('[data-del]');
+    if(b) removeFile(b.getAttribute('data-del'));
+  });
+
+  $('tabBar').addEventListener('click', function(e){
+    var b = e.target.closest('button[data-panel]');
+    if(b) switchPanel(b.getAttribute('data-panel'));
+  });
+
+  var dz = $('dropZone');
+  dz.addEventListener('click', function(){ $('filePicker').click(); });
+  ['dragenter','dragover'].forEach(function(t){
+    dz.addEventListener(t, function(e){ e.preventDefault(); dz.classList.add('over'); });
+  });
+  ['dragleave','drop'].forEach(function(t){
+    dz.addEventListener(t, function(e){ e.preventDefault(); dz.classList.remove('over'); });
+  });
+  dz.addEventListener('drop', function(e){
+    if(e.dataTransfer && e.dataTransfer.files) addFiles(e.dataTransfer.files);
+  });
+  window.addEventListener('dragover', function(e){ e.preventDefault(); });
+  window.addEventListener('drop', function(e){
+    e.preventDefault();
+    if(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) addFiles(e.dataTransfer.files);
+  });
+
+  $('optFields').addEventListener('change', function(){ state.tfNamesCache = null; });
+  renderQueue(); renderFiles(); renderAll();
+}
+
+if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
+else bind();
+})();
+</script>
+</body>
+</html>

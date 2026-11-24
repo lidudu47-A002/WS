@@ -2,6 +2,24 @@
 const statusImages = { slow: null, frozen: null, fire: null, permSlow: null, blackhole: null, lightning: null };
 const weaponIconCache = {};
 
+// 优化清单第 13 条：武器图标改为进入场景时预加载，避免首次渲染在每帧路径里 new Image() 造成卡顿与闪烁。
+function preloadWeaponIcons() {
+    if (typeof WEAPONS === 'undefined' || !WEAPONS) return;
+    for (const id in WEAPONS) {
+        const icon = WEAPONS[id] && WEAPONS[id].icon;
+        if (!icon || weaponIconCache[icon]) continue;
+        const img = new Image();
+        img.src = icon;
+        weaponIconCache[icon] = img;
+    }
+}
+window.preloadWeaponIcons = preloadWeaponIcons;
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', preloadWeaponIcons);
+} else {
+    preloadWeaponIcons();
+}
+
 function loadStatusIcons() {
     const icons = {
         slow: '../公用文件/图片/元素和状态/减速.png',
@@ -18,7 +36,7 @@ function loadStatusIcons() {
 }
 loadStatusIcons();
 
-function drawStatusBadge(img, x, y, size, bg, glyph) {
+function drawStatusBadge(img, x, y, size, bg, glyph, opts) {
     if (img && img.complete && img.naturalWidth > 0) {
         ctx.drawImage(img, x, y, size, size);
         return;
@@ -27,7 +45,43 @@ function drawStatusBadge(img, x, y, size, bg, glyph) {
     ctx.fillRect(x, y, size, size);
     ctx.fillStyle = '#fff';
     ctx.font = 'bold 14px monospace';
-    ctx.fillText(glyph, x + size / 2 - 5, y + size / 2 + 4);
+    if (opts && opts.centered) {
+        const prevAlign = ctx.textAlign;
+        ctx.textAlign = 'center';
+        ctx.fillText(glyph, x + size / 2, y + size / 2 + 4);
+        ctx.textAlign = prevAlign;
+    } else {
+        ctx.fillText(glyph, x + size / 2 - 5, y + size / 2 + 4);
+    }
+}
+
+// 状态图标表：test 判定是否绘制，level 取叠加层数（>0 才画 xN），img 为空则用纯色块 + 字形兜底
+const STATUS_TABLE = [
+    { key: 'frozen',    img: 'frozen',    bg: '#88ccff', glyph: '❄',   test: e => e.frozenUntil && e.frozenUntil > performance.now() },
+    { key: 'fire',      img: 'fire',      bg: '#ff6600', glyph: '🔥',  color: '#ffaa00', test: e => e.fireLevel > 0,       level: e => e.fireLevel },
+    { key: 'permSlow',  img: 'permSlow',  bg: '#b3b3b3', glyph: '∞',   test: e => !!e.hasPermanentSlow },
+    { key: 'blackhole', img: 'blackhole', bg: '#4400aa', glyph: '🕳️', color: '#ffffff', test: e => e.blackholeLevel > 0,  level: e => e.blackholeLevel },
+    { key: 'slow',      img: 'slow',      bg: '#cccc99', glyph: '🐢',  color: '#ffff00', test: e => e.slowLevel > 0,       level: e => e.slowLevel },
+    { key: 'weak',      img: null,        bg: '#8866aa', glyph: '💀',  color: '#cc99ff', test: e => e.weakLevel > 0,       level: e => e.weakLevel, centered: true }
+];
+
+function drawStatusStack(e, sx, iconSize, startOffsetY) {
+    let offsetY = startOffsetY || 0;
+    const baseY = e.y - iconSize - 2;
+    for (const st of STATUS_TABLE) {
+        if (!st.test(e)) continue;
+        const iconX = sx + e.w / 2 - iconSize / 2;
+        const iconY = baseY - offsetY;
+        drawStatusBadge(st.img ? statusImages[st.img] : null, iconX, iconY, iconSize, st.bg, st.glyph, { centered: st.centered });
+        const lv = st.level ? st.level(e) : 0;
+        if (lv > 0) {
+            ctx.fillStyle = st.color;
+            ctx.font = 'bold 12px monospace';
+            ctx.fillText('x' + lv, iconX + iconSize - 8, iconY + iconSize - 4);
+        }
+        offsetY += 26;
+    }
+    return offsetY;
 }
 
 function updateCam() {
@@ -127,64 +181,10 @@ function drawScene() {
         ctx.fillText(e.hp, sx + 6, e.y - 5);
 
         const iconSize = 24;
-        let baseY = e.y - iconSize - 2;
-        let offsetY = 0;
+        // 优化清单第 10 条：状态图标改为表驱动（新增状态只需在 STATUS_TABLE 追加一行），
+        // 统一用 offsetY 堆叠，避免每个状态各写一份坐标计算。
+        let offsetY = drawStatusStack(e, sx, iconSize, 0);
 
-        if (e.frozenUntil && e.frozenUntil > performance.now()) {
-            drawStatusBadge(statusImages.frozen, sx + e.w / 2 - iconSize / 2, baseY - offsetY, iconSize, '#88ccff', '❄');
-            offsetY += 26;
-        }
-
-        if (e.fireLevel > 0) {
-            const iconX = sx + e.w / 2 - iconSize / 2;
-            const iconY = baseY - offsetY;
-            drawStatusBadge(statusImages.fire, iconX, iconY, iconSize, '#ff6600', '🔥');
-            ctx.fillStyle = '#ffaa00';
-            ctx.font = 'bold 12px monospace';
-            ctx.fillText('x' + e.fireLevel, iconX + iconSize - 8, iconY + iconSize - 4);
-            offsetY += 26;
-        }
-
-        if (e.hasPermanentSlow) {
-            drawStatusBadge(statusImages.permSlow, sx + e.w / 2 - iconSize / 2, baseY - offsetY, iconSize, '#b3b3b3', '∞');
-            offsetY += 26;
-        }
-
-        if (e.blackholeLevel > 0) {
-            const iconX = sx + e.w / 2 - iconSize / 2;
-            const iconY = baseY - offsetY;
-            drawStatusBadge(statusImages.blackhole, iconX, iconY, iconSize, '#4400aa', '🕳️');
-            ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 12px monospace';
-            ctx.fillText('x' + e.blackholeLevel, iconX + iconSize - 8, iconY + iconSize - 4);
-            offsetY += 26;
-        }
-
-        if (e.slowLevel > 0) {
-            const iconX = sx + e.w / 2 - iconSize / 2;
-            const iconY = baseY - offsetY;
-            drawStatusBadge(statusImages.slow, iconX, iconY, iconSize, '#cccc99', '🐢');
-            ctx.fillStyle = '#ffff00';
-            ctx.font = 'bold 12px monospace';
-            ctx.fillText('x' + e.slowLevel, iconX + iconSize - 8, iconY + iconSize - 4);
-            offsetY += 26;
-        }
-
-        if (e.weakLevel > 0) {
-            const iconX = sx + e.w / 2 - iconSize / 2;
-            const iconY = baseY - offsetY;
-            ctx.fillStyle = '#8866aa';
-            ctx.fillRect(iconX, iconY, iconSize, iconSize);
-            ctx.fillStyle = '#fff';
-            ctx.font = 'bold 14px monospace';
-            ctx.textAlign = 'center';
-            ctx.fillText('💀', iconX + iconSize / 2, iconY + iconSize / 2 + 4);
-            ctx.fillStyle = '#cc99ff';
-            ctx.font = 'bold 12px monospace';
-            ctx.fillText('x' + e.weakLevel, iconX + iconSize - 8, iconY + iconSize - 4);
-            ctx.textAlign = 'start';
-            offsetY += 26;
-        }
 
         if (e.lightningLevel > 0) {
             const lightningSize = 28;

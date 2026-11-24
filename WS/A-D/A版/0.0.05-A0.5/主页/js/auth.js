@@ -2,6 +2,8 @@
 // 用户认证与账户管理（纯前端，使用 localStorage 持久化）
 
 (function() {
+    // 存储键名统一来源（优化清单第 2 条），禁止手写字符串
+    var STORAGE_KEYS = window.WS_KEYS || { USERS: 'ws_users', TOKEN: 'ws_token', PENDING_SAVE: 'ws_pending_save', SAVE: 'black_room_prison_save' };
     // ---------- 安全的 Base64 编解码（支持 UTF-8） ----------
     function utf8ToB64(str) {
         return btoa(unescape(encodeURIComponent(str)));
@@ -10,18 +12,38 @@
         return decodeURIComponent(escape(atob(str)));
     }
 
-    // ---------- 密码哈希工具（使用 Web Crypto API） ----------
-    async function hashPassword(password, salt) {
-        const encoder = new TextEncoder();
-        const data = encoder.encode(password + salt);
-        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    // ---------- 密码哈希工具（优化清单第 4 条：单轮 SHA-256 + 弱盐 → PBKDF2-SHA256 100k 迭代 + CSPRNG 盐） ----------
+    var PBKDF2_ITER = 100000;
+    function toHex(buf) {
+        return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+    function randomSalt() {
+        const buf = new Uint8Array(16);
+        crypto.getRandomValues(buf);
+        return toHex(buf);
+    }
+    async function hashPassword(password, salt, iter) {
+        const iterations = iter || PBKDF2_ITER;
+        const enc = new TextEncoder();
+        try {
+            const key = await crypto.subtle.importKey('raw', enc.encode(password), { name: 'PBKDF2' }, false, ['deriveBits']);
+            const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: enc.encode(salt), iterations: iterations, hash: 'SHA-256' }, key, 256);
+            return toHex(bits);
+        } catch (e) {
+            // 极老浏览器无 PBKDF2 时退化为单轮 SHA-256，仅保证可用性
+            const buf = await crypto.subtle.digest('SHA-256', enc.encode(password + salt));
+            return toHex(buf);
+        }
+    }
+    // 仅用于校验旧账户（历史单轮 SHA-256），校验通过后立即升级为 PBKDF2
+    async function legacyHash(password, salt) {
+        const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(password + salt));
+        return toHex(buf);
     }
 
     // ---------- 用户数据库操作 ----------
     function getUsers() {
-        const raw = localStorage.getItem('ws_users');
+        const raw = localStorage.getItem(STORAGE_KEYS.USERS);
         if (raw) {
             try { return JSON.parse(raw); } catch(e) {}
         }
@@ -29,24 +51,24 @@
     }
 
     function saveUsers(users) {
-        localStorage.setItem('ws_users', JSON.stringify(users));
+        localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
     }
 
     // ---------- 获取当前登录用户 ----------
     function getCurrentUser() {
-        const token = sessionStorage.getItem('ws_token');
+        const token = sessionStorage.getItem(STORAGE_KEYS.TOKEN);
         if (!token) return null;
         try {
             const json = b64ToUtf8(token);
             const data = JSON.parse(json);
             if (data.exp < Date.now()) {
-                sessionStorage.removeItem('ws_token');
+                sessionStorage.removeItem(STORAGE_KEYS.TOKEN);
                 return null;
             }
             return data;
         } catch(e) {
             // token 损坏或格式错误，清除
-            sessionStorage.removeItem('ws_token');
+            sessionStorage.removeItem(STORAGE_KEYS.TOKEN);
             return null;
         }
     }
@@ -65,16 +87,23 @@
             document.getElementById('accountMessage').textContent = '密码长度至少6位';
             return false;
         }
+        // 优化清单第 22 条：用户名白名单，避免 < > & 等字符进入 DOM 拼接路径
+        if (!/^[A-Za-z0-9_]{3,16}$/.test(username)) {
+            document.getElementById('accountMessage').textContent = '用户名需为 3-16 位字母、数字或下划线';
+            return false;
+        }
         const users = getUsers();
         if (users[username]) {
             document.getElementById('accountMessage').textContent = '用户名已存在';
             return false;
         }
-        const salt = Math.random().toString(36).substring(2, 10);
-        const hashed = await hashPassword(password, salt);
+        const salt = randomSalt();
+        const hashed = await hashPassword(password, salt, PBKDF2_ITER);
         users[username] = {
             hash: hashed,
             salt: salt,
+            algo: 'PBKDF2-SHA256',
+            iter: PBKDF2_ITER,
             role: (Object.keys(users).length === 0) ? 'admin' : 'user',
             canSave: true
         };
@@ -100,8 +129,22 @@
             document.getElementById('accountMessage').textContent = '用户名不存在';
             return false;
         }
-        const hashed = await hashPassword(password, user.salt);
+        let hashed;
+        if (user.algo === 'PBKDF2-SHA256') {
+            hashed = await hashPassword(password, user.salt, user.iter || PBKDF2_ITER);
+        } else {
+            hashed = await legacyHash(password, user.salt);
+        }
         if (hashed === user.hash) {
+            // 旧格式账户：验证通过即就地升级为 PBKDF2，用户无感知
+            if (user.algo !== 'PBKDF2-SHA256') {
+                user.salt = randomSalt();
+                user.hash = await hashPassword(password, user.salt, PBKDF2_ITER);
+                user.algo = 'PBKDF2-SHA256';
+                user.iter = PBKDF2_ITER;
+                users[username] = user;
+                saveUsers(users);
+            }
             // 生成临时令牌（24小时有效）
             const tokenData = {
                 username: username,
@@ -111,7 +154,7 @@
             };
             // 使用安全的 Base64 编码
             const token = utf8ToB64(JSON.stringify(tokenData));
-            sessionStorage.setItem('ws_token', token);
+            sessionStorage.setItem(STORAGE_KEYS.TOKEN, token);
             document.getElementById('accountMessage').textContent = '登录成功！';
             updateUIAfterLogin(tokenData);
             return true;
@@ -293,7 +336,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     return;
                 }
                 try {
-                    localStorage.setItem('ws_pending_save', JSON.stringify(data));
+                    localStorage.setItem(STORAGE_KEYS.PENDING_SAVE, JSON.stringify(data));
                 } catch (err) {
                     showMessage('写入本地存档失败');
                     return;
@@ -327,7 +370,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     return;
                 }
                 let users = {};
-                try { users = JSON.parse(localStorage.getItem('ws_users') || '{}') || {}; } catch (err) { users = {}; }
+                try { users = JSON.parse(localStorage.getItem(STORAGE_KEYS.USERS) || '{}') || {}; } catch (err) { users = {}; }
                 let added = 0;
                 for (const name in incoming) {
                     if (!Object.prototype.hasOwnProperty.call(users, name)) {
@@ -335,7 +378,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         added++;
                     }
                 }
-                localStorage.setItem('ws_users', JSON.stringify(users));
+                localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
                 showMessage('账户数据导入完成：新增 ' + added + ' 个账户');
                 if (window.checkAuth) window.checkAuth();
             };

@@ -1,0 +1,363 @@
+// ---------- 游戏控制台界面 (UI & 编辑器) ----------
+// 优化清单第 21 条：控制台能用 new Function 执行任意字符串并改写 20+ 个游戏全局，
+// 单机场景下属于设计内的作弊/调试面板，但必须显式可控，避免上线后被当作漏洞入口。
+// 开关优先级：URL 参数 console=off/0/false 关闭 > localStorage ws_console_enabled === '0' 关闭 > 默认开启。
+// 关闭后仅屏蔽 UI 与执行入口，不影响游戏本体；如需彻底移除，构建时剔除本文件与 console-hijack.js。
+(function() {
+    let enabled = true;
+    try {
+        const q = new URLSearchParams(window.location.search).get('console');
+        if (q !== null && ['off', '0', 'false', 'no'].indexOf(String(q).toLowerCase()) >= 0) enabled = false;
+        if (localStorage.getItem('ws_console_enabled') === '0') enabled = false;
+    } catch (e) { /* 存储或 URL 不可用时保持默认开启 */ }
+    window.WS_CONSOLE_ENABLED = enabled;
+    window.WS_setConsoleEnabled = function (on) {
+        window.WS_CONSOLE_ENABLED = !!on;
+        try { localStorage.setItem('ws_console_enabled', on ? '1' : '0'); } catch (e) {}
+        console.log('[WS] Console ' + (on ? 'enabled' : 'disabled') + ', refresh the page to apply');
+        return window.WS_CONSOLE_ENABLED;
+    };
+    if (!enabled) {
+        // 关闭时补齐被屏蔽的全局，避免其它模块（command-system / console-hijack）因缺符号而抛错
+        window.codeEditorOpen = false;
+        window.pythonEditorActive = false;
+        window.openCodeEditor = function () { console.warn('[WS] Console disabled; openCodeEditor will not run'); };
+        window.closeCodeEditor = function () { /* no-op */ };
+        console.log('[WS] Console disabled by the switch (?console=on or WS_setConsoleEnabled(true) restores it).');
+        return;
+    }
+    // 动态注入控制台样式
+    const style = document.createElement('style');
+    style.textContent = `
+        .python-editor-panel {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(10, 10, 20, 0.88);
+            backdrop-filter: blur(16px);
+            z-index: 10000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+        }
+        .editor-container {
+            width: 85%;
+            max-width: 1100px;
+            height: 85%;
+            background: linear-gradient(160deg, rgba(30,30,48,0.96), rgba(18,18,32,0.96));
+            backdrop-filter: blur(22px);
+            border-radius: 20px;
+            border: 2px solid rgba(255,217,102,0.6);
+            box-shadow: 0 0 30px rgba(0,0,0,0.8), 0 0 40px rgba(255,215,0,0.06);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .editor-header {
+            background: #2a2a3a;
+            padding: 12px 20px;
+            border-bottom: 1px solid #ffd966;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .editor-header h3 {
+            color: #ffd966;
+            margin: 0;
+            font-size: 1.4rem;
+            letter-spacing: 1px;
+        }
+        .editor-header h3::before {
+            content: "🎮 ";
+        }
+        .editor-controls button {
+            background: #3a3a4e;
+            border: none;
+            color: white;
+            padding: 6px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-family: monospace;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+        .editor-controls button.close-editor-btn {
+            background: #7a2e2e;
+        }
+        .editor-controls button:hover {
+            filter: brightness(1.1);
+            transform: scale(1.02);
+        }
+        .main-editor-area {
+            display: flex;
+            flex: 1;
+            min-height: 0;
+            padding: 16px;
+            gap: 16px;
+        }
+        .code-input-area {
+            flex: 2;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .code-input-area label {
+            color: #ccc;
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+        textarea.code-editor {
+            flex: 1;
+            background: #0a0a12;
+            color: #f8f8f2;
+            border: 1px solid #5a5a7a;
+            border-radius: 12px;
+            padding: 16px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            resize: none;
+            outline: none;
+            tab-size: 4;
+        }
+        .output-area {
+            flex: 1.2;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .output-area label {
+            color: #ccc;
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+        .output-console {
+            background: #0a0a12;
+            border: 1px solid #5a5a7a;
+            border-radius: 12px;
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+            font-family: monospace;
+            font-size: 13px;
+            color: #e0e0e0;
+            display: flex;
+            flex-direction: column;
+        }
+        .output-content {
+            flex: 1;
+        }
+        .output-console p {
+            margin: 4px 0;
+            white-space: pre-wrap;
+            word-break: break-word;
+            border-left: 2px solid #ffd966;
+            padding-left: 8px;
+        }
+        .output-console .error-msg {
+            color: #ff8575;
+            border-left-color: #ff4444;
+        }
+        .output-console .success-msg {
+            color: #a5d6ff;
+        }
+        .hint-line {
+            color: #ffd966;
+            border-left: none;
+            text-align: center;
+            font-size: 12px;
+            margin-top: 8px;
+            padding: 4px;
+            background: rgba(255,217,102,0.1);
+            border-radius: 6px;
+        }
+        .editor-footer {
+            padding: 12px 20px;
+            background: #2a2a3a;
+            border-top: 1px solid #444;
+            font-size: 12px;
+            color: #aaa;
+            text-align: center;
+        }
+        .editor-footer kbd {
+            background: #000;
+            padding: 2px 6px;
+            border-radius: 6px;
+            font-family: monospace;
+            color: #ffd966;
+        }
+        .python-editor-panel.active {
+            display: flex;
+        }
+    `;
+    document.head.appendChild(style);
+
+    // 创建控制台面板DOM
+    const editorPanel = document.createElement('div');
+    editorPanel.id = 'pythonCodeEditor';
+    editorPanel.className = 'python-editor-panel';
+    editorPanel.innerHTML = `
+        <div class="editor-container">
+            <div class="editor-header">
+                <h3>Game Console</h3>
+                <div class="editor-controls">
+                    <button id="closeEditorBtn" class="close-editor-btn">✖ Close</button>
+                </div>
+            </div>
+            <div class="main-editor-area">
+                <div class="code-input-area">
+                    <label>📝 Code editor (JavaScript)</label>
+                    <textarea id="codeEditorTextarea" class="code-editor" spellcheck="false" placeholder='# Modify variables or call functions&#10;gold += 500&#10;print("Gold +500")&#10;&#10;# Restore health&#10;playerHP = currentMaxHp&#10;print("Health fully restored")&#10;&#10;# Summon enemies&#10;# summonEnemies(3, "block")'></textarea>
+                </div>
+                <div class="output-area">
+                    <label>📟 Output console</label>
+                    <div id="outputConsole" class="output-console">
+                        <div class="output-content" id="outputContent">
+                            <p style="color:#aaa;">✨ Ready. Press Ctrl+Enter to run the code</p>
+                            <p style="color:#ffd966;">💡 Available variables: player, gold, level, enemies, boss, playerHP, currentMaxHp ...</p>
+                            <p style="color:#ffd966;">💡 Available functions: print(msg), addItem(type, amount), summonEnemies(count, "block/black")</p>
+                        </div>
+                        <div class="hint-line">💡 Press Ctrl+F to clear the output</div>
+                    </div>
+                </div>
+            </div>
+            <div class="editor-footer">
+                <kbd>Ctrl+Enter</kbd> Run code &nbsp;&nbsp;|&nbsp;&nbsp; <kbd>Ctrl+F</kbd> Clear output &nbsp;&nbsp;|&nbsp;&nbsp; <kbd>Esc</kbd> Close panel
+            </div>
+        </div>
+    `;
+    document.body.appendChild(editorPanel);
+
+    const codeTextarea = document.getElementById('codeEditorTextarea');
+    const outputContent = document.getElementById('outputContent');
+    const closeBtn = document.getElementById('closeEditorBtn');
+
+    window.codeEditorOpen = false;
+
+    // 重定向 print
+    window.print = function(...args) {
+        const message = args.map(arg => {
+            if (arg === null) return 'null';
+            if (typeof arg === 'object') {
+                try { return JSON.stringify(arg); } catch(e) { return String(arg); }
+            }
+            return String(arg);
+        }).join(' ');
+        addOutputMessage(message, 'normal');
+    };
+
+    function addOutputMessage(text, type = 'normal') {
+        const p = document.createElement('p');
+        p.textContent = text;
+        if (type === 'error') p.classList.add('error-msg');
+        else if (type === 'success') p.classList.add('success-msg');
+        outputContent.appendChild(p);
+        p.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        while (outputContent.children.length > 150) {
+            outputContent.removeChild(outputContent.firstChild);
+        }
+    }
+
+    function clearOutput() {
+        while (outputContent.firstChild) {
+            outputContent.removeChild(outputContent.firstChild);
+        }
+        addOutputMessage('✨ Output cleared', 'success');
+    }
+
+    function runUserCode() {
+        let code = codeTextarea.value;
+        if (!code.trim()) {
+            addOutputMessage('⚠️ No code entered', 'error');
+            return;
+        }
+        const originalConsoleLog = console.log;
+        console.log = function(...args) {
+            originalConsoleLog.apply(console, args);
+            print(...args);
+        };
+        addOutputMessage(`>>> Run code (${new Date().toLocaleTimeString()})`, 'success');
+        try {
+            const executeCode = new Function('player', 'enemies', 'boss', 'gold', 'level', 'exp', 'killCount', 'playerHP', 'currentMaxHp', 'normalAttackMult', 'skillDamageMult', 'talentPoints', 'inventorySlots', 'projectiles', 'cameraX', 'gameOver', 'victory', 
+                `try {
+                    const print = window.print;
+                    const addItem = window.addItem;
+                    const summonEnemies = window.summonEnemies;
+                    const addGoldEarned = window.addGoldEarned;
+                    const checkAchievements = window.checkAchievements;
+                    const updatePanelUI = window.updatePanelUI;
+                    const applyTalentEffects = window.applyTalentEffects;
+                    const updatePlayerMaxHp = window.updatePlayerMaxHp;
+                    let __gold = gold;
+                    let __level = level;
+                    let __exp = exp;
+                    let __killCount = killCount;
+                    let __playerHP = playerHP;
+                    ${code}
+                    if (typeof __gold !== 'undefined') window.gold = __gold;
+                    if (typeof __level !== 'undefined') window.level = __level;
+                    if (typeof __exp !== 'undefined') window.exp = __exp;
+                    if (typeof __killCount !== 'undefined') window.killCount = __killCount;
+                    if (typeof __playerHP !== 'undefined') window.playerHP = Math.min(window.currentMaxHp, Math.max(0, __playerHP));
+                    if (window.panelVisible && typeof updatePanelUI === 'function') updatePanelUI();
+                    if (typeof checkAchievements === 'function') checkAchievements();
+                    if (typeof updatePlayerMaxHp === 'function') updatePlayerMaxHp();
+                    if (typeof applyTalentEffects === 'function') applyTalentEffects();
+                    return { success: true };
+                } catch(err) {
+                    throw err;
+                }`);
+            executeCode(player, enemies, boss, gold, level, exp, killCount, playerHP, currentMaxHp, normalAttackMult, skillDamageMult, talentPoints, inventorySlots, projectiles, cameraX, gameOver, victory);
+            addOutputMessage('✅ Code finished', 'success');
+            if (window.panelVisible && typeof updatePanelUI === 'function') updatePanelUI();
+            if (typeof checkAchievements === 'function') checkAchievements();
+        } catch (err) {
+            addOutputMessage(`❌ Runtime error: ${err.message}`, 'error');
+        } finally {
+            console.log = originalConsoleLog;
+        }
+    }
+
+    function openCodeEditor() {
+        if (window.codeEditorOpen) return;
+        window.codeEditorOpen = true;
+        editorPanel.classList.add('active');
+        editorPanel.style.display = 'flex';
+        codeTextarea.value = '# Game console\n# Modify variables or call functions\n# gold += 1000\n# playerHP = currentMaxHp\n# print("hello")';
+        clearOutput();
+        addOutputMessage('🎮 Console activated (JavaScript runtime)', 'success');
+        codeTextarea.focus();
+    }
+
+    function closeCodeEditor() {
+        if (!window.codeEditorOpen) return;
+        window.codeEditorOpen = false;
+        editorPanel.classList.remove('active');
+        editorPanel.style.display = 'none';
+        canvas.focus();
+    }
+
+    closeBtn.onclick = closeCodeEditor;
+    editorPanel.addEventListener('click', (e) => { if (e.target === editorPanel) closeCodeEditor(); });
+
+    codeTextarea.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+            e.preventDefault();
+            runUserCode();
+        } else if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+            e.preventDefault();
+            clearOutput();
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            closeCodeEditor();
+        }
+    });
+
+    window.openCodeEditor = openCodeEditor;
+    window.closeCodeEditor = closeCodeEditor;
+    window.pythonEditorActive = () => window.codeEditorOpen;
+    editorPanel.style.display = 'none';
+})();

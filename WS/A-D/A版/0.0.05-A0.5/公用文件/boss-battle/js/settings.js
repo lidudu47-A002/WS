@@ -104,7 +104,7 @@
             const newMusic = musicCheck.checked;
             setFPSLimit(newLimit);
             setBossMusicEnabled(newMusic);
-            alert('设置已保存');
+            showToast('设置已保存');
             panel.style.display = 'none';
         };
         

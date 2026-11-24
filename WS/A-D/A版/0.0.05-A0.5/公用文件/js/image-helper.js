@@ -1,6 +1,12 @@
 // ========== 图片加载失败自动回退到占位符 ==========
 (function() {
     const PLACEHOLDER = '../公用文件/图片/其他/占位符.png';
+    // 优化清单第 24 条：回退到占位符时必须留痕，否则资源缺失会被静默吞掉；?debug=1 时升级为 error 便于排查。
+    const WS_DEBUG = /[?&](debug|dev)=1/i.test(window.location.search);
+    function reportMissing(src) {
+        console.warn('[image-helper] 图片加载失败，已回退占位符：', src);
+        if (WS_DEBUG) console.error('[image-helper][dev] 资源缺失：', src);
+    }
     const _Image = window.Image;
     const srcDesc = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src');
 
@@ -22,6 +28,7 @@
         img.addEventListener('error', function() {
             if (_tried) return;
             _tried = true;
+            reportMissing(_src);
             _src = PLACEHOLDER;
             srcDesc.set.call(img, PLACEHOLDER);
         });
@@ -48,6 +55,7 @@
         const t = e.target;
         if (t && t.tagName === 'IMG' && !t._placeholderTried) {
             t._placeholderTried = true;
+            reportMissing(t.getAttribute('src'));
             t.src = PLACEHOLDER;
         }
     }, true);

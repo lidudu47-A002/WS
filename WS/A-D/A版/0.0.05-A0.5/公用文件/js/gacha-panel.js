@@ -1,3 +1,10 @@
+// 优化清单第 21 条：innerHTML 插值统一转义，避免外部字符串（名称/路径）破坏结构
+function escapeHtml(v) {
+    return String(v == null ? '' : v).replace(/[&<>"']/g, function(c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+}
+
 // ---------- 统一抽卡面板（按 R 打开，标签切换宠物 / 武器） ----------
 let gachaPanelOpen = false;
 let gachaPanelDiv = null;
@@ -201,7 +208,7 @@ function updateGachaUI() {
     document.getElementById('gachaGoldAmount').innerText = gold;
     const area = document.getElementById('gachaResultArea');
     if (area) {
-        area.innerHTML = gachaResultMessages.map(msg => `<p style="margin:4px 0;">${msg}</p>`).join('');
+        area.innerHTML = gachaResultMessages.map(msg => `<p style="margin:4px 0;">${escapeHtml(msg)}</p>`).join('');
         area.scrollTop = area.scrollHeight;
     }
 }

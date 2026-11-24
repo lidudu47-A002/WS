@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <script>
+    /* =====================================================================
+     * game.html —— Black room / prison 单入口（优化清单第 10、19 条）
+     *   game.html?scene=black   黑屋（默认）
+     *   game.html?scene=prison  监狱
+     * 说明：
+     *  1) 先确定场景并写入 <base href="场景目录/">，使场景脚本内 ../公用文件/...
+     *     的相对路径与原来两套 HTML 的解析结果完全一致；
+     *  2) HUD 结构、脚本清单、顺序注入全部由公用文件提供，本文件不再手写
+     *     25 个 script 标签，也不再重复两份 body 结构；
+     *  3) 全部资源都在 base 生效之后用 document.write 同步写入 head，
+     *     避免解析器预扫描用错误路径预请求脚本；
+     *  4) 存档 / 教程 / boss 战等外部入口仍指向 Black room.html 与 prison.html，
+     *     这两个文件现在是转发壳，会把 URL 参数原样带到这里。
+     * ===================================================================== */
+    (function () {
+        var SCENES = { black: 'Black room/', prison: 'prison/' };
+        var TITLES = { black: '黑屋 · 从左到右', prison: '监狱 · 从左到右' };
+
+        var param = '';
+        try { param = (new URLSearchParams(location.search).get('scene') || '').toLowerCase(); } catch (e) { param = ''; }
+        /* 兼容 blackroom / black room（%20 解码后带空格）等旧写法 */
+        if (param === 'blackroom' || param === 'black room') param = 'black';
+        var id = SCENES[param] ? param : 'black';
+
+        window.WS_SCENE_ID = id;
+        window.__WS_SCENE__ = id;   // 与其余子系统沿用的场景变量保持一致
+
+        document.write('<base href="' + SCENES[id] + '">');
+        document.write('<title>' + TITLES[id] + '</title>');
+        document.write('<link rel="stylesheet" href="../公用文件/css/style.css">');
+        document.write('<link rel="stylesheet" href="../公用文件/css/status-panel.css">');
+        document.write('<link rel="stylesheet" href="../公用文件/css/shop.css">');
+        document.write('<style>html, body { overscroll-behavior: none; } #gameCanvas { touch-action: none; }</style>');
+
+        /* 公共 HUD 片段 → 脚本清单 → 顺序注入器 */
+        document.write('<script src="../公用文件/js/hud-template.js">' + '<' + '/script>');
+        document.write('<script src="../公用文件/js/script-manifest.js">' + '<' + '/script>');
+        document.write('<script src="../公用文件/js/scene-boot.js">' + '<' + '/script>');
+    })();
+    </script>
+</head>
+<body>
+<noscript>本游戏需要启用 JavaScript。</noscript>
+</body>
+</html>

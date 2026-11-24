@@ -1,0 +1,2755 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WS 存档工坊 · localStorage 存档管理器</title>
+<style>
+  :root{
+    --line: rgba(255,255,255,.16);
+    --text: #e9eefc;
+    --muted: #93a0c0;
+    --accent: #5eead4;
+    --accent-2: #a78bfa;
+    --danger: #fb7185;
+    --warn: #fbbf24;
+    --ok: #5eead4;
+    --panel: rgba(255,255,255,.055);
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; margin:0; }
+  body{
+    background:
+      radial-gradient(1200px 700px at 12% 8%, #1a1033 0%, transparent 62%),
+      radial-gradient(900px 640px at 88% 92%, #062a3a 0%, transparent 60%),
+      #05060c;
+    color:var(--text);
+    font-family:"Segoe UI","Microsoft YaHei UI","Microsoft YaHei",system-ui,-apple-system,sans-serif;
+    overflow:hidden;
+    user-select:none;
+    -webkit-font-smoothing:antialiased;
+    font-size:13px;
+    line-height:1.6;
+  }
+  body::before{
+    content:'';position:fixed;inset:0;z-index:1;pointer-events:none;opacity:.05;mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+  }
+  .aura{ position:fixed; z-index:0; border-radius:50%; filter:blur(90px); opacity:.5; pointer-events:none; }
+  .aura.a1{ width:520px; height:520px; left:-140px; top:-160px;
+    background:radial-gradient(circle, rgba(94,234,212,.30), transparent 65%);
+    animation:drift1 22s ease-in-out infinite alternate; }
+  .aura.a2{ width:640px; height:640px; right:-180px; bottom:-220px;
+    background:radial-gradient(circle, rgba(167,139,250,.32), transparent 65%);
+    animation:drift2 26s ease-in-out infinite alternate; }
+  @keyframes drift1{ from{ transform:translate3d(0,0,0) scale(1);} to{ transform:translate3d(70px,50px,0) scale(1.12);} }
+  @keyframes drift2{ from{ transform:translate3d(0,0,0) scale(1.06);} to{ transform:translate3d(-60px,-46px,0) scale(1);} }
+
+  .glass{
+    background:linear-gradient(160deg, rgba(255,255,255,.10), rgba(255,255,255,.035));
+    border:1px solid rgba(255,255,255,.16);
+    border-radius:20px;
+    backdrop-filter:blur(22px) saturate(160%);
+    -webkit-backdrop-filter:blur(22px) saturate(160%);
+    box-shadow:0 18px 48px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.18);
+  }
+  .shell{ position:relative; z-index:2; height:100%; display:flex; flex-direction:column; gap:14px; padding:16px; }
+
+  /* ---------- 顶栏 ---------- */
+  .topbar{ display:flex; align-items:center; justify-content:space-between; gap:14px; padding:11px 18px; flex:none; }
+  .brand{ display:flex; align-items:center; gap:12px; min-width:0; }
+  .logo{
+    width:40px;height:40px;border-radius:13px;flex:none;display:grid;place-items:center;
+    background:linear-gradient(135deg,#5eead4,#a78bfa);
+    box-shadow:0 0 24px rgba(94,234,212,.45), inset 0 0 12px rgba(255,255,255,.35);
+  }
+  .logo svg{ width:24px; height:24px; }
+  h1{ font-size:16px; margin:0; font-weight:600; letter-spacing:.6px; }
+  .brand p{ margin:3px 0 0; font-size:12px; color:var(--muted); max-width:52vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .topbar-actions{ display:flex; align-items:center; gap:9px; flex:none; }
+  .btn{
+    border:1px solid var(--line); background:rgba(255,255,255,.06); color:var(--text);
+    padding:9px 17px; border-radius:12px; font-size:13px; cursor:pointer; font-family:inherit;
+    transition:transform .16s, background .16s, box-shadow .16s; white-space:nowrap;
+  }
+  .btn:hover{ background:rgba(255,255,255,.14); transform:translateY(-1px); }
+  .btn:active{ transform:translateY(0) scale(.98); }
+  .btn.primary{
+    background:linear-gradient(135deg, rgba(94,234,212,.28), rgba(167,139,250,.34));
+    border-color:rgba(167,139,250,.5);
+    box-shadow:0 0 22px rgba(167,139,250,.22);
+  }
+  .btn.danger{ border-color:rgba(251,113,133,.45); color:#ffd7dd; }
+  .btn.danger:hover{ background:rgba(251,113,133,.20); }
+  .btn:disabled{ opacity:.4; cursor:not-allowed; transform:none; }
+  .divider{ width:1px; height:20px; background:rgba(255,255,255,.14); }
+
+  /* ---------- 主体 ---------- */
+  .main{ flex:1; display:flex; gap:14px; min-height:0; }
+  .sidebar{ width:352px; flex:none; display:flex; flex-direction:column; min-height:0; padding:15px 15px 6px; }
+  .side-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:11px; flex:none; gap:8px; }
+  .side-head h2{ font-size:13px; margin:0; color:var(--muted); letter-spacing:1px; font-weight:500; }
+  .side-scroll{ flex:1; overflow-y:auto; padding-right:5px; padding-bottom:12px; }
+  .side-scroll::-webkit-scrollbar{ width:6px; }
+  .side-scroll::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.16); border-radius:6px; }
+  .side-scroll::-webkit-scrollbar-track{ background:transparent; }
+
+  .stage{ flex:1; min-width:0; display:flex; flex-direction:column; min-height:0; padding:15px 18px 16px; }
+  .stage-head{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex:none; margin-bottom:13px; flex-wrap:wrap; }
+  .stage-tools{ display:flex; align-items:center; gap:9px; }
+
+  .badge{
+    font-size:11px; padding:3px 10px; border-radius:20px; font-variant-numeric:tabular-nums;
+    background:rgba(94,234,212,.16); border:1px solid rgba(94,234,212,.35); color:var(--accent);
+    white-space:nowrap;
+  }
+  .badge.warn{ background:rgba(251,191,36,.14); border-color:rgba(251,191,36,.38); color:var(--warn); }
+  .badge.bad{ background:rgba(251,113,133,.14); border-color:rgba(251,113,133,.38); color:var(--danger); }
+  .badge.ok{ background:rgba(94,234,212,.16); border-color:rgba(94,234,212,.35); color:var(--accent); }
+  .counter{ font-size:11px; color:rgba(147,160,192,.85); font-variant-numeric:tabular-nums; }
+  .hint{ font-size:11.5px; color:rgba(147,160,192,.78); line-height:1.62; }
+  .muted{ color:var(--muted); }
+  .small{ font-size:11.5px; }
+  .stat-inline{ font-size:11.5px; color:var(--muted); font-variant-numeric:tabular-nums; }
+  code{
+    background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.12); border-radius:6px;
+    padding:1px 6px; font-family:Consolas,"Cascadia Mono","Courier New",monospace; font-size:11.5px;
+    color:#a8d8ff; word-break:break-all;
+  }
+
+  .notice{
+    border:1px solid rgba(251,191,36,.32);
+    background:linear-gradient(160deg, rgba(251,191,36,.12), rgba(251,191,36,.04));
+    border-radius:13px; padding:11px 13px; margin-bottom:13px; font-size:11.5px; line-height:1.66;
+  }
+  .notice .hint-title{ color:var(--warn); font-weight:600; font-size:12px; margin-bottom:6px; }
+  .notice ol{ margin:6px 0 4px 18px; padding:0; }
+  .notice li{ margin:3px 0; }
+  .notice p{ margin:5px 0; }
+  .notice code{ color:#ffd9a3; }
+
+  .group{ padding-bottom:13px; margin-bottom:13px; border-bottom:1px solid rgba(255,255,255,.08); }
+  .group:last-of-type{ border-bottom:none; margin-bottom:4px; }
+  .group-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:9px; }
+  .group-head > span:first-child{ font-size:12px; color:var(--muted); letter-spacing:.7px; }
+
+  .toolbar{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:11px; }
+  .chip{
+    border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.05); color:var(--text);
+    padding:6px 11px; border-radius:10px; font-size:11.5px; cursor:pointer; font-family:inherit;
+    transition:.16s; white-space:nowrap;
+  }
+  .chip:hover{ background:rgba(255,255,255,.14); border-color:rgba(94,234,212,.45); }
+  .chip:active{ transform:scale(.96); }
+  .chip.danger:hover{ background:rgba(251,113,133,.22); border-color:rgba(251,113,133,.6); }
+  .chip.static{ cursor:default; pointer-events:none; font-variant-numeric:tabular-nums; }
+  .chip.accent{ color:#04211d; background:linear-gradient(180deg,#7ff0dd,#41d8bd); border-color:transparent; font-weight:600; }
+
+  .seg{ display:grid; grid-auto-flow:column; gap:6px; }
+  .seg button{
+    border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.05); color:var(--muted);
+    padding:7px 16px; border-radius:11px; font-size:12.5px; cursor:pointer; font-family:inherit;
+    transition:.16s; white-space:nowrap;
+  }
+  .seg button:hover{ background:rgba(255,255,255,.12); color:var(--text); }
+  .seg button.active{
+    color:#04211d; font-weight:600; border-color:transparent;
+    background:linear-gradient(180deg,#7ff0dd,#41d8bd);
+    box-shadow:0 0 20px rgba(94,234,212,.28);
+  }
+
+  .panel{ display:none; flex:1; min-height:0; overflow-y:auto; padding-right:6px; padding-bottom:8px; }
+  .panel.active{ display:block; }
+  .panel::-webkit-scrollbar{ width:6px; }
+  .panel::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.16); border-radius:6px; }
+  .panel::-webkit-scrollbar-track{ background:transparent; }
+
+  .panel-title{ font-size:12px; color:var(--muted); letter-spacing:.7px; margin:0 0 9px; }
+  .block{
+    border:1px solid rgba(255,255,255,.11); border-radius:14px; padding:12px 13px;
+    background:rgba(255,255,255,.035); margin-bottom:11px;
+  }
+  .block h3{ font-size:12px; margin:0 0 9px; color:var(--muted); letter-spacing:.6px; font-weight:500; display:flex; align-items:center; gap:8px; }
+
+  textarea, input[type="text"], input[type="number"], input[type="password"], select{
+    width:100%; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.14);
+    border-radius:12px; padding:10px 12px; color:var(--text); font-family:inherit;
+    font-size:12.5px; line-height:1.62; outline:none; user-select:text;
+    transition:border-color .16s, background .16s;
+  }
+  textarea{ resize:vertical; font-family:Consolas,"Cascadia Mono","Courier New",monospace; font-size:12px; }
+  textarea:focus, input:focus, select:focus{ border-color:rgba(94,234,212,.6); background:rgba(255,255,255,.075); }
+  textarea::placeholder{ color:rgba(147,160,192,.55); }
+  textarea.err{ border-color:rgba(251,113,133,.7); }
+  select{ cursor:pointer; appearance:none; padding-right:30px;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' fill='none' stroke='%2393a0c0' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat:no-repeat; background-position:right 11px center; }
+  select option{ background:#131826; color:var(--text); }
+
+  .keycard{
+    border:1px solid rgba(255,255,255,.11); border-radius:13px; padding:10px 12px;
+    background:rgba(255,255,255,.035); margin-bottom:9px; transition:.16s;
+  }
+  .keycard:hover{ border-color:rgba(94,234,212,.32); background:rgba(255,255,255,.06); }
+  .keyhead{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:space-between; }
+  .kname{ display:flex; flex-wrap:wrap; gap:7px; align-items:center; min-width:0; }
+  .ktag{
+    font-family:Consolas,"Cascadia Mono","Courier New",monospace; font-size:12px; color:#a8d8ff;
+    word-break:break-all; user-select:text;
+  }
+  .kacts{ display:flex; gap:6px; flex-wrap:wrap; }
+
+  .tree{
+    margin-top:10px; border-top:1px dashed rgba(255,255,255,.14); padding-top:9px;
+    max-height:340px; overflow:auto; user-select:text;
+  }
+  .tree::-webkit-scrollbar{ width:6px; height:6px; }
+  .tree::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.16); border-radius:6px; }
+  .node{ font-family:Consolas,"Cascadia Mono","Courier New",monospace; font-size:12px; }
+  .node summary{ cursor:pointer; padding:1px 0; list-style:none; }
+  .node summary::-webkit-details-marker{ display:none; }
+  .node summary::before{ content:"\25B8"; display:inline-block; width:12px; color:var(--muted); transition:.12s; }
+  .node details[open] > summary::before{ content:"\25BE"; }
+  .node .children{ padding-left:15px; border-left:1px dotted rgba(255,255,255,.16); margin-left:5px; }
+  .k{ color:#9ecbff; }
+  .vs{ color:#9fe6c8; word-break:break-all; }
+  .vn{ color:#fbbf24; }
+  .vb{ color:#c4b5fd; }
+  .vnull{ color:var(--muted); }
+  .tag{ color:#7d8b9c; font-size:11px; }
+
+  table.tbl{ width:100%; border-collapse:collapse; font-size:12.5px; }
+  table.tbl th, table.tbl td{ border-bottom:1px solid rgba(255,255,255,.08); padding:8px 9px; text-align:left; vertical-align:top; }
+  table.tbl th{ color:var(--muted); font-weight:500; font-size:11.5px; white-space:nowrap; letter-spacing:.4px; }
+  table.tbl tr:hover td{ background:rgba(255,255,255,.04); }
+  table.tbl td{ font-variant-numeric:tabular-nums; user-select:text; }
+  .tbl-wrap{ overflow:auto; border-radius:12px; }
+  .tbl-wrap::-webkit-scrollbar{ height:6px; width:6px; }
+  .tbl-wrap::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.16); border-radius:6px; }
+
+  .fields{ display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:10px 13px; margin:4px 0 13px; }
+  .field{ display:flex; flex-direction:column; gap:4px; font-size:11.5px; }
+  .field .fname{ color:var(--muted); font-family:Consolas,"Cascadia Mono","Courier New",monospace; font-size:11.5px; }
+  .field.isbool{ flex-direction:row; align-items:center; gap:9px; }
+  .field.isbool input{ width:auto; }
+
+  .row2{ display:grid; grid-template-columns:1fr 1fr; gap:13px; }
+  @media (max-width:1000px){ .row2{ grid-template-columns:1fr; } }
+
+  .difflist{ font-family:Consolas,"Cascadia Mono","Courier New",monospace; font-size:12px; max-height:280px; overflow:auto;
+    border:1px solid rgba(255,255,255,.12); border-radius:12px; background:rgba(0,0,0,.28); padding:9px 11px; user-select:text; }
+  .difflist::-webkit-scrollbar{ width:6px; }
+  .difflist::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.16); border-radius:6px; }
+  .diff .add{ color:#7ff0dd; }
+  .diff .bad{ color:#fb7185; }
+  .diff .chg{ color:#fbbf24; }
+  .diff .same{ color:#7d8b9c; }
+  .diff .warn{ color:#fbbf24; }
+  .diff .err{ color:#fb7185; }
+
+  .pw{ font-family:Consolas,"Cascadia Mono","Courier New",monospace; }
+  .pw-plain{ color:#7ff0dd; }
+
+  /* ---------- 改密码面板 ---------- */
+  .pwbar{ height:6px; border-radius:6px; background:rgba(255,255,255,.10); overflow:hidden; margin:9px 0 7px; }
+  .pwbar i{ display:block; height:100%; width:0%; border-radius:6px; background:linear-gradient(90deg,#5eead4,#a78bfa); transition:width .22s ease, background .22s ease; }
+  .pwbar.lv1 i{ background:linear-gradient(90deg,#fb7185,#f472b6); }
+  .pwbar.lv2 i{ background:linear-gradient(90deg,#fbbf24,#fb923c); }
+  .pwbar.lv3 i{ background:linear-gradient(90deg,#5eead4,#60a5fa); }
+  .pwbar.lv4 i{ background:linear-gradient(90deg,#5eead4,#a78bfa); }
+  .hashline{ font-family:Consolas,"Cascadia Mono","Courier New",monospace; font-size:12px; word-break:break-all; user-select:text; }
+  .selftest-ok{ color:#7ff0dd; }
+  .selftest-bad{ color:#fb7185; font-weight:600; }
+  .pw-tip{ font-size:11.5px; color:rgba(147,160,192,.78); line-height:1.62; margin:6px 0 0; }
+  .snap-body{ user-select:text; }
+
+  #modalRoot{ position:fixed; inset:0; background:rgba(3,5,12,.72); display:flex; align-items:center; justify-content:center;
+    padding:22px; z-index:60; backdrop-filter:blur(6px); }
+  #modalRoot.hidden{ display:none; }
+  .modal-card{
+    width:100%; max-width:660px; max-height:86vh; overflow:auto; padding:20px 21px;
+    background:linear-gradient(160deg, rgba(30,26,54,.96), rgba(12,14,26,.98));
+    border:1px solid rgba(255,255,255,.18); border-radius:18px;
+    box-shadow:0 26px 70px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.16);
+  }
+  .modal-card::-webkit-scrollbar{ width:7px; }
+  .modal-card::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.18); border-radius:6px; }
+  .modal-title{ font-size:14px; font-weight:600; margin-bottom:11px; letter-spacing:.4px; }
+  .modal-body{ font-size:12.5px; line-height:1.68; }
+  .modal-foot{ display:flex; justify-content:flex-end; gap:10px; margin-top:17px; }
+  .modal-check{
+    display:flex; gap:9px; align-items:flex-start; margin-top:14px; padding:10px 12px;
+    border:1px solid rgba(251,191,36,.36); background:rgba(251,191,36,.09); border-radius:12px;
+    font-size:12px; cursor:pointer; line-height:1.6;
+  }
+  .modal-check input{ width:auto; margin-top:3px; }
+  .modal-opt{
+    display:flex; gap:9px; align-items:flex-start; margin-top:8px; padding:10px 12px;
+    border:1px solid rgba(255,255,255,.13); background:rgba(255,255,255,.045); border-radius:12px;
+    font-size:12px; cursor:pointer; color:#c9d4ec; line-height:1.6;
+  }
+  .modal-opt:hover{ border-color:rgba(94,234,212,.4); background:rgba(255,255,255,.08); }
+  .modal-opt input{ width:auto; margin-top:3px; }
+
+  #toast{
+    position:fixed; left:50%; bottom:38px; transform:translateX(-50%) translateY(18px);
+    background:rgba(20,24,40,.92); color:var(--text); padding:10px 18px; border-radius:12px;
+    font-size:12.5px; opacity:0; transition:.22s; pointer-events:none; z-index:80;
+    border:1px solid rgba(94,234,212,.38); box-shadow:0 12px 34px rgba(0,0,0,.5);
+    backdrop-filter:blur(14px); max-width:min(680px,84vw); text-align:center;
+  }
+  #toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  .hidden{ display:none !important; }
+  input[type="checkbox"]{ accent-color:#5eead4; }
+
+  @media (max-width:1040px){
+    body{ overflow:auto; }
+    .shell{ height:auto; min-height:100%; }
+    .main{ flex-direction:column; }
+    .sidebar{ width:auto; max-height:none; }
+    .panel{ overflow:visible; }
+  }
+  @media (max-width:720px){
+    .topbar{ flex-wrap:wrap; }
+    .brand p{ max-width:78vw; }
+  }
+</style>
+</head>
+<body>
+<div class="aura a1"></div>
+<div class="aura a2"></div>
+
+<div class="shell">
+  <header class="topbar glass">
+    <div class="brand">
+      <div class="logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#0b1a22" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 7.5C4 5.6 7.6 4 12 4s8 1.6 8 3.5v9c0 1.9-3.6 3.5-8 3.5s-8-1.6-8-3.5z"/>
+          <path d="M4 7.5C4 9.4 7.6 11 12 11s8-1.6 8-3.5"/>
+          <path d="M4 12c0 1.9 3.6 3.5 8 3.5s8-1.6 8-3.5"/>
+        </svg>
+      </div>
+      <div>
+        <h1>WS 存档工坊</h1>
+        <p id="originInfo">白色方块的冒险 · localStorage 存档管理器</p>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <span class="badge" id="keyStat">扫描中</span>
+      <div class="divider"></div>
+      <button class="btn primary" id="btnRescan">重新扫描</button>
+    </div>
+  </header>
+
+  <div class="main">
+    <aside class="sidebar glass">
+      <div class="side-head">
+        <h2>存档键</h2>
+        <span class="counter" id="storageNote"></span>
+      </div>
+      <div class="side-scroll">
+        <section id="secKeys">
+          <div class="notice hidden" id="hintBox">
+            <div class="hint-title">未读取到任何 ws_* / boss_battle_* 存档键</div>
+            <p>最常见的原因是：本文件放在桌面，与游戏网页不属于同一个存储来源。以 <code>file://</code> 打开时，不同目录下的页面往往各有一套 localStorage，桌面上的这个页面自然读不到游戏里的存档（也可能本机浏览器禁用了本地文件存储）。</p>
+            <ol>
+              <li>把 <b>WS存档工坊.html</b> 复制到游戏根目录（例如 <code>D:\IMA\WS\A-D\A版\0.0.01-A0.1\</code>）后双击打开，再点「重新扫描」；</li>
+              <li>仍然为空时，请用游戏内导出的 JSON 或手动整理的内容，走右侧「手动粘贴」面板，同样能解析账号与字段。</li>
+            </ol>
+            <p class="muted">注意：读不到 ≠ 没有存档。本工具绝不会自动清空或删除任何键。</p>
+          </div>
+          <div id="keyList"></div>
+        </section>
+
+        <section id="secAccounts" class="group">
+          <div class="group-head">
+            <span>账号表 · ws_accounts</span>
+            <span class="counter">密码本地反解</span>
+          </div>
+          <div id="accountsWrap"></div>
+        </section>
+
+        <section id="secSnap" class="group">
+          <div class="group-head">
+            <span>存档点快照</span>
+            <span class="counter" id="snapStat"></span>
+          </div>
+          <div class="toolbar" style="margin-bottom:9px">
+            <button class="chip" id="btnSnapCreate">给当前存档打快照</button>
+          </div>
+          <div id="snapList"></div>
+        </section>
+      </div>
+    </aside>
+
+    <section class="stage glass">
+      <div class="stage-head">
+        <div class="seg" id="tabBar">
+          <button class="active" data-panel="pEdit">编辑存档</button>
+          <button data-panel="pBackup">备份 / 导入</button>
+          <button data-panel="pManual">手动粘贴</button>
+          <button data-panel="pPassword">改密码</button>
+        </div>
+        <div class="stage-tools">
+          <span class="stat-inline" id="edDirty"></span>
+        </div>
+      </div>
+
+      <div class="panel active" id="pEdit">
+        <section id="secEditor">
+          <div class="toolbar">
+            <select id="edTargetSel" style="flex:1;min-width:240px"></select>
+            <button class="chip" id="btnEdReload">重新载入</button>
+          </div>
+          <div class="stat-inline" id="edMeta" style="margin-bottom:10px"></div>
+          <div id="edFields"></div>
+          <div class="row2">
+            <div class="block">
+              <h3>JSON 编辑（可整体粘贴替换）</h3>
+              <textarea id="edJson" rows="14" spellcheck="false"></textarea>
+              <div class="stat-inline" id="edJsonMsg" style="margin-top:7px"></div>
+            </div>
+            <div class="block">
+              <h3>JSON 树（只读兜底）<button class="chip" id="btnTreeRefresh">刷新树</button></h3>
+              <div class="tree" id="edTree" style="max-height:330px;border-top:none;margin-top:0;padding-top:0"></div>
+            </div>
+          </div>
+          <div class="toolbar" style="margin-top:13px;margin-bottom:0">
+            <button class="btn primary" id="btnEdWrite" disabled>写入 localStorage</button>
+            <button class="btn" id="btnEdReset">放弃修改</button>
+          </div>
+        </section>
+      </div>
+
+      <div class="panel" id="pBackup">
+        <section id="secBackup">
+          <p class="panel-title">整包备份与导入</p>
+          <div class="toolbar">
+            <button class="btn primary" id="btnExport">一键导出全部存档（JSON）</button>
+            <button class="btn" id="btnImportPick">选择备份文件导入</button>
+            <input type="file" id="importFile" accept=".json,application/json" class="hidden">
+          </div>
+          <p class="hint" style="margin:0 0 11px">导出会生成带时间戳的 JSON 备份；导入前先做差异对比，确认后才写入，写入范围仅限 ws_* / boss_battle_* 键。</p>
+          <div id="importDiffWrap"></div>
+        </section>
+      </div>
+
+      <div class="panel" id="pManual">
+        <section id="secManual">
+          <p class="panel-title">手动粘贴 JSON 分析</p>
+          <p class="hint" style="margin:0 0 9px">支持三种内容：① <code>ws_accounts</code> 的账号映射；② 游戏内导出的存档对象（含 hp / gold / level / map 等）；③ 导出的整包备份（含 data 字段）。读不到存档或只有文件时用这个。</p>
+          <textarea id="manualInput" rows="8" spellcheck="false" placeholder='例如：{"猴子":{"password":"NTQxODhzYWx0X3dz","canSave":true,"nickname":"my friend"}}'></textarea>
+          <div class="toolbar" style="margin-top:10px">
+            <button class="btn primary" id="btnManualParse">解析并分析</button>
+            <button class="btn" id="btnManualClear">清空</button>
+          </div>
+          <div id="manualOut"></div>
+        </section>
+      </div>
+
+      <div class="panel" id="pPassword">
+        <section id="secPassword">
+          <p class="panel-title">改密码（PBKDF2-SHA256，与游戏 auth.js 同参）</p>
+          <p class="hint" style="margin:0 0 11px">按账号自身的 salt / algo / iter 重新计算密码 hash，可只复制不写入，也可二次确认后写回 localStorage（写入前自动打快照）。salt 作为 16 字节 hex 字符串按 UTF-8 原样送入，不 hex 解码。</p>
+
+          <div class="block">
+            <h3>① 选择账号<button class="chip" id="btnPwReload">重新读取账号</button></h3>
+            <div class="field" style="margin-bottom:9px">
+              <select id="pwAccountSel"></select>
+            </div>
+            <div class="stat-inline" id="pwAcctMeta">正在读取账号…</div>
+            <div id="pwParamTbl" style="margin-top:9px"></div>
+          </div>
+
+          <div class="block">
+            <h3>② 输入新密码</h3>
+            <div class="toolbar" style="margin-bottom:6px">
+              <input type="password" id="pwNew" placeholder="输入新的明文密码" autocomplete="new-password" spellcheck="false" style="flex:1;min-width:220px">
+              <button class="chip" id="btnPwEye">显示</button>
+              <button class="chip" id="btnPwGen">随机强密码</button>
+            </div>
+            <div class="pwbar" id="pwBar"><i></i></div>
+            <div class="stat-inline" id="pwStrength">密码长度 0 · 强度 —</div>
+            <label class="modal-check" id="pwForceWrap" style="display:none;margin-top:9px">
+              <input type="checkbox" id="pwForcePB">
+              <span>按 PBKDF2-SHA256 计算并升级该账号（忽略旧格式，写入 algo / iter）</span>
+            </label>
+            <div class="toolbar" style="margin-top:11px;margin-bottom:0">
+              <button class="btn primary" id="btnPwCalc">计算 hash</button>
+            </div>
+          </div>
+
+          <div class="block">
+            <h3>③ 结果与写回</h3>
+            <div id="pwResult"><div class="muted small">尚未计算。</div></div>
+            <div class="toolbar" style="margin-top:12px;margin-bottom:0">
+              <button class="btn" id="btnPwCopy" disabled>复制 hash</button>
+              <button class="btn primary" id="btnPwWrite" disabled>写回存档</button>
+            </div>
+          </div>
+
+          <div class="hint" id="pwSelfTest">算法自检：进行中…</div>
+        </section>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div id="modalRoot" class="hidden"></div>
+<div id="toast"></div>
+
+<script>
+/* ==================== 改密码面板（PBKDF2-SHA256 · 与游戏 auth.js 参数对齐） ==================== */
+(function(){
+'use strict';
+
+var USERS = 'ws_users';
+var ACCOUNTS = 'ws_accounts';
+var KEY_ORDER = [USERS, ACCOUNTS];
+var SNAPSHOT_KEY = 'WSArchiveTool.snapshots.v1';
+var MAX_SNAPSHOTS = 10;
+var PBKDF2_ITER = 100000;
+var DK_BITS = 256;
+var GAME_KEY_RE = /^(ws_|boss_battle_)/i;
+var REF = {
+  password:'lidudu47hao',
+  salt:'41c6f54e9a941ca6790f2b67b30ddc6b',
+  iter:100000,
+  hash:'aa8f02563e552e06ff2c2180e3370c9e43d12b3f8e881f989ef82dba687dfb8b'
+};
+
+var $ = function(id){ return document.getElementById(id); };
+
+function esc(s){
+  return String(s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+function pad2(n){ return (n < 10 ? '0' : '') + n; }
+function timeText(){
+  var d = new Date();
+  return d.getFullYear() + '-' + pad2(d.getMonth()+1) + '-' + pad2(d.getDate()) + ' ' +
+         pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds());
+}
+function byteLen(s){
+  try{ return new Blob([s == null ? '' : s]).size; }
+  catch(e){ return (s == null ? '' : String(s)).length; }
+}
+function toast(msg){
+  var t = $('toast');
+  if(!t) return;
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(function(){ t.classList.remove('show'); }, 2400);
+}
+
+/* ---------- UTF-8 编码（TextEncoder 缺失时兜底） ---------- */
+function utf8(str){
+  str = str == null ? '' : String(str);
+  if(window.TextEncoder){ return new TextEncoder().encode(str); }
+  var s = unescape(encodeURIComponent(str));
+  var b = new Uint8Array(s.length);
+  for(var i = 0; i < s.length; i++) b[i] = s.charCodeAt(i) & 255;
+  return b;
+}
+function toHex(buf){
+  var b = new Uint8Array(buf), out = '';
+  for(var i = 0; i < b.length; i++) out += ('0' + b[i].toString(16)).slice(-2);
+  return out;
+}
+
+/* ---------- 内置 SHA-256 / HMAC / PBKDF2（无 WebCrypto 时兜底） ---------- */
+var K256 = [
+  0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+  0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+  0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+  0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+  0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+  0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+  0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+  0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2
+];
+function rotr(x, n){ return (x >>> n) | (x << (32 - n)); }
+
+function sha256Raw(bytes){
+  var l = bytes.length;
+  var padded = new Uint8Array(Math.ceil((l + 9) / 64) * 64);
+  padded.set(bytes);
+  padded[l] = 0x80;
+  var dv = new DataView(padded.buffer);
+  var bitLen = l * 8;
+  dv.setUint32(padded.length - 8, Math.floor(bitLen / 0x100000000));
+  dv.setUint32(padded.length - 4, bitLen >>> 0);
+
+  var H = [0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+  var W = new Int32Array(64);
+  var i, off;
+  for(off = 0; off < padded.length; off += 64){
+    for(i = 0; i < 16; i++) W[i] = dv.getInt32(off + i * 4);
+    for(i = 16; i < 64; i++){
+      var x15 = W[i-15], x2 = W[i-2];
+      var s0 = rotr(x15,7) ^ rotr(x15,18) ^ (x15 >>> 3);
+      var s1 = rotr(x2,17) ^ rotr(x2,19) ^ (x2 >>> 10);
+      W[i] = (W[i-16] + s0 + W[i-7] + s1) | 0;
+    }
+    var a=H[0],b=H[1],c=H[2],d=H[3],e=H[4],f=H[5],g=H[6],h=H[7];
+    for(i = 0; i < 64; i++){
+      var S1 = rotr(e,6) ^ rotr(e,11) ^ rotr(e,25);
+      var ch = (e & f) ^ (~e & g);
+      var t1 = (h + S1 + ch + K256[i] + W[i]) | 0;
+      var S0 = rotr(a,2) ^ rotr(a,13) ^ rotr(a,22);
+      var maj = (a & b) ^ (a & c) ^ (b & c);
+      var t2 = (S0 + maj) | 0;
+      h = g; g = f; f = e; e = (d + t1) | 0; d = c; c = b; b = a; a = (t1 + t2) | 0;
+    }
+    H[0] = (H[0]+a)|0; H[1] = (H[1]+b)|0; H[2] = (H[2]+c)|0; H[3] = (H[3]+d)|0;
+    H[4] = (H[4]+e)|0; H[5] = (H[5]+f)|0; H[6] = (H[6]+g)|0; H[7] = (H[7]+h)|0;
+  }
+  var out = new Uint8Array(32);
+  var odv = new DataView(out.buffer);
+  for(i = 0; i < 8; i++) odv.setInt32(i * 4, H[i]);
+  return out;
+}
+function hmacSha256(keyBytes, msgBytes){
+  var k = keyBytes;
+  if(k.length > 64) k = sha256Raw(k);
+  var pad = new Uint8Array(64);
+  pad.set(k);
+  var ip = new Uint8Array(64 + msgBytes.length);
+  for(var i = 0; i < 64; i++) ip[i] = pad[i] ^ 0x36;
+  ip.set(msgBytes, 64);
+  var inner = sha256Raw(ip);
+  var op = new Uint8Array(64 + 32);
+  for(i = 0; i < 64; i++) op[i] = pad[i] ^ 0x5c;
+  op.set(inner, 64);
+  return sha256Raw(op);
+}
+function pbkdf2Raw(pwdBytes, saltBytes, iter, dkLen){
+  var blocks = Math.ceil(dkLen / 32);
+  var out = new Uint8Array(blocks * 32);
+  for(var b = 1; b <= blocks; b++){
+    var msg = new Uint8Array(saltBytes.length + 4);
+    msg.set(saltBytes);
+    msg[saltBytes.length]     = (b >>> 24) & 255;
+    msg[saltBytes.length + 1] = (b >>> 16) & 255;
+    msg[saltBytes.length + 2] = (b >>> 8) & 255;
+    msg[saltBytes.length + 3] = b & 255;
+    var u = hmacSha256(pwdBytes, msg);
+    var t = new Uint8Array(u);
+    for(var i = 1; i < iter; i++){
+      u = hmacSha256(pwdBytes, u);
+      for(var j = 0; j < 32; j++) t[j] = t[j] ^ u[j];
+    }
+    out.set(t, (b - 1) * 32);
+  }
+  return out.subarray(0, dkLen);
+}
+
+/* ---------- 三种派生实现 ---------- */
+function subtleOk(){
+  return !!(window.crypto && window.crypto.subtle && window.crypto.subtle.importKey && window.crypto.subtle.deriveBits);
+}
+function pbkdf2Subtle(pwd, salt, iter){
+  var enc = new TextEncoder();
+  return window.crypto.subtle.importKey('raw', enc.encode(pwd), { name:'PBKDF2' }, false, ['deriveBits'])
+    .then(function(key){
+      return window.crypto.subtle.deriveBits(
+        { name:'PBKDF2', salt: enc.encode(salt), iterations: iter, hash:'SHA-256' }, key, DK_BITS);
+    })
+    .then(toHex);
+}
+function pbkdf2JsHex(pwd, salt, iter){
+  return toHex(pbkdf2Raw(utf8(pwd), utf8(salt), iter, DK_BITS / 8));
+}
+function pbkdf2(pwd, salt, iter){
+  if(subtleOk()){
+    return pbkdf2Subtle(pwd, salt, iter).catch(function(){ return pbkdf2JsHex(pwd, salt, iter); });
+  }
+  return new Promise(function(resolve){ resolve(pbkdf2JsHex(pwd, salt, iter)); });
+}
+function sha256Hex(str){
+  if(subtleOk()){
+    return window.crypto.subtle.digest('SHA-256', utf8(str)).then(toHex)
+      .catch(function(){ return toHex(sha256Raw(utf8(str))); });
+  }
+  return new Promise(function(resolve){ resolve(toHex(sha256Raw(utf8(str)))); });
+}
+
+/* ---------- localStorage 读写 ---------- */
+function readObj(key){
+  var raw = null;
+  try{ raw = localStorage.getItem(key); }catch(e){ return null; }
+  if(!raw) return null;
+  try{
+    var v = JSON.parse(raw);
+    if(v && typeof v === 'object' && !Array.isArray(v)) return v;
+  }catch(e){}
+  return null;
+}
+function norm(rec){
+  if(typeof rec === 'string') return { password: rec };
+  if(rec && typeof rec === 'object'){ try{ return JSON.parse(JSON.stringify(rec)); }catch(e){ return {}; } }
+  return {};
+}
+function hasSalt(rec){ return !!(rec && typeof rec.salt === 'string' && rec.salt); }
+
+/* ---------- 账号收集 ---------- */
+var P = { accounts: [], cur: null, result: null };
+
+function collect(){
+  var list = [], map = {};
+  KEY_ORDER.forEach(function(key){
+    var obj = readObj(key);
+    if(!obj) return;
+    Object.keys(obj).forEach(function(name){
+      var rec = norm(obj[name]);
+      if(!Object.keys(rec).length) return;
+      var e = map[name];
+      if(!e){ e = { name: name, byKey: {} }; map[name] = e; list.push(e); }
+      e.byKey[key] = rec;
+    });
+  });
+  list.sort(function(a, b){ return a.name < b.name ? -1 : (a.name > b.name ? 1 : 0); });
+  list.forEach(function(e){
+    var pk = null;
+    KEY_ORDER.forEach(function(k){ if(!pk && e.byKey[k] && hasSalt(e.byKey[k])) pk = k; });
+    if(!pk) KEY_ORDER.forEach(function(k){ if(!pk && e.byKey[k] && typeof e.byKey[k].hash === 'string') pk = k; });
+    if(!pk) pk = e.byKey[USERS] ? USERS : ACCOUNTS;
+    e.primaryKey = pk;
+    e.rec = e.byKey[pk] || {};
+    e.salt = hasSalt(e.rec) ? String(e.rec.salt) : '';
+    e.algo = e.rec.algo === 'PBKDF2-SHA256' ? 'PBKDF2-SHA256' : '';
+    e.iter = e.algo ? (Number(e.rec.iter) || PBKDF2_ITER) : 0;
+    e.hash = typeof e.rec.hash === 'string' ? e.rec.hash : '';
+  });
+  return list;
+}
+function findAccount(name){
+  for(var i = 0; i < P.accounts.length; i++){ if(P.accounts[i].name === name) return P.accounts[i]; }
+  return null;
+}
+
+/* ---------- 渲染：账号下拉 ---------- */
+function renderSelect(keep){
+  var sel = $('pwAccountSel');
+  if(!sel) return;
+  sel.innerHTML = '';
+  if(!P.accounts.length){
+    var empty = document.createElement('option');
+    empty.value = '';
+    empty.textContent = '（当前来源下未读到 ws_users / ws_accounts 账号）';
+    sel.appendChild(empty);
+    return;
+  }
+  var ph = document.createElement('option');
+  ph.value = '';
+  ph.textContent = '— 选择账号（共 ' + P.accounts.length + ' 个）—';
+  sel.appendChild(ph);
+  P.accounts.forEach(function(e){
+    var tag = e.algo ? ('PBKDF2/' + e.iter) : (e.salt ? '旧格式·待升级' : '缺 salt');
+    var o = document.createElement('option');
+    o.value = e.name;
+    o.textContent = e.name + ' · ' + e.primaryKey + ' · ' + tag;
+    sel.appendChild(o);
+  });
+  sel.value = (keep && findAccount(keep)) ? keep : '';
+}
+
+/* ---------- 渲染：账号参数 ---------- */
+function renderMeta(){
+  var mount = $('pwParamTbl');
+  var meta = $('pwAcctMeta');
+  var e = P.cur;
+  if(!mount || !meta) return;
+  if(!e){
+    meta.textContent = '尚未选择账号。';
+    mount.innerHTML = '<div class="muted small">选择账号后会显示它自身的 salt / algo / iter / 当前 hash。</div>';
+    if($('pwForceWrap')) $('pwForceWrap').style.display = 'none';
+    return;
+  }
+  var rec = e.rec;
+  var both = !!(e.byKey[USERS] && e.byKey[ACCOUNTS]);
+  meta.textContent = '账号：' + e.name + ' ｜ 来源键：' + e.primaryKey + ' ｜ 昵称：' +
+    (rec.nickname === undefined ? '—' : rec.nickname) + ' ｜ ' +
+    (e.algo ? ('algo ' + e.algo + ' / iter ' + e.iter) : '旧格式（无 algo，按单轮 SHA-256）');
+
+  var rows = [
+    ['存储键', e.primaryKey + (both ? '（同名账号同时存在于 ws_users 与 ws_accounts）' : '')],
+    ['salt', e.salt || '（该账号没有 salt 字段）'],
+    ['algo', rec.algo === undefined ? '（无 · 旧格式）' : String(rec.algo)],
+    ['iter', rec.iter === undefined ? '（无）' : String(rec.iter)],
+    ['当前 hash', e.hash || '（无 hash 字段）']
+  ];
+  var html = '<div class="tbl-wrap"><table class="tbl"><tbody>';
+  rows.forEach(function(x){
+    var cls = 'hashline' + (x[0].indexOf('hash') >= 0 ? ' pw-plain' : '');
+    html += '<tr><th>' + esc(x[0]) + '</th><td class="' + cls + '">' + esc(x[1]) + '</td></tr>';
+  });
+  html += '</tbody></table></div>';
+  if(!e.salt){
+    html += '<div class="field" style="margin-top:9px"><span class="fname">salt（该账号缺失，请手动填写 16 字节 hex）</span>' +
+            '<input type="text" id="pwSaltManual" placeholder="例如 ' + REF.salt + '" spellcheck="false"></div>';
+  }
+  mount.innerHTML = html;
+
+  if($('pwForceWrap')) $('pwForceWrap').style.display = (e.algo === 'PBKDF2-SHA256') ? 'none' : 'block';
+}
+
+/* ---------- 渲染：计算结果 ---------- */
+function renderResult(){
+  var mount = $('pwResult');
+  var copyBtn = $('btnPwCopy');
+  var writeBtn = $('btnPwWrite');
+  if(!mount) return;
+  var r = P.result, e = P.cur;
+  if(!r || !e){
+    mount.innerHTML = '<div class="muted small">尚未计算。</div>';
+    if(copyBtn) copyBtn.disabled = true;
+    if(writeBtn) writeBtn.disabled = true;
+    return;
+  }
+  var same = (r.hex || '').toLowerCase() === (e.hash || '').toLowerCase() && !!e.hash;
+  var rows = [
+    ['计算模式', r.usePB ? 'PBKDF2-SHA256' : '单轮 SHA-256（password+salt）'],
+    ['迭代次数', r.usePB ? String(r.iter) : '1（单轮，无迭代）'],
+    ['盐（UTF-8 原样送入，不 hex 解码）', r.salt],
+    ['派生长度', r.usePB ? '256 bit / 32 字节 → 64 位十六进制' : '256 bit → 64 位十六进制'],
+    ['新 hash', r.hex]
+  ];
+  if(e.hash) rows.push(['旧 hash', e.hash]);
+
+  var html = '<div class="tbl-wrap"><table class="tbl"><tbody>';
+  rows.forEach(function(x){
+    var cls = 'hashline' + (x[0].indexOf('hash') >= 0 ? ' pw-plain' : '');
+    html += '<tr><th>' + esc(x[0]) + '</th><td class="' + cls + '">' + esc(x[1]) + '</td></tr>';
+  });
+  html += '</tbody></table></div>';
+
+  if(same){
+    html += '<div class="stat-inline" style="margin-top:9px;color:#fbbf24">与当前 hash 相同，无需写回；可复制后自行保存。</div>';
+  }else if(e.hash){
+    html += '<div class="stat-inline" style="margin-top:9px;color:#7ff0dd">与当前 hash 不同，可写回存档。</div>';
+  }else{
+    html += '<div class="stat-inline" style="margin-top:9px;color:#fbbf24">该账号当前没有 hash 字段，写回将新增该字段。</div>';
+  }
+  if(r.upgrade){
+    html += '<div class="stat-inline" style="margin-top:6px;color:#a78bfa">该账号原为旧格式，写回时会同时写入 algo=PBKDF2-SHA256 与 iter=' + r.iter + '，完成升级。</div>';
+  }
+  if(!r.usePB && e.algo !== 'PBKDF2-SHA256'){
+    html += '<div class="stat-inline" style="margin-top:6px;color:#fbbf24">当前按旧格式计算；如需新算法，勾选上方「按 PBKDF2 计算并升级该账号」后重算。</div>';
+  }
+  mount.innerHTML = html;
+
+  if(copyBtn) copyBtn.disabled = false;
+  if(writeBtn) writeBtn.disabled = same;
+}
+
+/* ---------- 密码强度 / 随机密码 / 复制 ---------- */
+function pwStrength(pw){
+  if(!pw) return { lv:0, label:'—', pct:0 };
+  var v = 0;
+  if(/[a-z]/.test(pw)) v++;
+  if(/[A-Z]/.test(pw)) v++;
+  if(/[0-9]/.test(pw)) v++;
+  if(/[^A-Za-z0-9]/.test(pw)) v++;
+  var lv;
+  if(pw.length < 8) lv = 1;
+  else if(pw.length < 12) lv = (v >= 3 ? 2 : 1);
+  else if(pw.length < 16) lv = (v >= 3 ? 3 : 2);
+  else lv = (v >= 3 ? 4 : 3);
+  var labels = { 1:'很弱', 2:'弱', 3:'中等', 4:'强' };
+  var pct = { 1:25, 2:52, 3:78, 4:100 };
+  return { lv:lv, label:labels[lv], pct:pct[lv] };
+}
+function updateStrength(){
+  var input = $('pwNew');
+  var bar = $('pwBar');
+  var txt = $('pwStrength');
+  if(!input || !bar || !txt) return;
+  var pw = input.value || '';
+  var s = pwStrength(pw);
+  bar.className = 'pwbar' + (s.lv ? ' lv' + s.lv : '');
+  bar.firstChild.style.width = s.pct + '%';
+  txt.textContent = '密码长度 ' + pw.length + ' 字符（UTF-8 ' + byteLen(pw) + ' 字节） · 强度 ' + s.label +
+    ' · 建议 ≥ 12 位，混合大小写、数字与符号';
+}
+function randInt(n){
+  if(window.crypto && window.crypto.getRandomValues){
+    var a = new Uint32Array(1);
+    window.crypto.getRandomValues(a);
+    return a[0] % n;
+  }
+  return Math.floor(Math.random() * n);
+}
+function randPwd(len){
+  len = len || 18;
+  var lower = 'abcdefghijkmnopqrstuvwxyz';
+  var upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  var digit = '23456789';
+  var sym   = '!@#$%^&*-_=+?';
+  var all = lower + upper + digit + sym;
+  var pick = function(set){ return set.charAt(randInt(set.length)); };
+  var out = [pick(lower), pick(upper), pick(digit), pick(sym)];
+  while(out.length < len) out.push(pick(all));
+  for(var i = out.length - 1; i > 0; i--){
+    var j = randInt(i + 1);
+    var t = out[i]; out[i] = out[j]; out[j] = t;
+  }
+  return out.join('');
+}
+function copyText(text){
+  var done = function(){ toast('已复制 hash'); };
+  var fail = function(){ toast('复制失败，请手动选中复制'); };
+  try{
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(done, function(){ fallbackCopy(text) ? done() : fail(); });
+      return;
+    }
+  }catch(e){}
+  fallbackCopy(text) ? done() : fail();
+}
+function fallbackCopy(text){
+  try{
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    var ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    return ok;
+  }catch(e){ return false; }
+}
+
+/* ---------- 计算 ---------- */
+function compute(){
+  var e = P.cur;
+  if(!e){ toast('请先选择账号'); return; }
+  var input = $('pwNew');
+  var pwd = input ? input.value : '';
+  if(!pwd){ toast('请输入新密码'); return; }
+
+  var salt = e.salt;
+  if(!salt){
+    var manual = $('pwSaltManual');
+    salt = manual ? String(manual.value || '').trim() : '';
+    if(!salt){ toast('该账号没有 salt，请先手动填写'); return; }
+  }
+  var force = $('pwForcePB') ? !!$('pwForcePB').checked : false;
+  var usePB = force || e.algo === 'PBKDF2-SHA256';
+  var iter = usePB ? (e.algo === 'PBKDF2-SHA256' ? (e.iter || PBKDF2_ITER) : PBKDF2_ITER) : 1;
+
+  var btnCalc = $('btnPwCalc');
+  if(btnCalc){ btnCalc.disabled = true; btnCalc.textContent = '计算中…'; }
+
+  var task = usePB ? pbkdf2(pwd, salt, iter) : sha256Hex(pwd + salt);
+  task.then(function(hex){
+    if(btnCalc){ btnCalc.disabled = false; btnCalc.textContent = '计算 hash'; }
+    P.result = {
+      hex: hex,
+      usePB: usePB,
+      iter: iter,
+      salt: salt,
+      pwd: pwd,
+      upgrade: usePB && e.algo !== 'PBKDF2-SHA256'
+    };
+    renderResult();
+  }).catch(function(err){
+    if(btnCalc){ btnCalc.disabled = false; btnCalc.textContent = '计算 hash'; }
+    toast('计算失败：' + ((err && err.message) || err));
+  });
+}
+
+/* ---------- 快照 ---------- */
+function pushSnap(label){
+  var data = {};
+  try{
+    for(var i = 0; i < localStorage.length; i++){
+      var k = localStorage.key(i);
+      if(k && GAME_KEY_RE.test(k)) data[k] = localStorage.getItem(k);
+    }
+  }catch(e){ return false; }
+  if(!Object.keys(data).length) return false;
+  var arr = [];
+  try{ arr = JSON.parse(localStorage.getItem(SNAPSHOT_KEY) || '[]') || []; }catch(e){ arr = []; }
+  if(!Array.isArray(arr)) arr = [];
+  arr.unshift({
+    id: 'snap_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+    createdAt: new Date().toISOString(),
+    createdAtLocal: timeText(),
+    label: label || '手动快照',
+    keys: Object.keys(data),
+    bytes: byteLen(JSON.stringify(data)),
+    data: data
+  });
+  if(arr.length > MAX_SNAPSHOTS) arr = arr.slice(0, MAX_SNAPSHOTS);
+  try{ localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(arr)); return true; }
+  catch(e){ return false; }
+}
+
+/* ---------- 弹窗 ---------- */
+function openPwModal(opts){
+  var root = $('modalRoot');
+  if(!root) return;
+  root.innerHTML = '';
+  root.classList.remove('hidden');
+
+  var card = document.createElement('div'); card.className = 'modal-card';
+  var title = document.createElement('div'); title.className = 'modal-title';
+  title.textContent = opts.title || '请确认';
+  card.appendChild(title);
+
+  var body = document.createElement('div'); body.className = 'modal-body';
+  if(typeof opts.body === 'string') body.innerHTML = opts.body;
+  else if(opts.body) body.appendChild(opts.body);
+  card.appendChild(body);
+
+  var chk = null;
+  if(opts.checkLabel){
+    var lab = document.createElement('label'); lab.className = 'modal-check';
+    chk = document.createElement('input'); chk.type = 'checkbox';
+    var sp = document.createElement('span'); sp.textContent = opts.checkLabel;
+    lab.appendChild(chk); lab.appendChild(sp); body.appendChild(lab);
+  }
+
+  var foot = document.createElement('div'); foot.className = 'modal-foot';
+  var cancel = document.createElement('button'); cancel.className = 'btn';
+  cancel.textContent = '取消';
+  cancel.addEventListener('click', closePwModal);
+  var ok = document.createElement('button'); ok.className = 'btn primary';
+  ok.textContent = opts.confirmText || '确认';
+  var sync = function(){ ok.disabled = !!(chk && !chk.checked); };
+  if(chk) chk.addEventListener('change', sync);
+  sync();
+  ok.addEventListener('click', function(){
+    if(ok.disabled) return;
+    closePwModal();
+    if(opts.onConfirm) opts.onConfirm();
+  });
+  foot.appendChild(cancel); foot.appendChild(ok);
+  card.appendChild(foot);
+  root.appendChild(card);
+}
+function closePwModal(){
+  var root = $('modalRoot');
+  if(root){ root.classList.add('hidden'); root.innerHTML = ''; }
+}
+
+/* ---------- 写回 ---------- */
+function encodePwdField(pwd){
+  try{
+    var v = btoa(pwd + 'salt_ws');
+    if(v) return v;
+  }catch(e){}
+  try{ return btoa(unescape(encodeURIComponent(pwd + 'salt_ws'))); }
+  catch(e2){ return null; }
+}
+function buildPlan(e, r){
+  var plan = { primary:{ key:e.primaryKey, changes:[] }, extras:[] };
+  var rec = e.rec;
+  plan.primary.changes.push({ field:'hash', from: rec.hash === undefined ? '（无）' : String(rec.hash), to: r.hex });
+  if(r.usePB){
+    if(String(rec.algo || '') !== 'PBKDF2-SHA256'){
+      plan.primary.changes.push({ field:'algo', from: rec.algo === undefined ? '（无）' : String(rec.algo), to:'PBKDF2-SHA256' });
+    }
+    if(Number(rec.iter) !== r.iter){
+      plan.primary.changes.push({ field:'iter', from: rec.iter === undefined ? '（无）' : String(rec.iter), to:String(r.iter) });
+    }
+  }
+  var enc = encodePwdField(r.pwd);
+  if(typeof rec.password === 'string' && enc){
+    plan.primary.changes.push({ field:'password', from: rec.password, to: enc });
+  }
+  KEY_ORDER.forEach(function(k){
+    if(k === e.primaryKey) return;
+    var obj = readObj(k);
+    if(!obj || !Object.prototype.hasOwnProperty.call(obj, e.name)) return;
+    var rr = norm(obj[e.name]);
+    if(k === ACCOUNTS && typeof rr.password === 'string' && enc){
+      plan.extras.push({ key:k, kind:'plain', label:'同步改写 ' + k + ' 中的密码字段（Base64 + salt_ws）' });
+    }
+    if(typeof rr.hash === 'string' || k === USERS){
+      plan.extras.push({ key:k, kind:'hash', label:'同步写入 hash / algo / iter 到 ' + k + ' 中的同名账号' });
+    }
+  });
+  return plan;
+}
+function confirmWrite(){
+  var e = P.cur, r = P.result;
+  if(!e || !r){ toast('请先计算 hash'); return; }
+  var plan = buildPlan(e, r);
+
+  var body = document.createElement('div');
+  var html = '<p>即将修改账号 <b>' + esc(e.name) + '</b> 的密码 hash，写入键 <code>' + esc(plan.primary.key) + '</code>。</p>';
+  html += '<p class="small muted" style="margin:6px 0 4px">字段级变化：</p>';
+  html += '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>字段</th><th>旧值</th><th>新值</th></tr></thead><tbody>';
+  plan.primary.changes.forEach(function(c){
+    html += '<tr><th>' + esc(c.field) + '</th><td class="hashline">' + esc(c.from) +
+            '</td><td class="hashline pw-plain">' + esc(c.to) + '</td></tr>';
+  });
+  html += '</tbody></table></div>';
+  html += '<p class="pw-tip">写入前会自动为当前全部 ws_* / boss_battle_* 键打一个快照（本地最多保留 10 个），可在左侧「存档点快照」中回滚。</p>';
+  body.innerHTML = html;
+
+  var checks = [];
+  if(plan.extras.length){
+    var box = document.createElement('div');
+    box.className = 'block';
+    box.style.marginTop = '11px';
+    var t = document.createElement('h3');
+    t.textContent = '附加同步（可选）';
+    box.appendChild(t);
+    plan.extras.forEach(function(x){
+      var lab = document.createElement('label');
+      lab.className = 'modal-check';
+      var cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = true;
+      var sp = document.createElement('span'); sp.textContent = x.label;
+      lab.appendChild(cb); lab.appendChild(sp);
+      box.appendChild(lab);
+      checks.push({ el: cb, item: x });
+    });
+    body.appendChild(box);
+  }
+
+  openPwModal({
+    title:'写回存档前确认（第二次确认）',
+    body: body,
+    checkLabel:'我已核对上面的字段变化，确认把新 hash 写入浏览器存储',
+    confirmText:'确认写入',
+    onConfirm: function(){
+      var chosen = checks.filter(function(c){ return c.el.checked; }).map(function(c){ return c.item; });
+      applyWrite(e, r, plan, chosen);
+    }
+  });
+}
+function applyWrite(e, r, plan, extras){
+  var snapOk = pushSnap('改密码前自动快照 · ' + plan.primary.key + '/' + e.name);
+  var done = [];
+  try{
+    var obj = readObj(plan.primary.key) || {};
+    var rec = norm(obj[e.name]);
+    rec.hash = r.hex;
+    if(r.usePB){ rec.algo = 'PBKDF2-SHA256'; rec.iter = r.iter; }
+    var enc = encodePwdField(r.pwd);
+    if(typeof rec.password === 'string' && enc) rec.password = enc;
+    obj[e.name] = rec;
+    localStorage.setItem(plan.primary.key, JSON.stringify(obj));
+    done.push(plan.primary.key);
+  }catch(err){
+    toast('写入失败：' + ((err && err.message) || err));
+    return;
+  }
+  extras.forEach(function(x){
+    try{
+      var obj2 = readObj(x.key) || {};
+      if(!Object.prototype.hasOwnProperty.call(obj2, e.name)) return;
+      var rec2 = norm(obj2[e.name]);
+      if(x.kind === 'plain'){
+        var ep = encodePwdField(r.pwd);
+        if(!ep) return;
+        rec2.password = ep;
+      }else{
+        rec2.hash = r.hex;
+        if(r.usePB){ rec2.algo = 'PBKDF2-SHA256'; rec2.iter = r.iter; }
+      }
+      obj2[e.name] = rec2;
+      localStorage.setItem(x.key, JSON.stringify(obj2));
+      done.push(x.key);
+    }catch(e2){}
+  });
+  toast('已写回 ' + done.length + ' 处' + (snapOk ? ' · 已打快照' : ''));
+  refresh(e.name);
+  var rsc = $('btnRescan');
+  if(rsc) setTimeout(function(){ rsc.click(); }, 40);
+}
+
+/* ---------- 自检 ---------- */
+function selfTest(){
+  var el = $('pwSelfTest');
+  if(!el) return;
+  var jobs = [];
+  jobs.push(pbkdf2(REF.password, REF.salt, REF.iter).then(
+    function(h){ return { name:'PBKDF2 参考值校验', ok: h.toLowerCase() === REF.hash, detail: h }; },
+    function(err){ return { name:'PBKDF2 参考值校验', ok:false, detail:'异常 ' + ((err && err.message) || err) }; }
+  ));
+  if(subtleOk()){
+    jobs.push(Promise.all([
+      pbkdf2Subtle(REF.password, REF.salt, 1),
+      new Promise(function(resolve){ resolve(pbkdf2JsHex(REF.password, REF.salt, 1)); })
+    ]).then(function(a){
+      return { name:'内置纯 JS 实现一致性', ok: a[0] === a[1], detail: a[0] + ' / ' + a[1] };
+    }, function(){ return { name:'内置纯 JS 实现一致性', ok:false, detail:'异常' }; }));
+  }
+  Promise.all(jobs).then(function(res){
+    var bad = res.filter(function(x){ return !x.ok; });
+    if(!bad.length){
+      el.innerHTML = '<span class="selftest-ok">算法自检通过</span> · PBKDF2-SHA256 / ' + REF.iter +
+        ' 次 / 32 字节 · 参考值 aa8f0256… 一致 · ' + (subtleOk() ? '使用 WebCrypto' : '使用内置纯 JS 实现');
+    }else{
+      el.innerHTML = '<span class="selftest-bad">算法自检未通过：算法可能与游戏 auth.js 未对齐，请勿直接写回。</span><br>' +
+        bad.map(function(x){ return esc(x.name) + '：' + esc(String(x.detail)); }).join('<br>');
+    }
+  });
+}
+
+/* ---------- 刷新 ---------- */
+function refresh(keepName){
+  P.accounts = collect();
+  renderSelect(keepName || (P.cur ? P.cur.name : ''));
+  var sel = $('pwAccountSel');
+  var name = sel ? sel.value : '';
+  P.cur = name ? findAccount(name) : null;
+  P.result = null;
+  renderMeta();
+  renderResult();
+}
+
+function initPw(){
+  if(!$('pPassword')) return;
+
+  var reload = $('btnPwReload');
+  if(reload) reload.addEventListener('click', function(){ refresh(P.cur ? P.cur.name : ''); toast('已重新读取账号'); });
+
+  var sel = $('pwAccountSel');
+  if(sel) sel.addEventListener('change', function(){
+    P.cur = findAccount(sel.value);
+    P.result = null;
+    renderMeta();
+    renderResult();
+  });
+
+  var input = $('pwNew');
+  if(input){
+    input.addEventListener('input', updateStrength);
+    input.addEventListener('keydown', function(e){ if(e.key === 'Enter') compute(); });
+  }
+
+  var eye = $('btnPwEye');
+  if(eye) eye.addEventListener('click', function(){
+    if(!input) return;
+    var show = input.type === 'password';
+    input.type = show ? 'text' : 'password';
+    eye.textContent = show ? '隐藏' : '显示';
+  });
+
+  var gen = $('btnPwGen');
+  if(gen) gen.addEventListener('click', function(){
+    if(!input) return;
+    input.value = randPwd(18);
+    updateStrength();
+    toast('已生成 18 位强密码');
+  });
+
+  var calc = $('btnPwCalc');
+  if(calc) calc.addEventListener('click', compute);
+
+  var copy = $('btnPwCopy');
+  if(copy) copy.addEventListener('click', function(){
+    if(!P.result){ toast('请先计算 hash'); return; }
+    copyText(P.result.hex);
+  });
+
+  var write = $('btnPwWrite');
+  if(write) write.addEventListener('click', confirmWrite);
+
+  var force = $('pwForcePB');
+  if(force) force.addEventListener('change', function(){
+    if(P.result){ P.result = null; renderResult(); }
+  });
+
+  var bar = $('tabBar');
+  if(bar) bar.addEventListener('click', function(e){
+    var b = e.target.closest ? e.target.closest('button[data-panel]') : null;
+    if(b && b.dataset.panel === 'pPassword'){
+      refresh(P.cur ? P.cur.name : '');
+      if(!P.result) updateStrength();
+    }
+  });
+
+  refresh('');
+  updateStrength();
+  setTimeout(selfTest, 260);
+}
+
+if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initPw);
+else initPw();
+
+})();
+</script>
+
+<script>
+(function(){
+  var bar = document.getElementById('tabBar');
+  if(!bar) return;
+  bar.addEventListener('click', function(e){
+    var b = e.target.closest('button[data-panel]');
+    if(!b || b.classList.contains('active')) return;
+    Array.prototype.forEach.call(bar.querySelectorAll('button'), function(x){ x.classList.remove('active'); });
+    b.classList.add('active');
+    ['pEdit','pBackup','pManual','pPassword'].forEach(function(id){
+      var p = document.getElementById(id);
+      if(p) p.classList.toggle('active', id === b.dataset.panel);
+    });
+  });
+})();
+</script>
+
+<script>
+(function(){
+'use strict';
+
+/* ==================== 常量与工具 ==================== */
+var GAME_KEY_RE = /^(ws_|boss_battle_)/i;
+var SNAPSHOT_KEY = 'WSArchiveTool.snapshots.v1';
+var TOOL_VERSION = '1.0.0';
+var MAX_SNAPSHOTS = 10;
+var TREE_LIMIT = 300;
+
+var state = {
+  storageOk: true,
+  storageErr: '',
+  entries: [],
+  allKeysCount: 0,
+  edTarget: '',
+  edSource: null,
+  edDraft: null,
+  edRawMode: false,
+  edOriginalText: '',
+  pendingImport: null
+};
+
+var $ = function(id){ return document.getElementById(id); };
+
+function esc(s){
+  return String(s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+function parseMaybe(s){
+  if(typeof s !== 'string') return {ok:false, err:'非字符串'};
+  try{ return {ok:true, val:JSON.parse(s)}; }
+  catch(e){ return {ok:false, err:(e && e.message) || String(e)}; }
+}
+function strBytes(s){
+  try{ return new Blob([s == null ? '' : s]).size; }
+  catch(e){
+    var n = 0, str = s == null ? '' : String(s);
+    for(var i=0;i<str.length;i++){
+      var c = str.charCodeAt(i);
+      n += c < 0x80 ? 1 : (c < 0x800 ? 2 : (c >= 0xD800 && c <= 0xDBFF ? 4 : 3));
+    }
+    return n;
+  }
+}
+function fmtBytes(n){
+  if(n < 1024) return n + ' B';
+  if(n < 1048576) return (n/1024).toFixed(1) + ' KB';
+  return (n/1048576).toFixed(2) + ' MB';
+}
+function pad2(n){ return (n<10?'0':'') + n; }
+function stamp(d){
+  d = d || new Date();
+  return d.getFullYear() + pad2(d.getMonth()+1) + pad2(d.getDate()) + '_' +
+         pad2(d.getHours()) + pad2(d.getMinutes()) + pad2(d.getSeconds());
+}
+function timeText(d){
+  d = d || new Date();
+  return d.getFullYear() + '-' + pad2(d.getMonth()+1) + '-' + pad2(d.getDate()) + ' ' +
+         pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds());
+}
+function clone(v){
+  if(v === undefined) return undefined;
+  try{ return JSON.parse(JSON.stringify(v)); }catch(e){ return v; }
+}
+function shortVal(v, max){
+  max = max || 42;
+  var s;
+  if(typeof v === 'string') s = v;
+  else if(v === undefined) s = 'undefined';
+  else s = JSON.stringify(v);
+  if(s === undefined) s = String(v);
+  return s.length > max ? s.slice(0, max) + '…' : s;
+}
+function boolText(v){ return v === true ? '是' : (v === false ? '否' : '未设置'); }
+function toast(msg){
+  var t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(function(){ t.classList.remove('show'); }, 2200);
+}
+function btn(text, cls, onClick){
+  var b = document.createElement('button');
+  b.textContent = text;
+  if(cls) b.className = cls;
+  if(onClick) b.addEventListener('click', onClick);
+  return b;
+}
+
+/* ==================== 弹窗 ==================== */
+function openModal(opts){
+  var root = $('modalRoot');
+  root.innerHTML = '';
+  root.classList.remove('hidden');
+
+  var card = document.createElement('div'); card.className = 'modal-card';
+  var title = document.createElement('div'); title.className = 'modal-title';
+  title.textContent = opts.title || '请确认';
+  card.appendChild(title);
+
+  var body = document.createElement('div'); body.className = 'modal-body';
+  if(typeof opts.body === 'string') body.innerHTML = opts.body;
+  else if(opts.body) body.appendChild(opts.body);
+  card.appendChild(body);
+
+  var chk = null;
+  if(opts.requireCheck){
+    var lab = document.createElement('label'); lab.className = 'modal-check';
+    chk = document.createElement('input'); chk.type = 'checkbox';
+    var sp = document.createElement('span');
+    sp.textContent = opts.checkLabel || '我已核对以上内容，确认继续';
+    lab.appendChild(chk); lab.appendChild(sp); body.appendChild(lab);
+  }
+
+  var foot = document.createElement('div'); foot.className = 'modal-foot';
+  var cancel = btn(opts.cancelText || '取消', '', function(){
+    closeModal();
+    if(opts.onCancel) opts.onCancel();
+  });
+  var ok = btn(opts.confirmText || '确认', opts.danger ? 'danger' : 'primary', function(){
+    if(ok.disabled) return;
+    var checked = chk ? !!chk.checked : false;
+    closeModal();
+    if(opts.onConfirm) opts.onConfirm({checked:checked});
+  });
+  var sync = function(){ ok.disabled = !!(opts.requireCheck && chk && !chk.checked); };
+  if(chk) chk.addEventListener('change', sync);
+  sync();
+  foot.appendChild(cancel); foot.appendChild(ok);
+  card.appendChild(foot);
+  root.appendChild(card);
+}
+function closeModal(){
+  var root = $('modalRoot');
+  root.classList.add('hidden');
+  root.innerHTML = '';
+}
+
+/* ==================== 扫描 ==================== */
+function safeStorage(){
+  try{
+    var ls = window.localStorage;
+    var probe = '__ws_probe__';
+    ls.setItem(probe, '1');
+    ls.removeItem(probe);
+    return {ok:true, ls:ls};
+  }catch(e){
+    return {ok:false, err:(e && e.message) || String(e)};
+  }
+}
+function scan(){
+  state.entries = [];
+  state.allKeysCount = 0;
+  state.storageOk = true;
+  state.storageErr = '';
+
+  var acc = safeStorage();
+  if(!acc.ok){
+    state.storageOk = false;
+    state.storageErr = acc.err || '浏览器拒绝访问 localStorage';
+    return;
+  }
+  var ls = acc.ls;
+  var list = [];
+  try{
+    for(var i=0;i<ls.length;i++){
+      var k = ls.key(i);
+      if(k === null || k === undefined) continue;
+      var v = null, err = '';
+      try{ v = ls.getItem(k); }catch(e){ err = (e && e.message) || String(e); }
+      list.push({key:k, value:v, err:err});
+    }
+  }catch(e){
+    state.storageOk = false;
+    state.storageErr = (e && e.message) || String(e);
+    return;
+  }
+  state.allKeysCount = list.length;
+  var game = list.filter(function(x){ return GAME_KEY_RE.test(x.key); });
+  var rank = function(k){
+    if(k === 'ws_accounts') return 0;
+    if(k === 'ws_global_settings') return 1;
+    if(k === 'boss_battle_settings') return 2;
+    return 3;
+  };
+  game.sort(function(a,b){
+    var r = rank(a.key) - rank(b.key);
+    if(r !== 0) return r;
+    return a.key < b.key ? -1 : (a.key > b.key ? 1 : 0);
+  });
+  state.entries = game;
+}
+function findEntry(key){
+  for(var i=0;i<state.entries.length;i++){
+    if(state.entries[i].key === key) return state.entries[i];
+  }
+  return null;
+}
+function totalBytes(){
+  var s = 0;
+  state.entries.forEach(function(e){ s += strBytes(e.value == null ? '' : e.value); });
+  return s;
+}
+
+/* ==================== JSON 树 ==================== */
+function buildNode(val, name, depth){
+  var wrap = document.createElement('div');
+  wrap.className = 'node';
+
+  if(val !== null && typeof val === 'object'){
+    var isArr = Array.isArray(val);
+    var keys = isArr ? null : Object.keys(val);
+    var len = isArr ? val.length : keys.length;
+    var det = document.createElement('details');
+    if(depth <= 1) det.open = true;
+    var sum = document.createElement('summary');
+    sum.innerHTML = '<span class="k">' + esc(name) + '</span> ' +
+                    '<span class="tag">' + (isArr ? '数组' : '对象') + '</span> ' +
+                    '<span class="tag">' + len + (isArr ? ' 项' : ' 个字段') + '</span>';
+    det.appendChild(sum);
+    var children = document.createElement('div'); children.className = 'children';
+    if(isArr){
+      var lim = Math.min(len, TREE_LIMIT);
+      for(var i=0;i<lim;i++) children.appendChild(buildNode(val[i], '[' + i + ']', depth + 1));
+      if(len > lim){
+        var more = document.createElement('div'); more.className = 'tag';
+        more.textContent = '… 省略 ' + (len - lim) + ' 项';
+        children.appendChild(more);
+      }
+    }else{
+      var lim2 = Math.min(keys.length, TREE_LIMIT);
+      for(var j=0;j<lim2;j++) children.appendChild(buildNode(val[keys[j]], keys[j], depth + 1));
+      if(keys.length > lim2){
+        var more2 = document.createElement('div'); more2.className = 'tag';
+        more2.textContent = '… 省略 ' + (keys.length - lim2) + ' 项';
+        children.appendChild(more2);
+      }
+    }
+    det.appendChild(children);
+    wrap.appendChild(det);
+    return wrap;
+  }
+
+  var line = document.createElement('div');
+  var cls = 'vs', txt;
+  if(val === null){ cls = 'vnull'; txt = 'null'; }
+  else if(typeof val === 'number'){ cls = 'vn'; txt = String(val); }
+  else if(typeof val === 'boolean'){ cls = 'vb'; txt = String(val); }
+  else txt = '"' + String(val) + '"';
+  if(txt.length > 400) txt = txt.slice(0, 400) + '…';
+  line.innerHTML = '<span class="k">' + esc(name) + '</span>: <span class="' + cls + '">' + esc(txt) + '</span>';
+  wrap.appendChild(line);
+  return wrap;
+}
+
+/* ==================== 一、键列表 ==================== */
+function renderKeyList(){
+  var mount = $('keyList');
+  mount.innerHTML = '';
+  var stat = $('keyStat');
+  var note = $('storageNote');
+
+  if(!state.storageOk){
+    stat.textContent = '';
+    note.innerHTML = '<span class="badge bad">读取失败</span> ' + esc(state.storageErr);
+  }else{
+    stat.textContent = '共 ' + state.entries.length + ' 个存档键 · ' + fmtBytes(totalBytes());
+    note.textContent = '本域 localStorage 全部键：' + state.allKeysCount + ' 个';
+  }
+
+  if(!state.entries.length){
+    var empty = document.createElement('div');
+    empty.className = 'muted';
+    empty.textContent = state.storageOk ? '没有匹配 ws_* / boss_battle_* 的键。' : '无法列出键（见上方提示）。';
+    mount.appendChild(empty);
+    return;
+  }
+
+  state.entries.forEach(function(ent){
+    var card = document.createElement('div'); card.className = 'keycard';
+
+    var head = document.createElement('div'); head.className = 'keyhead';
+    var nameWrap = document.createElement('div'); nameWrap.className = 'kname';
+    var ktag = document.createElement('span'); ktag.className = 'ktag'; ktag.textContent = ent.key;
+    var p = parseMaybe(ent.value);
+    var badge = document.createElement('span');
+    badge.className = 'badge ' + (p.ok ? 'ok' : 'warn');
+    badge.textContent = p.ok ? 'JSON' : '非 JSON';
+    var size = document.createElement('span'); size.className = 'muted small';
+    size.textContent = fmtBytes(strBytes(ent.value == null ? '' : ent.value));
+    nameWrap.appendChild(ktag); nameWrap.appendChild(badge); nameWrap.appendChild(size);
+
+    var acts = document.createElement('div'); acts.className = 'kacts';
+    var treeBox = document.createElement('div'); treeBox.className = 'tree hidden';
+
+    var toggle = btn('查看 JSON', 'mini', function(){
+      if(treeBox.classList.contains('hidden')){
+        if(!treeBox.childNodes.length){
+          if(p.ok) treeBox.appendChild(buildNode(p.val, ent.key, 0));
+          else {
+            var raw = document.createElement('div');
+            raw.className = 'tag';
+            raw.textContent = '内容不是合法 JSON，原文如下：';
+            var pre = document.createElement('div');
+            pre.className = 'vs';
+            pre.style.whiteSpace = 'pre-wrap';
+            pre.textContent = ent.value;
+            treeBox.appendChild(raw); treeBox.appendChild(pre);
+          }
+        }
+        treeBox.classList.remove('hidden');
+        toggle.textContent = '收起';
+      }else{
+        treeBox.classList.add('hidden');
+        toggle.textContent = '查看 JSON';
+      }
+    });
+    var copyBtn = btn('复制原值', 'mini', function(){
+      copyText(ent.value == null ? '' : ent.value, '已复制 ' + ent.key + ' 的原值');
+    });
+    var editBtn = btn('编辑', 'mini', function(){
+      var sel = $('edTargetSel');
+      var val = 'key:' + ent.key;
+      if(!optionExists(sel, val)) rebuildEditorSelect(val);
+      sel.value = val;
+      loadEditor(val);
+      $('secEditor').scrollIntoView({behavior:'smooth', block:'start'});
+    });
+    acts.appendChild(toggle); acts.appendChild(copyBtn); acts.appendChild(editBtn);
+
+    head.appendChild(nameWrap); head.appendChild(acts);
+    card.appendChild(head); card.appendChild(treeBox);
+    mount.appendChild(card);
+  });
+}
+
+function copyText(text, okMsg){
+  var done = function(){ toast(okMsg || '已复制'); };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(done, function(){ fallbackCopy(text, done); });
+  }else{
+    fallbackCopy(text, done);
+  }
+}
+function fallbackCopy(text, done){
+  var ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.left = '-9999px';
+  document.body.appendChild(ta);
+  ta.select();
+  var ok = false;
+  try{ ok = document.execCommand('copy'); }catch(e){ ok = false; }
+  ta.remove();
+  if(ok) done();
+  else toast('复制失败，请手动选择文本');
+}
+
+/* ==================== 二、账号表 ==================== */
+function encodePwd(pwd){
+  try{ return btoa(pwd + 'salt_ws'); }
+  catch(e){ return null; }
+}
+function decodePwd(enc){
+  if(typeof enc !== 'string' || !enc) return {ok:false, err:'空值'};
+  var s;
+  try{ s = atob(enc); }
+  catch(e){ return {ok:false, err:'不是合法 Base64'}; }
+  if(s.slice(-7) === 'salt_ws') s = s.slice(0, -7);
+  return {ok:true, plain:s};
+}
+function parseAccountsRaw(){
+  var ent = findEntry('ws_accounts');
+  if(!ent) return null;
+  var p = parseMaybe(ent.value);
+  if(!p.ok) return null;
+  if(!p.val || typeof p.val !== 'object' || Array.isArray(p.val)) return null;
+  return p.val;
+}
+function accountSummary(obj){
+  if(!obj || typeof obj !== 'object') return {count:0, text:'—'};
+  var keys = Object.keys(obj);
+  var extra = keys.filter(function(k){ return k !== 'password' && k !== 'canSave' && k !== 'nickname'; });
+  var text = '字段 ' + keys.length + ' 个';
+  if(extra.length) text += ' · 额外：' + extra.slice(0, 6).join('/') + (extra.length > 6 ? '…' : '');
+  else text += ' · password/canSave/nickname';
+  return {count:keys.length, text:text};
+}
+function renderAccountsTable(accounts, mount, opts){
+  opts = opts || {};
+  mount.innerHTML = '';
+  var names = accounts && typeof accounts === 'object' ? Object.keys(accounts) : [];
+  if(!names.length){
+    mount.innerHTML = '<div class="muted">没有可展示的账号数据。</div>';
+    return;
+  }
+  var wrap = document.createElement('div'); wrap.className = 'tbl-wrap';
+  var tbl = document.createElement('table'); tbl.className = 'tbl';
+  var thead = document.createElement('thead');
+  thead.innerHTML = '<tr><th>用户名</th><th>昵称</th><th>canSave</th><th>存档字段摘要</th><th>密码</th><th>操作</th></tr>';
+  tbl.appendChild(thead);
+  var tb = document.createElement('tbody');
+
+  names.forEach(function(name){
+    var rec = accounts[name];
+    var isLegacy = typeof rec === 'string';
+    var obj = isLegacy ? {password:rec} : (rec && typeof rec === 'object' && !Array.isArray(rec) ? rec : {});
+    var tr = document.createElement('tr');
+
+    var tdName = document.createElement('td');
+    tdName.innerHTML = '<b>' + esc(name) + '</b>' + (isLegacy ? ' <span class="tag">旧版字符串</span>' : '');
+    tr.appendChild(tdName);
+
+    var tdNick = document.createElement('td');
+    tdNick.textContent = obj.nickname === undefined ? '—' : obj.nickname;
+    tr.appendChild(tdNick);
+
+    var tdCan = document.createElement('td');
+    var canBadge = document.createElement('span');
+    canBadge.className = 'badge ' + (obj.canSave === false ? 'bad' : (obj.canSave === true ? 'ok' : ''));
+    canBadge.textContent = boolText(obj.canSave);
+    tdCan.appendChild(canBadge);
+    tr.appendChild(tdCan);
+
+    var tdSum = document.createElement('td');
+    var sum = accountSummary(obj);
+    tdSum.innerHTML = '<span class="muted small">' + esc(sum.text) + '</span><br><span class="tag">' +
+                      esc(fmtBytes(strBytes(JSON.stringify(rec === undefined ? null : rec)))) + '</span>';
+    tr.appendChild(tdSum);
+
+    var tdPw = document.createElement('td');
+    var pwBox = document.createElement('span');
+    pwBox.className = 'pw muted';
+    pwBox.textContent = '已加密';
+    var pwBtn = btn('还原', 'mini', function(){
+      if(pwBox.dataset.shown === '1'){
+        pwBox.dataset.shown = '0';
+        pwBox.textContent = '已加密';
+        pwBox.className = 'pw muted';
+        pwBtn.textContent = '还原';
+        return;
+      }
+      var d = decodePwd(obj.password);
+      pwBox.dataset.shown = '1';
+      if(d.ok){
+        pwBox.textContent = d.plain;
+        pwBox.className = 'pw pw-plain';
+        pwBox.title = '明文（仅本地展示）';
+      }else{
+        pwBox.textContent = '无法还原：' + d.err;
+        pwBox.className = 'pw';
+      }
+      pwBtn.textContent = '隐藏';
+    });
+    tdPw.appendChild(pwBtn);
+    var br = document.createElement('div'); br.style.marginTop = '4px';
+    br.appendChild(pwBox);
+    tdPw.appendChild(br);
+    tr.appendChild(tdPw);
+
+    var tdAct = document.createElement('td');
+    if(!opts.readonly){
+      tdAct.appendChild(btn('编辑', 'mini', function(){
+        var sel = $('edTargetSel');
+        var val = 'acct:' + name;
+        if(!optionExists(sel, val)) rebuildEditorSelect(val);
+        sel.value = val;
+        loadEditor(val);
+        $('secEditor').scrollIntoView({behavior:'smooth', block:'start'});
+      }));
+    }else{
+      tdAct.innerHTML = '<span class="tag">只读</span>';
+    }
+    tr.appendChild(tdAct);
+
+    tb.appendChild(tr);
+  });
+  tbl.appendChild(tb);
+  wrap.appendChild(tbl);
+  mount.appendChild(wrap);
+}
+function renderAccounts(){
+  var mount = $('accountsWrap');
+  if(!state.storageOk){
+    mount.innerHTML = '<div class="muted">无法读取 localStorage，见上方提示。</div>';
+    return;
+  }
+  var ent = findEntry('ws_accounts');
+  if(!ent){
+    mount.innerHTML = '<div class="muted">当前来源下没有 <code>ws_accounts</code> 键（可能尚未登录过游戏，或本页面与游戏不同源）。</div>';
+    return;
+  }
+  var p = parseMaybe(ent.value);
+  if(!p.ok){
+    mount.innerHTML = '<div class="muted">ws_accounts 内容不是合法 JSON：' + esc(p.err) + '</div>';
+    return;
+  }
+  if(!p.val || typeof p.val !== 'object' || Array.isArray(p.val)){
+    mount.innerHTML = '<div class="muted">ws_accounts 结构异常（期待以用户名为键的对象）。</div>';
+    return;
+  }
+  renderAccountsTable(p.val, mount, {});
+}
+
+/* ==================== 三、编辑器 ==================== */
+function optionExists(sel, val){
+  for(var i=0;i<sel.options.length;i++){
+    if(sel.options[i].value === val) return true;
+  }
+  return false;
+}
+function rebuildEditorSelect(keepValue){
+  var sel = $('edTargetSel');
+  var prev = keepValue || sel.value || state.edTarget;
+  sel.innerHTML = '';
+
+  var ph = document.createElement('option');
+  ph.value = '';
+  ph.textContent = '—— 选择要编辑的目标 ——';
+  sel.appendChild(ph);
+
+  var accounts = parseAccountsRaw();
+  if(accounts){
+    var g1 = document.createElement('optgroup'); g1.label = '账号（ws_accounts 内的子对象）';
+    Object.keys(accounts).forEach(function(name){
+      var o = document.createElement('option');
+      o.value = 'acct:' + name;
+      o.textContent = '账号：' + name;
+      g1.appendChild(o);
+    });
+    sel.appendChild(g1);
+  }
+
+  if(state.entries.length){
+    var g2 = document.createElement('optgroup'); g2.label = '存档键（整键 JSON）';
+    state.entries.forEach(function(e){
+      var o = document.createElement('option');
+      o.value = 'key:' + e.key;
+      o.textContent = '键：' + e.key;
+      g2.appendChild(o);
+    });
+    sel.appendChild(g2);
+  }
+
+  var names = [];
+  for(var i=0;i<sel.options.length;i++) names.push(sel.options[i].value);
+  if(prev && names.indexOf(prev) >= 0) sel.value = prev;
+}
+function loadEditor(value){
+  state.edTarget = value || '';
+  state.edSource = null;
+  state.edDraft = null;
+  state.edRawMode = false;
+  state.edOriginalText = '';
+
+  if(!value){
+    renderEditorEmpty('请选择一个目标。');
+    return;
+  }
+
+  if(value.indexOf('acct:') === 0){
+    var name = value.slice(5);
+    var accounts = parseAccountsRaw();
+    if(!accounts || !(name in accounts)){
+      renderEditorEmpty('该账号已不存在，请点「重新扫描」刷新。');
+      return;
+    }
+    var rec = accounts[name];
+    var obj = (typeof rec === 'string') ? {password:rec} : clone(rec);
+    state.edSource = {kind:'account', storageKey:'ws_accounts', username:name, legacy:(typeof rec === 'string')};
+    state.edDraft = (obj && typeof obj === 'object') ? obj : {};
+    state.edOriginalText = JSON.stringify(state.edDraft, null, 2);
+    renderEditorBody();
+    return;
+  }
+
+  if(value.indexOf('key:') === 0){
+    var key = value.slice(4);
+    var ent = findEntry(key);
+    if(!ent){
+      renderEditorEmpty('该键已不存在，请点「重新扫描」刷新。');
+      return;
+    }
+    state.edSource = {kind:'key', storageKey:key};
+    var p = parseMaybe(ent.value);
+    if(p.ok && p.val !== null && typeof p.val === 'object'){
+      state.edDraft = clone(p.val);
+      state.edOriginalText = JSON.stringify(state.edDraft, null, 2);
+      renderEditorBody();
+    }else if(p.ok){
+      state.edDraft = p.val;
+      state.edOriginalText = JSON.stringify(state.edDraft, null, 2);
+      renderEditorBody();
+    }else{
+      state.edRawMode = true;
+      state.edDraft = null;
+      state.edOriginalText = ent.value == null ? '' : ent.value;
+      renderEditorBody();
+    }
+    return;
+  }
+
+  renderEditorEmpty('未知的目标类型。');
+}
+function renderEditorEmpty(msg){
+  $('edMeta').textContent = '';
+  $('edFields').innerHTML = '<div class="muted">' + esc(msg) + '</div>';
+  $('edJson').value = '';
+  $('edJsonMsg').textContent = '';
+  $('edTree').innerHTML = '';
+  $('edDirty').textContent = '';
+  $('btnEdWrite').disabled = true;
+}
+function renderEditorBody(){
+  var src = state.edSource;
+  var meta = $('edMeta');
+  var oldText = state.edOriginalText || '';
+
+  if(state.edRawMode){
+    meta.innerHTML = '目标：<b>' + esc(src.storageKey) + '</b> · <span class="badge warn">非 JSON</span> ' +
+                     '<span class="muted small">可原样编辑文本后写回</span>';
+    $('edFields').innerHTML = '<div class="muted small">该键内容不是 JSON，已切换为纯文本模式（下方文本框即原文）。</div>';
+    $('edJson').value = state.edOriginalText;
+    $('edJson').classList.remove('err');
+    $('edJsonMsg').textContent = '原文长度 ' + state.edOriginalText.length + ' 字符 · ' + fmtBytes(strBytes(state.edOriginalText));
+    $('edTree').innerHTML = '<div class="muted small">非 JSON，无树视图。</div>';
+    $('btnEdWrite').disabled = false;
+    updateDirty();
+    return;
+  }
+
+  var label = src.kind === 'account'
+    ? ('账号 <b>' + esc(src.username) + '</b>（位于 ws_accounts）')
+    : ('键 <b>' + esc(src.storageKey) + '</b>');
+  var kindText = (state.edDraft && typeof state.edDraft === 'object' && !Array.isArray(state.edDraft))
+    ? '对象 · ' + Object.keys(state.edDraft).length + ' 个字段'
+    : (Array.isArray(state.edDraft) ? '数组 · ' + state.edDraft.length + ' 项' : '标量');
+  meta.innerHTML = '目标：' + label + ' · <span class="muted small">' + kindText + ' · 当前 ' +
+                   fmtBytes(strBytes(oldText)) + '</span>' +
+                   (src.legacy ? ' · <span class="badge warn">旧版字符串记录，写回后会转为对象</span>' : '');
+
+  renderFieldForm();
+  var jsonEl = $('edJson');
+  jsonEl.value = JSON.stringify(state.edDraft, null, 2);
+  jsonEl.classList.remove('err');
+  $('edJsonMsg').textContent = 'JSON 合法 · ' + fmtBytes(strBytes(jsonEl.value));
+  renderEditorTree();
+  $('btnEdWrite').disabled = false;
+  updateDirty();
+}
+function renderFieldForm(){
+  var box = $('edFields');
+  box.innerHTML = '';
+  var d = state.edDraft;
+  var form = document.createElement('div'); form.className = 'fields';
+
+  if(d === null || typeof d !== 'object' || Array.isArray(d)){
+    box.innerHTML = '<div class="muted small">当前值不是普通对象，无法生成字段表单；请用右侧 JSON 编辑。' +
+                    '（可在 JSON 中把它改成对象）</div>';
+    return;
+  }
+  var keys = Object.keys(d);
+  if(!keys.length){
+    box.innerHTML = '<div class="muted small">对象为空，可直接在下方 JSON 中添加字段。</div>';
+    return;
+  }
+
+  keys.forEach(function(k){
+    var v = d[k];
+    var field = document.createElement('label');
+    field.className = 'field';
+    var nm = document.createElement('span'); nm.className = 'fname';
+    nm.textContent = k + ' · ' + (Array.isArray(v) ? '数组' : (v === null ? 'null' : typeof v));
+
+    if(typeof v === 'number'){
+      var inp = document.createElement('input');
+      inp.type = 'number'; inp.step = 'any'; inp.value = v;
+      inp.addEventListener('input', function(){
+        var n = Number(inp.value);
+        if(inp.value.trim() !== '' && !isNaN(n)){ d[k] = n; afterFieldChange(); }
+      });
+      field.appendChild(nm); field.appendChild(inp); form.appendChild(field); return;
+    }
+    if(typeof v === 'boolean'){
+      field.className = 'field isbool';
+      var cb = document.createElement('input');
+      cb.type = 'checkbox'; cb.checked = v;
+      cb.addEventListener('change', function(){ d[k] = cb.checked; afterFieldChange(); });
+      field.appendChild(cb); field.appendChild(nm); form.appendChild(field); return;
+    }
+    if(typeof v === 'string' && v.length <= 300){
+      var ti = document.createElement('input');
+      ti.type = 'text'; ti.value = v;
+      ti.addEventListener('input', function(){ d[k] = ti.value; afterFieldChange(); });
+      field.appendChild(nm); field.appendChild(ti);
+      if(k === 'password'){
+        var hint = document.createElement('span'); hint.className = 'tag';
+        var dec = decodePwd(v);
+        hint.textContent = dec.ok ? ('还原：' + dec.plain) : ('无法还原：' + dec.err);
+        if(dec.ok) hint.className = 'tag pw-plain';
+        field.appendChild(hint);
+      }
+      form.appendChild(field); return;
+    }
+    field.appendChild(nm);
+    var note = document.createElement('span'); note.className = 'tag';
+    note.textContent = '嵌套或长文本，请在右侧 JSON 中编辑';
+    field.appendChild(note);
+    form.appendChild(field);
+  });
+
+  box.appendChild(form);
+  var tip = document.createElement('div');
+  tip.className = 'stat-inline';
+  tip.style.marginBottom = '4px';
+  tip.textContent = '数值/布尔/短文本可直接改；复杂结构请用 JSON 兜底。';
+  box.appendChild(tip);
+}
+var syncTimer = null;
+function afterFieldChange(){
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(function(){
+    var jsonEl = $('edJson');
+    jsonEl.value = JSON.stringify(state.edDraft, null, 2);
+    jsonEl.classList.remove('err');
+    $('edJsonMsg').textContent = 'JSON 合法 · ' + fmtBytes(strBytes(jsonEl.value));
+    renderEditorTree();
+    updateDirty();
+  }, 120);
+}
+function renderEditorTree(){
+  var box = $('edTree');
+  box.innerHTML = '';
+  if(state.edRawMode || state.edDraft === undefined){
+    box.innerHTML = '<div class="muted small">无可展示内容。</div>';
+    return;
+  }
+  box.appendChild(buildNode(state.edDraft, state.edSource ? (state.edSource.username || state.edSource.storageKey) : 'draft', 0));
+}
+function currentEditorText(){
+  return state.edRawMode ? $('edJson').value : JSON.stringify(state.edDraft, null, 2);
+}
+function updateDirty(){
+  var now = currentEditorText();
+  var changed = now !== state.edOriginalText;
+  $('edDirty').textContent = changed ? '有未写入的修改' : '与 localStorage 中的值一致';
+  $('edDirty').style.color = changed ? '#f0b429' : '#8b949e';
+}
+function diffFlat(oldObj, newObj){
+  var out = [];
+  var keys = {};
+  if(oldObj && typeof oldObj === 'object' && !Array.isArray(oldObj)) Object.keys(oldObj).forEach(function(k){ keys[k] = 1; });
+  if(newObj && typeof newObj === 'object' && !Array.isArray(newObj)) Object.keys(newObj).forEach(function(k){ keys[k] = 1; });
+  Object.keys(keys).forEach(function(k){
+    var a = oldObj ? oldObj[k] : undefined;
+    var b = newObj ? newObj[k] : undefined;
+    var sa = JSON.stringify(a === undefined ? null : a);
+    var sb = JSON.stringify(b === undefined ? null : b);
+    if(sa !== sb){
+      out.push({
+        key:k,
+        state: (a === undefined) ? 'add' : (b === undefined ? 'del' : 'chg'),
+        old:a, new:b
+      });
+    }
+  });
+  return out;
+}
+function buildDiffHtml(rows){
+  if(!rows.length) return '<div class="same">无字段级差异</div>';
+  var h = '';
+  rows.slice(0, 40).forEach(function(r){
+    var cls = r.state === 'add' ? 'add' : (r.state === 'del' ? 'chg' : 'chg');
+    var tag = r.state === 'add' ? '新增' : (r.state === 'del' ? '删除' : '修改');
+    h += '<div class="' + cls + '">' + esc(r.key) + ' [' + tag + ']  ' +
+         esc(shortVal(r.old, 34)) + '  →  ' + esc(shortVal(r.new, 34)) + '</div>';
+  });
+  if(rows.length > 40) h += '<div class="same">… 其余 ' + (rows.length - 40) + ' 处省略</div>';
+  return h;
+}
+
+/* 写入 */
+function writeEditor(){
+  var src = state.edSource;
+  if(!src){ toast('请先选择目标'); return; }
+
+  if(state.edRawMode){
+    var newRaw = $('edJson').value;
+    var oldRaw = state.edOriginalText || '';
+    var body = document.createElement('div');
+    body.innerHTML = '<p>即将把 <b>' + esc(src.storageKey) + '</b> 的原文整段覆盖写入。</p>' +
+      '<div class="diff"><div>长度：' + oldRaw.length + ' → ' + newRaw.length + ' 字符</div>' +
+      '<div class="chg">' + esc(shortVal(newRaw, 120)) + '</div></div>';
+    openModal({
+      title:'确认写入（第二次确认）',
+      body:body,
+      requireCheck:true,
+      checkLabel:'我已确认要用上面的内容覆盖 localStorage 中的 ' + src.storageKey,
+      confirmText:'确认写入',
+      onConfirm:function(){
+        pushSnapshot('写入前自动快照 · ' + src.storageKey);
+        try{
+          localStorage.setItem(src.storageKey, newRaw);
+          afterWrite('已写入 ' + src.storageKey);
+        }catch(e){ toast('写入失败：' + ((e && e.message) || e)); }
+      }
+    });
+    return;
+  }
+
+  var draft = state.edDraft;
+  var oldValue, newValue, bodyHtml;
+
+  if(src.kind === 'account'){
+    var accounts = parseAccountsRaw() || {};
+    var before = clone(accounts[src.username]);
+    accounts[src.username] = clone(draft);
+    oldValue = JSON.stringify(before);
+    newValue = JSON.stringify(accounts, null, 2);
+    var rows = diffFlat(before, draft);
+    bodyHtml = '<p>目标：账号 <b>' + esc(src.username) + '</b> → 键 <code>ws_accounts</code></p>' +
+      '<p class="small muted">下表是相对当前值的字段差异：</p><div class="diff">' + buildDiffHtml(rows) + '</div>' +
+      (rows.length ? '' : '<p class="small" style="color:#f0b429">没有检测到任何字段变化，写入将不产生实质修改。</p>');
+  }else{
+    var ent = findEntry(src.storageKey);
+    oldValue = ent ? ent.value : '';
+    newValue = JSON.stringify(draft, null, 2);
+    var oldParsed = parseMaybe(oldValue);
+    var rows2 = diffFlat(oldParsed.ok ? oldParsed.val : null, draft);
+    bodyHtml = '<p>目标：键 <code>' + esc(src.storageKey) + '</code></p>' +
+      '<div class="diff"><div>大小：' + fmtBytes(strBytes(oldValue || '')) + ' → ' + fmtBytes(strBytes(newValue)) + '</div>' +
+      buildDiffHtml(rows2) + '</div>';
+  }
+
+  var wrap = document.createElement('div');
+  wrap.innerHTML = bodyHtml;
+
+  openModal({
+    title:'确认写入 localStorage（第二次确认）',
+    body:wrap,
+    requireCheck:true,
+    checkLabel:'我已核对差异，确认把修改写入浏览器存储（写入前会自动打一个快照）',
+    confirmText:'确认写入',
+    onConfirm:function(){
+      pushSnapshot('写入前自动快照 · ' + (src.kind === 'account' ? ('ws_accounts/' + src.username) : src.storageKey));
+      try{
+        if(src.kind === 'account'){
+          var accs = parseAccountsRaw() || {};
+          accs[src.username] = clone(draft);
+          localStorage.setItem('ws_accounts', JSON.stringify(accs));
+          afterWrite('已写入账号 ' + src.username);
+        }else{
+          localStorage.setItem(src.storageKey, JSON.stringify(draft));
+          afterWrite('已写入 ' + src.storageKey);
+        }
+      }catch(e){
+        toast('写入失败：' + ((e && e.message) || e));
+      }
+    }
+  });
+}
+function afterWrite(msg){
+  scan();
+  renderAll();
+  rebuildEditorSelect(state.edTarget);
+  if(state.edTarget) loadEditor(state.edTarget);
+  toast(msg);
+}
+
+/* ==================== 四、导出 / 导入 ==================== */
+function collectAll(){
+  var data = {};
+  state.entries.forEach(function(e){ data[e.key] = e.value == null ? '' : e.value; });
+  return data;
+}
+function doExport(){
+  if(!state.entries.length){ toast('当前没有可导出的存档键'); return; }
+  var data = collectAll();
+  var payload = {
+    app:'WS存档工坊',
+    toolVersion:TOOL_VERSION,
+    game:'白色方块的冒险',
+    exportedAt:new Date().toISOString(),
+    exportedAtLocal:timeText(),
+    origin:location.href,
+    keys:Object.keys(data),
+    data:data
+  };
+  var name = 'ws存档备份_' + stamp() + '.json';
+  downloadJson(name, JSON.stringify(payload, null, 2));
+  toast('已导出 ' + Object.keys(data).length + ' 个键');
+}
+function downloadJson(filename, text){
+  try{
+    var blob = new Blob([text], {type:'application/json;charset=utf-8'});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function(){ URL.revokeObjectURL(url); a.remove(); }, 900);
+  }catch(e){
+    toast('下载失败：' + ((e && e.message) || e));
+  }
+}
+function normalizeBackup(obj){
+  if(!obj || typeof obj !== 'object' || Array.isArray(obj)) return null;
+  var map = null;
+  if(obj.data && typeof obj.data === 'object' && !Array.isArray(obj.data)) map = obj.data;
+  else {
+    var maybeFlat = Object.keys(obj).some(function(k){ return GAME_KEY_RE.test(k); });
+    if(maybeFlat) map = obj;
+  }
+  if(!map) return null;
+  var out = {}, skipped = [];
+  Object.keys(map).forEach(function(k){
+    var v = map[k];
+    var raw = (typeof v === 'string') ? v : JSON.stringify(v);
+    if(GAME_KEY_RE.test(k)) out[k] = raw;
+    else skipped.push(k);
+  });
+  return {data:out, skipped:skipped};
+}
+function runImportFlow(map, sourceLabel){
+  var incomingKeys = Object.keys(map);
+  if(!incomingKeys.length){ toast('备份中没有 ws_* / boss_battle_* 存档键'); return; }
+
+  var rows = incomingKeys.map(function(k){
+    var ent = findEntry(k);
+    var cur = ent ? (ent.value == null ? '' : ent.value) : null;
+    var next = map[k];
+    var st;
+    if(cur === null) st = 'add';
+    else if(cur === next) st = 'same';
+    else st = 'chg';
+    var detail = '';
+    if(st === 'chg'){
+      var a = parseMaybe(cur), b = parseMaybe(next);
+      if(a.ok && b.ok && a.val && b.val && typeof a.val === 'object' && typeof b.val === 'object' && !Array.isArray(a.val) && !Array.isArray(b.val)){
+        var d = diffFlat(a.val, b.val);
+        detail = d.length ? (d.length + ' 个字段变化：' + d.slice(0, 3).map(function(x){
+          return x.key + ' ' + shortVal(x.old, 12) + '→' + shortVal(x.new, 12);
+        }).join('；')) : '结构相同但文本不同（可能只是空格/顺序差异）';
+      }else{
+        detail = '原文长度 ' + cur.length + ' → ' + next.length;
+      }
+    }else if(st === 'add'){
+      detail = '备份中独有，本地不存在';
+    }else{
+      detail = '内容完全一致，将跳过';
+    }
+    return {key:k, state:st, cur:cur, next:next, detail:detail};
+  });
+
+  state.pendingImport = rows;
+
+  var mount = $('importDiffWrap');
+  mount.innerHTML = '';
+  var block = document.createElement('div'); block.className = 'block';
+  var tl = document.createElement('h3');
+  var addN = rows.filter(function(r){ return r.state === 'add'; }).length;
+  var chgN = rows.filter(function(r){ return r.state === 'chg'; }).length;
+  var sameN = rows.filter(function(r){ return r.state === 'same'; }).length;
+  tl.textContent = '待导入差异（来源：' + (sourceLabel || '备份文件') + '）— 新增 ' + addN + ' / 覆盖 ' + chgN + ' / 相同 ' + sameN;
+  block.appendChild(tl);
+
+  var diff = document.createElement('div'); diff.className = 'diff';
+  rows.forEach(function(r){
+    var cls = r.state === 'add' ? 'add' : (r.state === 'chg' ? 'chg' : 'same');
+    var tag = r.state === 'add' ? '新增' : (r.state === 'chg' ? '覆盖' : '相同');
+    var line = document.createElement('div');
+    line.className = cls;
+    line.textContent = '[' + tag + '] ' + r.key + ' — ' + r.detail;
+    diff.appendChild(line);
+  });
+  block.appendChild(diff);
+
+  var bar = document.createElement('div'); bar.className = 'toolbar'; bar.style.marginTop = '10px';
+  var applyBtn = btn('确认导入（' + (addN + chgN) + ' 个键待写入）', 'primary', function(){
+    if(addN + chgN === 0){ toast('没有需要写入的内容'); return; }
+    var body = document.createElement('div');
+    body.innerHTML = '<p>即将写入 ' + (addN + chgN) + ' 个键，其中新增 ' + addN + ' 个、覆盖 ' + chgN + ' 个。</p>' +
+      '<p class="small" style="color:#f0b429">覆盖会替换当前浏览器里对应键的值。写入前本工具会自动打一个快照，可在「五、存档点快照」回滚。</p>';
+    openModal({
+      title:'确认导入（第二次确认）',
+      body:body,
+      requireCheck:true,
+      checkLabel:'我已核对上面的差异清单，确认写入这 ' + (addN + chgN) + ' 个键',
+      confirmText:'确认导入',
+      onConfirm:function(){
+        pushSnapshot('导入前自动快照');
+        var okN = 0, failN = 0;
+        rows.forEach(function(r){
+          if(r.state === 'same') return;
+          try{ localStorage.setItem(r.key, r.next); okN++; }
+          catch(e){ failN++; }
+        });
+        scan();
+        renderAll();
+        rebuildEditorSelect(state.edTarget);
+        mount.innerHTML = '<div class="block"><h3>导入完成</h3><div class="small">成功 ' + okN +
+                          ' 个键' + (failN ? ('，失败 ' + failN + ' 个') : '') + '。已重新扫描当前键列表。</div></div>';
+        toast('导入完成：' + okN + ' 个键已写入');
+      }
+    });
+  });
+  var cancelBtn = btn('放弃本次导入', '', function(){
+    mount.innerHTML = '<div class="muted small">已放弃导入，未做任何写入。</div>';
+    state.pendingImport = null;
+  });
+  bar.appendChild(applyBtn); bar.appendChild(cancelBtn);
+  block.appendChild(bar);
+
+  if(state.pendingImport.length && sourceLabel && sourceLabel !== '备份文件'){
+    var tip = document.createElement('div');
+    tip.className = 'tag';
+    tip.textContent = '提示：手动粘贴的内容同样走这套差异对比流程。';
+    block.appendChild(tip);
+  }
+  mount.appendChild(block);
+  $('secBackup').scrollIntoView({behavior:'smooth', block:'start'});
+}
+function onImportFile(ev){
+  var file = ev.target.files && ev.target.files[0];
+  ev.target.value = '';
+  if(!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e){
+    var p = parseMaybe(String(e.target.result || ''));
+    if(!p.ok){ toast('文件不是合法 JSON：' + p.err); return; }
+    var norm = normalizeBackup(p.val);
+    if(!norm){ toast('无法识别该文件结构（既不是整包备份，也不是键值映射）'); return; }
+    if(norm.skipped.length){
+      toast('已忽略 ' + norm.skipped.length + ' 个非存档键');
+    }
+    runImportFlow(norm.data, '备份文件 ' + file.name);
+  };
+  reader.readAsText(file);
+}
+
+/* ==================== 五、快照 ==================== */
+function loadSnapshots(){
+  try{
+    var raw = localStorage.getItem(SNAPSHOT_KEY);
+    if(!raw) return [];
+    var arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr : [];
+  }catch(e){ return []; }
+}
+function saveSnapshots(arr){
+  try{ localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(arr.slice(0, MAX_SNAPSHOTS))); return true; }
+  catch(e){ toast('快照保存失败（可能空间不足）：' + ((e && e.message) || e)); return false; }
+}
+function pushSnapshot(label){
+  var data = collectAll();
+  if(!Object.keys(data).length) return;
+  var arr = loadSnapshots();
+  var snap = {
+    id:'snap_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+    createdAt:new Date().toISOString(),
+    createdAtLocal:timeText(),
+    label:label || '手动快照',
+    keys:Object.keys(data),
+    bytes:strBytes(JSON.stringify(data)),
+    data:data
+  };
+  arr.unshift(snap);
+  saveSnapshots(arr);
+}
+function renderSnapshots(){
+  var mount = $('snapList');
+  mount.innerHTML = '';
+  var arr = loadSnapshots();
+  $('snapStat').textContent = arr.length
+    ? ('共 ' + arr.length + ' 个快照 · 占用 ' + fmtBytes(strBytes(localStorage.getItem(SNAPSHOT_KEY) || '')))
+    : '暂无快照';
+
+  if(!arr.length){
+    mount.innerHTML = '<div class="muted small">还没有快照。写入/导入前工具会自动打快照，也可以手动点上面的按钮。</div>';
+    return;
+  }
+  arr.forEach(function(snap){
+    var card = document.createElement('div'); card.className = 'keycard';
+    var head = document.createElement('div'); head.className = 'keyhead';
+
+    var info = document.createElement('div'); info.className = 'kname';
+    info.innerHTML = '<span class="ktag">' + esc(snap.label || '快照') + '</span>' +
+      '<span class="badge">' + (snap.keys ? snap.keys.length : 0) + ' 键</span>' +
+      '<span class="muted small">' + esc(snap.createdAtLocal || snap.createdAt || '') + ' · ' + fmtBytes(snap.bytes || 0) + '</span>';
+
+    var acts = document.createElement('div'); acts.className = 'kacts';
+    var viewBtn = btn('查看', 'mini', function(){
+      var box = card.querySelector('.snap-body');
+      if(!box.classList.contains('hidden')){ box.classList.add('hidden'); return; }
+      box.innerHTML = '';
+      box.appendChild(buildNode(snap.data, '快照内容', 0));
+      box.classList.remove('hidden');
+    });
+    var rollBtn = btn('回滚到此刻', 'mini', function(){ rollbackFlow(snap); });
+    var delBtn = btn('删除', 'mini', function(){
+      openModal({
+        title:'删除快照',
+        body:'<p>将删除这个快照记录（仅删除工具自己的存储，不影响游戏存档）。</p>',
+        requireCheck:true,
+        checkLabel:'确认删除该快照',
+        confirmText:'删除',
+        danger:true,
+        onConfirm:function(){
+          var list = loadSnapshots().filter(function(x){ return x.id !== snap.id; });
+          saveSnapshots(list);
+          renderSnapshots();
+          toast('已删除快照');
+        }
+      });
+    });
+    acts.appendChild(viewBtn); acts.appendChild(rollBtn); acts.appendChild(delBtn);
+
+    head.appendChild(info); head.appendChild(acts);
+    var bodyBox = document.createElement('div'); bodyBox.className = 'tree snap-body hidden';
+    card.appendChild(head); card.appendChild(bodyBox);
+    mount.appendChild(card);
+  });
+}
+function rollbackFlow(snap){
+  var curKeys = state.entries.map(function(e){ return e.key; });
+  var snapKeys = snap.keys || Object.keys(snap.data || {});
+  var extra = curKeys.filter(function(k){ return snapKeys.indexOf(k) < 0; });
+  var missing = snapKeys.filter(function(k){ return curKeys.indexOf(k) < 0; });
+
+  var body = document.createElement('div');
+  body.innerHTML =
+    '<p>将把浏览器存储恢复到 <b>' + esc(snap.createdAtLocal || '') + '</b> 的那个快照（' + snapKeys.length + ' 个键）。</p>' +
+    '<div class="diff">' +
+      '<div class="chg">将被快照值覆盖：' + esc(snapKeys.filter(function(k){ return curKeys.indexOf(k) >= 0; }).join('、') || '（无）') + '</div>' +
+      '<div class="add">将被重新写回（当前缺失）：' + esc(missing.join('、') || '（无）') + '</div>' +
+      '<div class="same">当前多出、快照里没有：' + esc(extra.join('、') || '（无）') + '</div>' +
+    '</div>' +
+    '<p class="small muted" style="margin-top:8px">多出的键默认保留不动；如需彻底回到快照状态，勾选下面的选项。</p>';
+
+  var opt = document.createElement('label'); opt.className = 'modal-opt';
+  var optCb = document.createElement('input'); optCb.type = 'checkbox';
+  var optSpan = document.createElement('span');
+  optSpan.textContent = '同时删除「快照里没有」的存档键' + (extra.length ? '（' + extra.join('、') + '）' : '（当前无此类键）');
+  opt.appendChild(optCb); opt.appendChild(optSpan);
+  if(!extra.length) optCb.disabled = true;
+  body.appendChild(opt);
+
+  openModal({
+    title:'确认回滚（第二次确认）',
+    body:body,
+    requireCheck:true,
+    checkLabel:'我已确认要覆盖当前存档，回滚前会先自动打一个快照',
+    confirmText:'确认回滚',
+    danger:true,
+    onConfirm:function(){
+      pushSnapshot('回滚前自动快照');
+      var okN = 0, failN = 0;
+      Object.keys(snap.data || {}).forEach(function(k){
+        try{ localStorage.setItem(k, snap.data[k]); okN++; }catch(e){ failN++; }
+      });
+      var delN = 0;
+      if(optCb.checked && !optCb.disabled){
+        extra.forEach(function(k){
+          try{ localStorage.removeItem(k); delN++; }catch(e){}
+        });
+      }
+      scan();
+      renderAll();
+      rebuildEditorSelect('');
+      toast('回滚完成：写入 ' + okN + ' 个键' + (delN ? ('，删除 ' + delN + ' 个') : '') + (failN ? ('，失败 ' + failN + ' 个') : ''));
+    }
+  });
+}
+
+/* ==================== 六、手动粘贴 ==================== */
+function looksLikeAccounts(obj){
+  if(!obj || typeof obj !== 'object' || Array.isArray(obj)) return false;
+  var keys = Object.keys(obj);
+  if(!keys.length) return false;
+  var hits = 0;
+  keys.slice(0, 20).forEach(function(k){
+    var v = obj[k];
+    if(typeof v === 'string'){ hits++; return; }
+    if(v && typeof v === 'object' && ('password' in v || 'canSave' in v || 'nickname' in v)) hits++;
+  });
+  return hits === keys.length && keys.length <= 200;
+}
+function looksLikeSave(obj){
+  if(!obj || typeof obj !== 'object' || Array.isArray(obj)) return false;
+  var mark = ['hp','gold','level','exp','kills','map','enemies','boss','hasSavePoint','bossDefeated','worldX','x','y'];
+  return mark.some(function(k){ return k in obj; });
+}
+function manualParse(){
+  var mount = $('manualOut');
+  mount.innerHTML = '';
+  var raw = $('manualInput').value.trim();
+  if(!raw){ toast('请先粘贴 JSON 内容'); return; }
+  var p = parseMaybe(raw);
+  if(!p.ok){
+    mount.innerHTML = '<div class="muted">解析失败：' + esc(p.err) + '</div>';
+    return;
+  }
+  var val = p.val;
+
+  var head = document.createElement('div'); head.className = 'block';
+  head.innerHTML = '<h3>识别结果</h3><div class="small" id="manualKind"></div>';
+  mount.appendChild(head);
+
+  /* 整包备份 */
+  if(val && typeof val === 'object' && val.data && typeof val.data === 'object'){
+    $('manualKind').innerHTML = '看起来是 <b>整包备份</b>（含 data 字段），' +
+      '<span class="muted">可点下方按钮走差异对比后写回。</span>';
+    var norm = normalizeBackup(val);
+    if(norm && Object.keys(norm.data).length){
+      var b1 = btn('作为备份导入（差异对比 → 二次确认）', 'primary', function(){
+        runImportFlow(norm.data, '手动粘贴的整包备份');
+      });
+      head.appendChild(b1);
+    }
+    var tb = document.createElement('div'); tb.className = 'tree';
+    tb.appendChild(buildNode(val, '内容', 0));
+    mount.appendChild(tb);
+    return;
+  }
+
+  /* 账号映射 */
+  if(looksLikeAccounts(val)){
+    $('manualKind').innerHTML = '看起来是 <b>ws_accounts 账号映射</b>，共 ' + Object.keys(val).length + ' 个账号。' +
+      '<span class="muted">下表为解析结果（密码可点「还原」查看明文）。</span>';
+    var tableBox = document.createElement('div'); tableBox.className = 'block';
+    renderAccountsTable(val, tableBox, {readonly:true});
+    mount.appendChild(tableBox);
+
+    var b2 = btn('作为 ws_accounts 导入（差异对比 → 二次确认）', 'primary', function(){
+      var data = {};
+      data['ws_accounts'] = JSON.stringify(val);
+      runImportFlow(data, '手动粘贴的账号映射');
+    });
+    var bar2 = document.createElement('div'); bar2.className = 'toolbar'; bar2.appendChild(b2);
+    mount.appendChild(bar2);
+
+    var tb2 = document.createElement('div'); tb2.className = 'tree';
+    tb2.appendChild(buildNode(val, 'ws_accounts', 0));
+    mount.appendChild(tb2);
+    return;
+  }
+
+  /* 存档对象 */
+  var kindText = looksLikeSave(val) ? '看起来是 <b>游戏存档对象</b>' : '看起来是 <b>普通 JSON</b>';
+  $('manualKind').innerHTML = kindText + ' <span class="muted">字段 ' +
+    (val && typeof val === 'object' ? Object.keys(val).length : 0) + ' 个，可直接改关键数值后下载/复制。</span>';
+
+  var draft = clone(val);
+  var editBox = document.createElement('div'); editBox.className = 'block';
+  editBox.innerHTML = '<h3>字段速改</h3>';
+  var fieldsMount = document.createElement('div');
+  editBox.appendChild(fieldsMount);
+  mount.appendChild(editBox);
+
+  var jsonEl = document.createElement('textarea');
+  jsonEl.rows = 12; jsonEl.spellcheck = false;
+  jsonEl.value = JSON.stringify(draft, null, 2);
+  var jsonBox = document.createElement('div'); jsonBox.className = 'block';
+  jsonBox.innerHTML = '<h3>JSON（可整体修改）</h3>';
+  jsonBox.appendChild(jsonEl);
+  mount.appendChild(jsonBox);
+
+  var treeBox = document.createElement('div'); treeBox.className = 'block';
+  treeBox.innerHTML = '<h3>JSON 树</h3>';
+  var treeInner = document.createElement('div'); treeInner.className = 'tree';
+  treeInner.appendChild(buildNode(draft, '内容', 0));
+  treeBox.appendChild(treeInner);
+  mount.appendChild(treeBox);
+
+  function refreshFields(){
+    fieldsMount.innerHTML = '';
+    if(!draft || typeof draft !== 'object' || Array.isArray(draft)){
+      fieldsMount.innerHTML = '<div class="muted small">不是对象，请直接改上面的 JSON。</div>';
+      return;
+    }
+    var form = document.createElement('div'); form.className = 'fields';
+    Object.keys(draft).forEach(function(k){
+      var v = draft[k];
+      var f = document.createElement('label'); f.className = 'field';
+      var nm = document.createElement('span'); nm.className = 'fname';
+      nm.textContent = k + ' · ' + (Array.isArray(v) ? '数组' : (v === null ? 'null' : typeof v));
+      if(typeof v === 'number'){
+        var i1 = document.createElement('input'); i1.type = 'number'; i1.step = 'any'; i1.value = v;
+        i1.addEventListener('input', function(){
+          var n = Number(i1.value);
+          if(i1.value.trim() !== '' && !isNaN(n)){ draft[k] = n; jsonEl.value = JSON.stringify(draft, null, 2); }
+        });
+        f.appendChild(nm); f.appendChild(i1);
+      }else if(typeof v === 'boolean'){
+        f.className = 'field isbool';
+        var c1 = document.createElement('input'); c1.type = 'checkbox'; c1.checked = v;
+        c1.addEventListener('change', function(){ draft[k] = c1.checked; jsonEl.value = JSON.stringify(draft, null, 2); });
+        f.appendChild(c1); f.appendChild(nm);
+      }else if(typeof v === 'string' && v.length <= 300){
+        var t1 = document.createElement('input'); t1.type = 'text'; t1.value = v;
+        t1.addEventListener('input', function(){ draft[k] = t1.value; jsonEl.value = JSON.stringify(draft, null, 2); });
+        f.appendChild(nm); f.appendChild(t1);
+      }else{
+        f.appendChild(nm);
+        var sp = document.createElement('span'); sp.className = 'tag'; sp.textContent = '嵌套，请改 JSON';
+        f.appendChild(sp);
+      }
+      form.appendChild(f);
+    });
+    fieldsMount.appendChild(form);
+  }
+  refreshFields();
+
+  jsonEl.addEventListener('input', function(){
+    var pp = parseMaybe(jsonEl.value);
+    if(pp.ok){
+      draft = pp.val;
+      jsonEl.classList.remove('err');
+      refreshFields();
+      treeInner.innerHTML = '';
+      treeInner.appendChild(buildNode(draft, '内容', 0));
+    }else{
+      jsonEl.classList.add('err');
+    }
+  });
+
+  var bar = document.createElement('div'); bar.className = 'toolbar';
+  bar.style.marginTop = '10px';
+  bar.appendChild(btn('下载修改后的 JSON', 'primary', function(){
+    downloadJson('ws自动分析_' + stamp() + '.json', JSON.stringify(draft, null, 2));
+  }));
+  bar.appendChild(btn('复制 JSON', '', function(){
+    copyText(JSON.stringify(draft, null, 2), '已复制 JSON 文本');
+  }));
+  mount.appendChild(bar);
+
+  var hint = document.createElement('div'); hint.className = 'tag';
+  hint.textContent = '提示：下载的 JSON 可以直接用游戏登录页的「加载存档」导入。';
+  mount.appendChild(hint);
+}
+
+/* ==================== 汇总渲染 ==================== */
+function renderAll(){
+  renderKeyList();
+  renderAccounts();
+  renderSnapshots();
+
+  var hint = $('hintBox');
+  var needHint = (!state.storageOk) || state.entries.length === 0;
+  if(needHint) hint.classList.remove('hidden');
+  else hint.classList.add('hidden');
+
+  var info = $('originInfo');
+  var loc = '来源：' + location.href;
+  if(loc.length > 96) loc = loc.slice(0, 96) + '…';
+  info.textContent = loc;
+}
+function init(){
+  scan();
+  renderAll();
+  rebuildEditorSelect('');
+  renderEditorEmpty('请选择要编辑的账号或存档键。');
+  loadEditor('');
+
+  $('btnRescan').addEventListener('click', function(){
+    scan();
+    renderAll();
+    rebuildEditorSelect(state.edTarget);
+    if(state.edTarget) loadEditor(state.edTarget);
+    toast('已重新扫描');
+  });
+  $('edTargetSel').addEventListener('change', function(e){ loadEditor(e.target.value); });
+  $('btnEdReload').addEventListener('click', function(){
+    var v = $('edTargetSel').value || state.edTarget;
+    if(!v){ toast('请先选择目标'); return; }
+    loadEditor(v);
+    toast('已重新载入');
+  });
+  $('edJson').addEventListener('input', function(){
+    var el = $('edJson');
+    if(state.edRawMode){
+      updateDirty();
+      return;
+    }
+    var p = parseMaybe(el.value);
+    if(p.ok){
+      state.edDraft = p.val;
+      el.classList.remove('err');
+      $('edJsonMsg').textContent = 'JSON 合法 · ' + fmtBytes(strBytes(el.value));
+      renderFieldForm();
+      renderEditorTree();
+      updateDirty();
+    }else{
+      el.classList.add('err');
+      $('edJsonMsg').textContent = 'JSON 语法错误：' + p.err + '（未生效，修正后自动同步）';
+    }
+  });
+  $('btnTreeRefresh').addEventListener('click', function(){ renderEditorTree(); });
+  $('btnEdWrite').addEventListener('click', function(){
+    var el = $('edJson');
+    if(!state.edRawMode){
+      var p = parseMaybe(el.value);
+      if(!p.ok){ toast('JSON 有语法错误，无法写入'); return; }
+      state.edDraft = p.val;
+    }
+    writeEditor();
+  });
+  $('btnEdReset').addEventListener('click', function(){
+    if(!state.edTarget){ toast('请先选择目标'); return; }
+    openModal({
+      title:'放弃修改',
+      body:'<p>将丢弃当前未写入的修改并重新载入页面上的值，localStorage 不受影响。</p>',
+      confirmText:'放弃修改',
+      onConfirm:function(){
+        loadEditor(state.edTarget);
+        toast('已放弃修改');
+      }
+    });
+  });
+
+  $('btnExport').addEventListener('click', doExport);
+  $('btnImportPick').addEventListener('click', function(){ $('importFile').click(); });
+  $('importFile').addEventListener('change', onImportFile);
+
+  $('btnSnapCreate').addEventListener('click', function(){
+    if(!state.entries.length){ toast('当前没有可快照的存档键'); return; }
+    var label = window.prompt('给这个快照起个名字（可留空）', '手动快照 ' + timeText());
+    if(label === null) return;
+    pushSnapshot((label || '').trim() || ('手动快照 ' + timeText()));
+    renderSnapshots();
+    toast('已创建快照');
+  });
+
+  $('btnManualParse').addEventListener('click', manualParse);
+  $('btnManualClear').addEventListener('click', function(){
+    $('manualInput').value = '';
+    $('manualOut').innerHTML = '';
+  });
+
+  $('modalRoot').addEventListener('click', function(e){
+    if(e.target === $('modalRoot')) closeModal();
+  });
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape') closeModal();
+  });
+}
+
+if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+else init();
+})();
+</script>
+</body>
+</html>

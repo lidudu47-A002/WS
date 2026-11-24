@@ -1,0 +1,1444 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>QR Studio · 二维码生成器</title>
+<style>
+  :root{
+    --line: rgba(255,255,255,.16);
+    --text: #e9eefc;
+    --muted: #93a0c0;
+    --accent: #5eead4;
+    --accent-2: #a78bfa;
+    --danger: #fb7185;
+    --panel: rgba(255,255,255,.055);
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; margin:0; }
+  body{
+    background:
+      radial-gradient(1200px 700px at 12% 8%, #1a1033 0%, transparent 62%),
+      radial-gradient(900px 640px at 88% 92%, #062a3a 0%, transparent 60%),
+      #05060c;
+    color:var(--text);
+    font-family:"Segoe UI","Microsoft YaHei UI","Microsoft YaHei",system-ui,-apple-system,sans-serif;
+    overflow:hidden;
+    user-select:none;
+    -webkit-font-smoothing:antialiased;
+  }
+  body::before{
+    content:'';position:fixed;inset:0;z-index:1;pointer-events:none;opacity:.05;mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+  }
+  .aura{ position:fixed; z-index:0; border-radius:50%; filter:blur(90px); opacity:.5; pointer-events:none; }
+  .aura.a1{ width:520px; height:520px; left:-140px; top:-160px;
+    background:radial-gradient(circle, rgba(94,234,212,.30), transparent 65%);
+    animation:drift1 22s ease-in-out infinite alternate; }
+  .aura.a2{ width:640px; height:640px; right:-180px; bottom:-220px;
+    background:radial-gradient(circle, rgba(167,139,250,.32), transparent 65%);
+    animation:drift2 26s ease-in-out infinite alternate; }
+  @keyframes drift1{ from{ transform:translate3d(0,0,0) scale(1);} to{ transform:translate3d(70px,50px,0) scale(1.12);} }
+  @keyframes drift2{ from{ transform:translate3d(0,0,0) scale(1.06);} to{ transform:translate3d(-60px,-46px,0) scale(1);} }
+
+  .glass{
+    background:linear-gradient(160deg, rgba(255,255,255,.10), rgba(255,255,255,.035));
+    border:1px solid rgba(255,255,255,.16);
+    border-radius:20px;
+    backdrop-filter:blur(22px) saturate(160%);
+    -webkit-backdrop-filter:blur(22px) saturate(160%);
+    box-shadow:0 18px 48px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.18);
+  }
+  .shell{ position:relative; z-index:2; height:100%; display:flex; flex-direction:column; gap:14px; padding:16px; }
+
+  /* ---------- 顶栏 ---------- */
+  .topbar{ display:flex; align-items:center; justify-content:space-between; gap:14px; padding:11px 18px; flex:none; }
+  .brand{ display:flex; align-items:center; gap:12px; min-width:0; }
+  .logo{
+    width:40px;height:40px;border-radius:13px;flex:none;display:grid;place-items:center;
+    background:linear-gradient(135deg,#5eead4,#a78bfa);
+    box-shadow:0 0 24px rgba(94,234,212,.45), inset 0 0 12px rgba(255,255,255,.35);
+  }
+  .logo svg{ width:26px; height:26px; }
+  h1{ font-size:16px; margin:0; font-weight:600; letter-spacing:.6px; }
+  .brand p{ margin:3px 0 0; font-size:12px; color:var(--muted); max-width:52vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .topbar-actions{ display:flex; align-items:center; gap:9px; flex:none; }
+  .btn{
+    border:1px solid var(--line); background:rgba(255,255,255,.06); color:var(--text);
+    padding:9px 17px; border-radius:12px; font-size:13px; cursor:pointer; font-family:inherit;
+    transition:transform .16s, background .16s, box-shadow .16s;
+  }
+  .btn:hover{ background:rgba(255,255,255,.14); transform:translateY(-1px); }
+  .btn:active{ transform:translateY(0) scale(.98); }
+  .btn.primary{
+    background:linear-gradient(135deg, rgba(94,234,212,.28), rgba(167,139,250,.34));
+    border-color:rgba(167,139,250,.5);
+    box-shadow:0 0 22px rgba(167,139,250,.22);
+  }
+  .btn:disabled{ opacity:.4; cursor:not-allowed; transform:none; }
+  .divider{ width:1px; height:20px; background:rgba(255,255,255,.14); }
+
+  /* ---------- 主体 ---------- */
+  .main{ flex:1; display:flex; gap:14px; min-height:0; }
+
+  .sidebar{ width:352px; flex:none; display:flex; flex-direction:column; min-height:0; padding:15px 15px 6px; }
+  .side-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:11px; flex:none; }
+  .side-head h2{ font-size:13px; margin:0; color:var(--muted); letter-spacing:1px; font-weight:500; }
+  .badge{
+    font-size:11px; padding:3px 10px; border-radius:20px; font-variant-numeric:tabular-nums;
+    background:rgba(94,234,212,.16); border:1px solid rgba(94,234,212,.35); color:var(--accent);
+  }
+  .side-scroll{ flex:1; overflow-y:auto; padding-right:5px; padding-bottom:12px; }
+  .side-scroll::-webkit-scrollbar{ width:6px; }
+  .side-scroll::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.16); border-radius:6px; }
+  .side-scroll::-webkit-scrollbar-track{ background:transparent; }
+
+  .group{ padding-bottom:13px; margin-bottom:13px; border-bottom:1px solid rgba(255,255,255,.08); }
+  .group:last-of-type{ border-bottom:none; margin-bottom:4px; }
+  .group-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:9px; }
+  .group-head > span:first-child{ font-size:12px; color:var(--muted); letter-spacing:.7px; }
+  .counter{ font-size:11px; color:rgba(147,160,192,.85); font-variant-numeric:tabular-nums; }
+  .hint{ font-size:11px; color:rgba(147,160,192,.75); line-height:1.5; }
+
+  textarea{
+    width:100%; min-height:92px; max-height:220px; resize:vertical;
+    background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.14);
+    border-radius:12px; padding:10px 12px; color:var(--text); font-family:inherit;
+    font-size:12.5px; line-height:1.62; outline:none; user-select:text;
+    transition:border-color .16s, background .16s;
+  }
+  textarea:focus{ border-color:rgba(94,234,212,.6); background:rgba(255,255,255,.075); }
+  textarea::placeholder{ color:rgba(147,160,192,.55); }
+  .mini-actions{ display:flex; gap:7px; margin-top:9px; flex-wrap:wrap; }
+  .chip{
+    border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.05); color:var(--text);
+    padding:6px 11px; border-radius:10px; font-size:11.5px; cursor:pointer; font-family:inherit;
+    transition:.16s;
+  }
+  .chip:hover{ background:rgba(255,255,255,.14); border-color:rgba(94,234,212,.45); }
+  .chip:active{ transform:scale(.96); }
+  .chip.danger:hover{ background:rgba(251,113,133,.22); border-color:rgba(251,113,133,.6); }
+  .chip.static{ cursor:default; pointer-events:none; font-variant-numeric:tabular-nums; }
+  .chip.static:hover{ background:rgba(255,255,255,.05); border-color:rgba(255,255,255,.14); }
+  .chip.accent{ color:#04211d; background:linear-gradient(180deg,#7ff0dd,#41d8bd); border-color:transparent; font-weight:600; }
+
+  .seg{ display:grid; grid-template-columns:repeat(4,1fr); gap:6px; }
+  .seg button{
+    font-family:inherit; font-size:12px; padding:8px 0; border-radius:10px; cursor:pointer;
+    color:var(--text); background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.13);
+    transition:.16s;
+  }
+  .seg button:hover{ background:rgba(255,255,255,.12); }
+  .seg button.active{
+    color:#04211d; font-weight:600; border-color:transparent;
+    background:linear-gradient(180deg,#7ff0dd,#41d8bd);
+    box-shadow:0 0 18px rgba(94,234,212,.28);
+  }
+  .seg.small{ grid-template-columns:repeat(3,1fr); }
+
+  .row{ display:flex; align-items:center; gap:9px; font-size:12px; color:var(--muted); margin-top:8px; }
+  .row > label{ width:38px; flex:none; }
+  .row .val{ font-size:11.5px; color:var(--text); font-variant-numeric:tabular-nums; min-width:48px; text-align:right; }
+  .row input[type="number"]{
+    width:74px; padding:6px 8px; font-size:12px; color:var(--text);
+    background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.14);
+    border-radius:9px; outline:none; font-family:inherit; font-variant-numeric:tabular-nums;
+  }
+  .row input[type="number"]:focus{ border-color:rgba(94,234,212,.6); }
+  .row input[type="text"]{
+    width:88px; padding:6px 8px; font-size:11.5px; color:var(--text); text-transform:uppercase;
+    background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.14);
+    border-radius:9px; outline:none; font-family:Consolas,monospace;
+  }
+  .row input[type="text"]:focus{ border-color:rgba(94,234,212,.6); }
+  .row input[type="color"]{
+    -webkit-appearance:none; appearance:none; width:40px; height:28px; padding:0; flex:none;
+    border:1px solid rgba(255,255,255,.2); border-radius:8px; background:none; cursor:pointer;
+  }
+  .row input[type="color"]::-webkit-color-swatch-wrapper{ padding:2px; }
+  .row input[type="color"]::-webkit-color-swatch{ border:none; border-radius:5px; }
+  .row input[type="range"]{ flex:1; }
+  select{
+    width:100%; padding:8px 10px; font-size:12px; font-family:inherit; color:var(--text);
+    background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.14);
+    border-radius:10px; outline:none; cursor:pointer;
+  }
+  select:focus{ border-color:rgba(94,234,212,.6); }
+  select option{ background:#131826; color:#e9eefc; }
+
+  input[type="range"]{
+    -webkit-appearance:none; appearance:none; height:4px; border-radius:4px;
+    background:linear-gradient(90deg, rgba(94,234,212,.7), rgba(167,139,250,.7));
+    outline:none;
+  }
+  input[type="range"]::-webkit-slider-thumb{
+    -webkit-appearance:none; width:14px; height:14px; border-radius:50%;
+    background:#fff; box-shadow:0 0 10px rgba(94,234,212,.9); cursor:pointer;
+  }
+  input[type="range"]:disabled{ opacity:.35; }
+  input[type="range"]:disabled::-webkit-slider-thumb{ box-shadow:none; cursor:not-allowed; }
+
+  .switch{ display:inline-flex; align-items:center; gap:7px; cursor:pointer; font-size:11.5px; color:var(--muted); }
+  .switch input{ display:none; }
+  .switch i{
+    width:34px; height:18px; border-radius:20px; background:rgba(255,255,255,.14);
+    border:1px solid rgba(255,255,255,.16); position:relative; transition:.18s; flex:none;
+  }
+  .switch i::after{
+    content:''; position:absolute; left:2px; top:2px; width:12px; height:12px; border-radius:50%;
+    background:#cfd8ee; transition:.18s;
+  }
+  .switch input:checked + i{ background:linear-gradient(90deg, rgba(94,234,212,.75), rgba(167,139,250,.75)); border-color:rgba(94,234,212,.5); }
+  .switch input:checked + i::after{ transform:translateX(16px); background:#06211d; }
+  .switch em{ font-style:normal; }
+
+  .swatches{ display:flex; gap:6px; margin-left:auto; }
+  .swatches i{ width:18px; height:18px; border-radius:6px; border:1px solid rgba(255,255,255,.25); cursor:pointer; transition:.16s; }
+  .swatches i:hover{ transform:scale(1.12); }
+
+  .notice{
+    display:none; padding:9px 11px; border-radius:11px; font-size:11.5px; line-height:1.55;
+    background:rgba(251,113,133,.12); border:1px solid rgba(251,113,133,.38); color:#ffd6dd;
+    margin-bottom:10px;
+  }
+  .notice.show{ display:block; }
+  .notice.info{ background:rgba(94,234,212,.10); border-color:rgba(94,234,212,.32); color:#c8fff5; }
+
+  /* ---------- 舞台 ---------- */
+  .stage{ flex:1; display:flex; flex-direction:column; min-width:0; padding:14px; }
+  .stage-head{ display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:11px; }
+  .stage-title{ font-size:13px; color:var(--muted); letter-spacing:1px; }
+  .stage-tools{ display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
+  .canvas-wrap{
+    position:relative; flex:1; min-height:220px; border-radius:14px; overflow:hidden;
+    background:
+      radial-gradient(700px 420px at 50% 40%, rgba(94,234,212,.05), transparent 70%),
+      rgba(4,8,18,.45);
+    border:1px solid rgba(255,255,255,.07);
+    display:flex; align-items:center; justify-content:center; padding:20px;
+  }
+  #qrCanvas{
+    display:block; max-width:100%; max-height:100%; border-radius:10px;
+    box-shadow:0 22px 54px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.10);
+    image-rendering:pixelated; background:#fff;
+    transition:opacity .18s;
+  }
+  #qrCanvas.hide{ display:none; }
+  .empty{
+    position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:6px; color:var(--muted); pointer-events:none; text-align:center; padding:20px;
+  }
+  .empty svg{ width:42px; height:42px; opacity:.35; margin-bottom:4px; }
+  .empty p{ margin:0; font-size:13px; }
+  .empty .dim{ font-size:11.5px; opacity:.62; }
+  .empty.hide{ display:none; }
+
+  .capacity{ flex:none; margin-top:12px; }
+  .cap-bar{ height:4px; border-radius:4px; background:rgba(255,255,255,.10); overflow:hidden; }
+  .cap-bar i{ display:block; height:100%; width:0%; border-radius:4px;
+    background:linear-gradient(90deg, var(--accent), var(--accent-2)); transition:width .22s; }
+  .cap-bar i.warn{ background:linear-gradient(90deg,#fbbf24,#fb7185); }
+  .cap-text{ display:flex; justify-content:space-between; margin-top:6px; font-size:11.5px; color:var(--muted); font-variant-numeric:tabular-nums; }
+  .stage-foot{ display:flex; justify-content:space-between; gap:10px; margin-top:9px; flex-wrap:wrap; }
+
+  .toast{
+    position:fixed; left:50%; bottom:38px; transform:translate(-50%, 22px);
+    background:rgba(16,20,34,.9); border:1px solid rgba(255,255,255,.18);
+    color:var(--text); font-size:12.5px; padding:10px 18px; border-radius:12px;
+    backdrop-filter:blur(14px); opacity:0; pointer-events:none; transition:.24s; z-index:99;
+    max-width:min(680px, 84vw); text-align:center; line-height:1.5;
+  }
+  .toast.show{ opacity:1; transform:translate(-50%, 0); }
+
+  .drag-over .canvas-wrap{ border-color:rgba(94,234,212,.55); background:rgba(94,234,212,.06); }
+
+  @media (max-width: 1040px){
+    .main{ flex-direction:column; }
+    .sidebar{ width:auto; max-height:46vh; }
+    .brand p{ max-width:56vw; }
+  }
+  @media (max-width: 720px){
+    .topbar{ flex-wrap:wrap; }
+    .brand p{ display:none; }
+  }
+</style>
+</head>
+<body>
+<div class="aura a1"></div>
+<div class="aura a2"></div>
+
+<div class="shell">
+  <header class="topbar glass">
+    <div class="brand">
+      <div class="logo">
+        <svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
+          <rect x="3.5" y="3.5" width="10" height="10" rx="2.6" stroke="#06231e" stroke-width="2.6"/>
+          <rect x="18.5" y="3.5" width="10" height="10" rx="2.6" stroke="#06231e" stroke-width="2.6"/>
+          <rect x="3.5" y="18.5" width="10" height="10" rx="2.6" stroke="#06231e" stroke-width="2.6"/>
+          <rect x="19.5" y="19.5" width="3.6" height="3.6" rx="1" fill="#06231e"/>
+          <rect x="25" y="25" width="3.6" height="3.6" rx="1" fill="#06231e"/>
+          <rect x="19.5" y="25" width="3.6" height="3.6" rx="1" fill="#06231e"/>
+        </svg>
+      </div>
+      <div>
+        <h1>QR Studio · 二维码生成器</h1>
+        <p id="statusLine">支持 V1–V40（21×21 – 177×177）· 纯本地离线运行</p>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <button class="btn" id="btnImport">导入文件</button>
+      <div class="divider"></div>
+      <button class="btn primary" id="btnPng">导出 PNG</button>
+      <button class="btn primary" id="btnJpg">导出 JPG</button>
+    </div>
+  </header>
+
+  <main class="main">
+    <aside class="sidebar glass">
+      <div class="side-head">
+        <h2>参数面板</h2>
+        <span class="badge" id="badgeVer">V1 · 21×21</span>
+      </div>
+      <div class="side-scroll">
+
+        <section class="group">
+          <div class="group-head">
+            <span>数据内容</span>
+            <span class="counter" id="byteCounter">0 字符 · 0 字节</span>
+          </div>
+          <textarea id="content" spellcheck="false" placeholder="输入文本、网址或任意内容…&#10;也可点击「导入文件」载入 .txt / .json，或直接把文件拖到这里"></textarea>
+          <div class="mini-actions">
+            <button class="chip" id="btnPick">选择文件</button>
+            <button class="chip" id="btnSample">示例</button>
+            <button class="chip danger" id="btnClear">清空</button>
+          </div>
+        </section>
+
+        <section class="group">
+          <div class="group-head">
+            <span>容错等级</span>
+            <span class="hint" id="eclHint">约 7% 破损可恢复</span>
+          </div>
+          <div class="seg" id="eclSeg">
+            <button data-ecl="L" class="active">L</button>
+            <button data-ecl="M">M</button>
+            <button data-ecl="Q">Q</button>
+            <button data-ecl="H">H</button>
+          </div>
+        </section>
+
+        <section class="group">
+          <div class="group-head">
+            <span>版本 / 矩阵尺寸</span>
+            <label class="switch">
+              <input type="checkbox" id="autoVer" checked />
+              <i></i><em>自动最小</em>
+            </label>
+          </div>
+          <div class="row">
+            <input type="range" id="verRange" min="1" max="40" value="1" step="1" disabled />
+            <span class="val" id="verVal">V1</span>
+          </div>
+          <div class="row">
+            <label>版本</label>
+            <input type="number" id="verNum" min="1" max="40" value="1" disabled />
+            <span class="hint" id="sizeHint">21 × 21 模块</span>
+          </div>
+        </section>
+
+        <section class="group">
+          <div class="group-head">
+            <span>掩码图案</span>
+            <span class="hint">自动最稳</span>
+          </div>
+          <select id="maskSel">
+            <option value="-1">自动选择（推荐）</option>
+            <option value="0">掩码 0</option>
+            <option value="1">掩码 1</option>
+            <option value="2">掩码 2</option>
+            <option value="3">掩码 3</option>
+            <option value="4">掩码 4</option>
+            <option value="5">掩码 5</option>
+            <option value="6">掩码 6</option>
+            <option value="7">掩码 7</option>
+          </select>
+        </section>
+
+        <section class="group">
+          <div class="group-head">
+            <span>外观</span>
+            <span class="hint" id="contrastHint">前景需深于背景</span>
+          </div>
+          <div class="row">
+            <label>前景</label>
+            <input type="color" id="fgColor" value="#0b1118" />
+            <input type="text" id="fgHex" value="#0B1118" maxlength="7" />
+            <div class="swatches" id="fgSwatches"></div>
+          </div>
+          <div class="row">
+            <label>背景</label>
+            <input type="color" id="bgColor" value="#ffffff" />
+            <input type="text" id="bgHex" value="#FFFFFF" maxlength="7" />
+            <div class="swatches" id="bgSwatches"></div>
+          </div>
+          <div class="row">
+            <label>静区</label>
+            <input type="range" id="quiet" min="0" max="8" value="4" step="1" />
+            <span class="val" id="quietVal">4 模块</span>
+          </div>
+          <div class="row">
+            <label>圆角</label>
+            <input type="range" id="radius" min="0" max="50" value="0" step="1" />
+            <span class="val" id="radiusVal">0%</span>
+          </div>
+        </section>
+
+        <section class="group">
+          <div class="group-head">
+            <span>导出尺寸</span>
+            <span class="hint" id="exportHint">1024 × 1024</span>
+          </div>
+          <div class="seg small" id="sizeSeg">
+            <button data-size="512">512</button>
+            <button data-size="1024" class="active">1024</button>
+            <button data-size="2048">2048</button>
+          </div>
+        </section>
+
+        <div class="notice" id="notice"></div>
+      </div>
+    </aside>
+
+    <section class="stage glass">
+      <div class="stage-head">
+        <span class="stage-title">矩阵预览</span>
+        <div class="stage-tools">
+          <span class="chip static" id="tagVer">V1</span>
+          <span class="chip static" id="tagSize">21×21</span>
+          <span class="chip static" id="tagEcl">容错 L</span>
+          <span class="chip static" id="tagMask">掩码 0</span>
+        </div>
+      </div>
+
+      <div class="canvas-wrap" id="canvasWrap">
+        <canvas id="qrCanvas" class="hide"></canvas>
+        <div class="empty" id="empty">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <rect x="2.5" y="2.5" width="8" height="8" rx="2" stroke="#93a0c0" stroke-width="1.6"/>
+            <rect x="13.5" y="2.5" width="8" height="8" rx="2" stroke="#93a0c0" stroke-width="1.6"/>
+            <rect x="2.5" y="13.5" width="8" height="8" rx="2" stroke="#93a0c0" stroke-width="1.6"/>
+            <rect x="14.5" y="14.5" width="2.6" height="2.6" rx=".8" fill="#93a0c0"/>
+            <rect x="18.9" y="18.9" width="2.6" height="2.6" rx=".8" fill="#93a0c0"/>
+          </svg>
+          <p>等待输入内容</p>
+          <p class="dim">输入文本或导入 .txt / .json 文件后自动生成</p>
+        </div>
+      </div>
+
+      <div class="capacity">
+        <div class="cap-bar"><i id="capFill"></i></div>
+        <div class="cap-text">
+          <span id="capText">0 / 0 字节</span>
+          <span id="capPct">0%</span>
+        </div>
+      </div>
+      <div class="stage-foot">
+        <span class="hint">UTF-8 字节模式 · 全版本 1–40 · 无外部 CDN，断网可用</span>
+        <span class="hint" id="stageHint"></span>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+<input type="file" id="fileInput" accept=".txt,.json,text/plain,application/json" hidden />
+
+<script>
+/* QR Code encoder core — Version 1..40, byte mode, ECC L/M/Q/H, mask auto/0-7. */
+(function (root, factory) {
+  var api = factory();
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  else root.QRCore = api;
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  // ---- Tables (index 0 unused) ----
+  var ECC_PER_BLOCK = [
+    [-1,7,10,15,20,26,18,20,24,30,18,20,24,26,30,22,24,28,30,28,28,28,28,30,30,26,28,30,30,30,30,30,30,30,30,30,30,30,30,30,30],
+    [-1,10,16,26,18,24,16,18,22,22,26,30,22,22,24,24,28,28,26,26,26,26,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28,28],
+    [-1,13,22,18,26,18,24,18,22,20,24,28,26,24,20,30,24,28,28,26,30,28,30,30,30,30,28,30,30,30,30,30,30,30,30,30,30,30,30,30,30],
+    [-1,17,28,22,16,22,28,26,26,24,28,24,28,22,24,24,30,28,28,26,28,30,24,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30]
+  ];
+  var NUM_BLOCKS = [
+    [-1,1,1,1,1,1,2,2,2,2,4,4,4,4,4,6,6,6,6,7,8,8,9,9,10,12,12,12,13,14,15,16,17,18,19,19,20,21,22,24,25],
+    [-1,1,1,1,2,2,4,4,4,5,5,5,8,9,9,10,10,11,13,14,16,17,17,18,20,21,23,25,26,28,29,31,33,35,37,38,40,43,45,47,49],
+    [-1,1,1,2,2,4,4,6,6,8,8,8,10,12,16,12,17,16,18,21,20,23,23,25,27,29,34,34,35,38,40,43,45,48,51,53,56,59,62,65,68],
+    [-1,1,1,2,4,4,4,5,6,8,8,11,11,16,16,18,16,19,21,25,25,25,34,30,32,35,37,40,42,45,48,51,54,57,60,63,66,70,74,77,81]
+  ];
+  var ECL_ORD = { L: 0, M: 1, Q: 2, H: 3 };
+  var ECL_FMT = [1, 0, 3, 2]; // L, M, Q, H format bits
+  var ECL_NAME = ['L', 'M', 'Q', 'H'];
+  var PENALTY = { N1: 3, N2: 3, N3: 40, N4: 10 };
+
+  function utf8Bytes(str) {
+    if (typeof TextEncoder !== 'undefined') return Array.prototype.slice.call(new TextEncoder().encode(str));
+    var out = [], i, c;
+    for (i = 0; i < str.length; i++) {
+      c = str.charCodeAt(i);
+      if (c < 0x80) out.push(c);
+      else if (c < 0x800) out.push(0xc0 | (c >> 6), 0x80 | (c & 63));
+      else if (c >= 0xd800 && c <= 0xdbff && i + 1 < str.length) {
+        var c2 = str.charCodeAt(i + 1);
+        if (c2 >= 0xdc00 && c2 <= 0xdfff) {
+          var cp = 0x10000 + ((c - 0xd800) << 10) + (c2 - 0xdc00);
+          out.push(0xf0 | (cp >> 18), 0x80 | ((cp >> 12) & 63), 0x80 | ((cp >> 6) & 63), 0x80 | (cp & 63));
+          i++;
+        } else out.push(0xe0 | (c >> 12), 0x80 | ((c >> 6) & 63), 0x80 | (c & 63));
+      } else out.push(0xe0 | (c >> 12), 0x80 | ((c >> 6) & 63), 0x80 | (c & 63));
+    }
+    return out;
+  }
+
+  function numRawDataModules(ver) {
+    var result = (16 * ver + 128) * ver + 64;
+    if (ver >= 2) {
+      var numAlign = Math.floor(ver / 7) + 2;
+      result -= (25 * numAlign - 10) * numAlign - 55;
+      if (ver >= 7) result -= 36;
+    }
+    return result;
+  }
+
+  function numDataCodewords(ver, ord) {
+    return Math.floor(numRawDataModules(ver) / 8) - ECC_PER_BLOCK[ord][ver] * NUM_BLOCKS[ord][ver];
+  }
+
+  function charCountBits(ver) { return ver <= 9 ? 8 : 16; }
+
+  function maxBytes(ver, eclName) {
+    var ord = ECL_ORD[eclName];
+    var bits = numDataCodewords(ver, ord) * 8 - 4 - charCountBits(ver);
+    return Math.max(0, Math.floor(bits / 8));
+  }
+
+  // ---- Bit buffer ----
+  function BitBuffer() { this.bits = []; }
+  BitBuffer.prototype.appendBits = function (val, len) {
+    if (len < 0 || len > 31 || (len < 31 && (val >>> len) !== 0)) throw new Error('appendBits: value out of range');
+    for (var i = len - 1; i >= 0; i--) this.bits.push((val >>> i) & 1);
+  };
+
+  // ---- GF(256) Reed-Solomon ----
+  function rsMultiply(x, y) {
+    var z = 0;
+    for (var i = 7; i >= 0; i--) {
+      z = (z << 1) ^ ((z >>> 7) * 0x11d);
+      z ^= ((y >>> i) & 1) * x;
+    }
+    return z & 0xff;
+  }
+  function rsDivisor(degree) {
+    var result = new Array(degree).fill(0);
+    result[degree - 1] = 1;
+    var root = 1;
+    for (var i = 0; i < degree; i++) {
+      for (var j = 0; j < degree; j++) {
+        result[j] = rsMultiply(result[j], root);
+        if (j + 1 < degree) result[j] ^= result[j + 1];
+      }
+      root = rsMultiply(root, 0x02);
+    }
+    return result;
+  }
+  function rsRemainder(data, divisor) {
+    var result = new Array(divisor.length).fill(0);
+    for (var i = 0; i < data.length; i++) {
+      var factor = (data[i] ^ result[0]) & 0xff;
+      result.shift();
+      result.push(0);
+      for (var j = 0; j < result.length; j++) result[j] ^= rsMultiply(divisor[j], factor);
+    }
+    return result;
+  }
+
+  function addEccAndInterleave(data, ver, ord) {
+    var numBlocks = NUM_BLOCKS[ord][ver];
+    var blockEccLen = ECC_PER_BLOCK[ord][ver];
+    var rawCodewords = Math.floor(numRawDataModules(ver) / 8);
+    var numShortBlocks = numBlocks - rawCodewords % numBlocks;
+    var shortBlockLen = Math.floor(rawCodewords / numBlocks);
+    var blocks = [], divisor = rsDivisor(blockEccLen), k = 0, i, j;
+    for (i = 0; i < numBlocks; i++) {
+      var datLen = shortBlockLen - blockEccLen + (i < numShortBlocks ? 0 : 1);
+      var dat = data.slice(k, k + datLen);
+      k += datLen;
+      var block = dat.slice();
+      while (block.length < shortBlockLen + 1) block.push(0);
+      var ecc = rsRemainder(dat, divisor);
+      for (j = 0; j < ecc.length; j++) block[block.length - blockEccLen + j] = ecc[j];
+      blocks.push(block);
+    }
+    var result = [];
+    for (i = 0; i < blocks[0].length; i++) {
+      for (j = 0; j < blocks.length; j++) {
+        if (i !== shortBlockLen - blockEccLen || j >= numShortBlocks) result.push(blocks[j][i]);
+      }
+    }
+    return result;
+  }
+
+  // ---- Matrix ----
+  function QrMatrix(ver, ord, codewords, forcedMask) {
+    this.version = ver;
+    this.ecl = ECL_NAME[ord];
+    this.eclOrd = ord;
+    this.size = ver * 4 + 17;
+    var size = this.size, x, y;
+    this.modules = [];
+    this.isFunc = [];
+    for (y = 0; y < size; y++) {
+      this.modules.push(new Array(size).fill(false));
+      this.isFunc.push(new Array(size).fill(false));
+    }
+    this._drawFunctionPatterns();
+    this._drawCodewords(codewords);
+    var mask = forcedMask;
+    if (mask === undefined || mask === null || mask < 0 || mask > 7) {
+      var minPenalty = Infinity;
+      mask = 0;
+      for (var m = 0; m < 8; m++) {
+        this._applyMask(m);
+        this._drawFormatBits(m);
+        var p = this._penalty();
+        if (p < minPenalty) { minPenalty = p; mask = m; }
+        this._applyMask(m);
+      }
+    }
+    this.mask = mask;
+    this._applyMask(mask);
+    this._drawFormatBits(mask);
+  }
+
+  QrMatrix.prototype._setFunc = function (x, y, dark) {
+    this.modules[y][x] = dark;
+    this.isFunc[y][x] = true;
+  };
+
+  QrMatrix.prototype._drawFunctionPatterns = function () {
+    var size = this.size, i, j;
+    for (i = 0; i < size; i++) {
+      this._setFunc(6, i, i % 2 === 0);
+      this._setFunc(i, 6, i % 2 === 0);
+    }
+    this._drawFinder(3, 3);
+    this._drawFinder(size - 4, 3);
+    this._drawFinder(3, size - 4);
+    var pos = this._alignPositions(), n = pos.length;
+    for (i = 0; i < n; i++) {
+      for (j = 0; j < n; j++) {
+        if (!((i === 0 && j === 0) || (i === 0 && j === n - 1) || (i === n - 1 && j === 0)))
+          this._drawAlignment(pos[i], pos[j]);
+      }
+    }
+    this._drawFormatBits(0);
+    this._drawVersion();
+  };
+
+  QrMatrix.prototype._alignPositions = function () {
+    var ver = this.version, size = this.size;
+    if (ver === 1) return [];
+    var numAlign = Math.floor(ver / 7) + 2;
+    var step = ver === 32 ? 26 : Math.floor((ver * 4 + numAlign * 2 + 1) / (numAlign * 2 - 2)) * 2;
+    var result = [6];
+    var arr = new Array(numAlign);
+    arr[0] = 6;
+    var p = size - 7;
+    for (var i = numAlign - 1; i >= 1; i--) { arr[i] = p; p -= step; }
+    return arr;
+  };
+
+  QrMatrix.prototype._drawFinder = function (x, y) {
+    for (var dy = -4; dy <= 4; dy++) {
+      for (var dx = -4; dx <= 4; dx++) {
+        var dist = Math.max(Math.abs(dx), Math.abs(dy));
+        var xx = x + dx, yy = y + dy;
+        if (xx >= 0 && xx < this.size && yy >= 0 && yy < this.size)
+          this._setFunc(xx, yy, dist !== 2 && dist !== 4);
+      }
+    }
+  };
+
+  QrMatrix.prototype._drawAlignment = function (x, y) {
+    for (var dy = -2; dy <= 2; dy++) {
+      for (var dx = -2; dx <= 2; dx++) {
+        this._setFunc(x + dx, y + dy, Math.max(Math.abs(dx), Math.abs(dy)) !== 1);
+      }
+    }
+  };
+
+  function getBit(v, i) { return ((v >>> i) & 1) !== 0; }
+
+  QrMatrix.prototype._drawFormatBits = function (mask) {
+    var data = (ECL_FMT[this.eclOrd] << 3) | mask;
+    var rem = data;
+    for (var i = 0; i < 10; i++) rem = (rem << 1) ^ ((rem >>> 9) * 0x537);
+    var bits = ((data << 10 | rem) ^ 0x5412) & 0x7fff;
+    var size = this.size;
+    for (i = 0; i <= 5; i++) this._setFunc(8, i, getBit(bits, i));
+    this._setFunc(8, 7, getBit(bits, 6));
+    this._setFunc(8, 8, getBit(bits, 7));
+    this._setFunc(7, 8, getBit(bits, 8));
+    for (i = 9; i < 15; i++) this._setFunc(14 - i, 8, getBit(bits, i));
+    for (i = 0; i < 8; i++) this._setFunc(size - 1 - i, 8, getBit(bits, i));
+    for (i = 8; i < 15; i++) this._setFunc(8, size - 15 + i, getBit(bits, i));
+    this._setFunc(8, size - 8, true);
+  };
+
+  QrMatrix.prototype._drawVersion = function () {
+    if (this.version < 7) return;
+    var rem = this.version;
+    for (var i = 0; i < 12; i++) rem = (rem << 1) ^ ((rem >>> 11) * 0x1f25);
+    var bits = (this.version << 12 | rem) & 0x3ffff;
+    for (i = 0; i < 18; i++) {
+      var bit = getBit(bits, i);
+      var a = this.size - 11 + i % 3;
+      var b = Math.floor(i / 3);
+      this._setFunc(a, b, bit);
+      this._setFunc(b, a, bit);
+    }
+  };
+
+  QrMatrix.prototype._drawCodewords = function (data) {
+    var size = this.size, i = 0, right, vert, j, x, y, upward;
+    for (right = size - 1; right >= 1; right -= 2) {
+      if (right === 6) right = 5;
+      for (vert = 0; vert < size; vert++) {
+        for (j = 0; j < 2; j++) {
+          x = right - j;
+          upward = ((right + 1) & 2) === 0;
+          y = upward ? size - 1 - vert : vert;
+          if (!this.isFunc[y][x] && i < data.length * 8) {
+            this.modules[y][x] = getBit(data[i >>> 3], 7 - (i & 7));
+            i++;
+          }
+        }
+      }
+    }
+  };
+
+  QrMatrix.prototype._applyMask = function (mask) {
+    for (var y = 0; y < this.size; y++) {
+      for (var x = 0; x < this.size; x++) {
+        var invert;
+        switch (mask) {
+          case 0: invert = (x + y) % 2 === 0; break;
+          case 1: invert = y % 2 === 0; break;
+          case 2: invert = x % 3 === 0; break;
+          case 3: invert = (x + y) % 3 === 0; break;
+          case 4: invert = (Math.floor(x / 3) + Math.floor(y / 2)) % 2 === 0; break;
+          case 5: invert = (x * y) % 2 + (x * y) % 3 === 0; break;
+          case 6: invert = ((x * y) % 2 + (x * y) % 3) % 2 === 0; break;
+          case 7: invert = ((x + y) % 2 + (x * y) % 3) % 2 === 0; break;
+          default: throw new Error('bad mask');
+        }
+        if (invert && !this.isFunc[y][x]) this.modules[y][x] = !this.modules[y][x];
+      }
+    }
+  };
+
+  QrMatrix.prototype._penalty = function () {
+    var size = this.size, mods = this.modules, result = 0, x, y, runX, runColor, hist;
+
+    function addHistory(len, h) {
+      if (h[0] === 0) len += size;
+      h.unshift(len);
+      h.pop();
+    }
+    function countPatterns(h) {
+      var n = h[1];
+      var core = n > 0 && h[2] === n && h[3] === n * 3 && h[4] === n && h[5] === n;
+      return (core && h[0] >= n * 4 && h[6] >= n ? 1 : 0) + (core && h[6] >= n * 4 && h[0] >= n ? 1 : 0);
+    }
+    function terminateAndCount(color, len, h) {
+      if (color) { addHistory(len, h); len = 0; }
+      len += size;
+      addHistory(len, h);
+      return countPatterns(h);
+    }
+
+    for (y = 0; y < size; y++) {
+      runColor = false; runX = 0; hist = [0, 0, 0, 0, 0, 0, 0];
+      for (x = 0; x < size; x++) {
+        if (mods[y][x] === runColor) {
+          runX++;
+          if (runX === 5) result += PENALTY.N1;
+          else if (runX > 5) result++;
+        } else {
+          addHistory(runX, hist);
+          if (!runColor) result += countPatterns(hist) * PENALTY.N3;
+          runColor = mods[y][x];
+          runX = 1;
+        }
+      }
+      result += terminateAndCount(runColor, runX, hist) * PENALTY.N3;
+    }
+    for (x = 0; x < size; x++) {
+      runColor = false; runX = 0; hist = [0, 0, 0, 0, 0, 0, 0];
+      for (y = 0; y < size; y++) {
+        if (mods[y][x] === runColor) {
+          runX++;
+          if (runX === 5) result += PENALTY.N1;
+          else if (runX > 5) result++;
+        } else {
+          addHistory(runX, hist);
+          if (!runColor) result += countPatterns(hist) * PENALTY.N3;
+          runColor = mods[y][x];
+          runX = 1;
+        }
+      }
+      result += terminateAndCount(runColor, runX, hist) * PENALTY.N3;
+    }
+    for (y = 0; y < size - 1; y++) {
+      for (x = 0; x < size - 1; x++) {
+        var c = mods[y][x];
+        if (c === mods[y][x + 1] && c === mods[y + 1][x] && c === mods[y + 1][x + 1]) result += PENALTY.N2;
+      }
+    }
+    var dark = 0;
+    for (y = 0; y < size; y++) for (x = 0; x < size; x++) if (mods[y][x]) dark++;
+    var total = size * size;
+    var k = Math.ceil(Math.abs(dark * 20 - total * 10) / total) - 1;
+    result += k * PENALTY.N4;
+    return result;
+  };
+
+  // ---- Public encode ----
+  /**
+   * @param {string} text
+   * @param {object} opts {ecl:'L'|'M'|'Q'|'H', version: 1..40|null, mask: -1|0..7}
+   * @returns {object} {matrix, size, version, ecl, mask, bytes, penalty} or {error}
+   */
+  function encode(text, opts) {
+    opts = opts || {};
+    var eclName = (opts.ecl || 'L').toUpperCase();
+    var ord = ECL_ORD[eclName];
+    if (ord === undefined) throw new Error('bad ecl');
+    var bytes = utf8Bytes(text == null ? '' : String(text));
+    var ver = 1;
+    if (opts.version) {
+      ver = Math.max(1, Math.min(40, opts.version | 0));
+      if (bytes.length > maxBytes(ver, eclName)) {
+        return { error: 'too-long', bytes: bytes.length, capacity: maxBytes(ver, eclName), version: ver, required: requiredVersion(bytes.length, eclName) };
+      }
+    } else {
+      ver = 0;
+      for (var v = 1; v <= 40; v++) {
+        if (bytes.length <= maxBytes(v, eclName)) { ver = v; break; }
+      }
+      if (!ver) return { error: 'too-long', bytes: bytes.length, capacity: maxBytes(40, eclName), version: 40, required: null };
+    }
+
+    var bb = new BitBuffer();
+    bb.appendBits(4, 4); // byte mode
+    bb.appendBits(bytes.length, charCountBits(ver));
+    for (var i = 0; i < bytes.length; i++) bb.appendBits(bytes[i], 8);
+
+    var dataCapacityBits = numDataCodewords(ver, ord) * 8;
+    bb.appendBits(0, Math.min(4, dataCapacityBits - bb.bits.length));
+    bb.appendBits(0, (8 - bb.bits.length % 8) % 8);
+    for (var pad = 0xec; bb.bits.length < dataCapacityBits; pad ^= 0xec ^ 0x11) bb.appendBits(pad, 8);
+
+    var dataCodewords = [];
+    for (i = 0; i < bb.bits.length; i += 8) {
+      var val = 0;
+      for (var b = 0; b < 8; b++) val = (val << 1) | bb.bits[i + b];
+      dataCodewords.push(val);
+    }
+
+    var allCodewords = addEccAndInterleave(dataCodewords, ver, ord);
+    var m = new QrMatrix(ver, ord, allCodewords, (opts.mask === undefined || opts.mask === null) ? -1 : opts.mask);
+    return {
+      matrix: m.modules,
+      size: m.size,
+      version: ver,
+      ecl: eclName,
+      mask: m.mask,
+      bytes: bytes.length,
+      capacity: maxBytes(ver, eclName),
+      dataCodewords: numDataCodewords(ver, ord),
+      totalCodewords: Math.floor(numRawDataModules(ver) / 8),
+      penalty: 0
+    };
+  }
+
+  function requiredVersion(byteLen, eclName) {
+    for (var v = 1; v <= 40; v++) if (byteLen <= maxBytes(v, eclName)) return v;
+    return null;
+  }
+
+  function toText(matrix) {
+    return matrix.map(function (row) { return row.map(function (c) { return c ? '1' : '0'; }).join(''); }).join('\n');
+  }
+
+  return {
+    encode: encode,
+    maxBytes: maxBytes,
+    requiredVersion: requiredVersion,
+    toText: toText,
+    versionSize: function (v) { return v * 4 + 17; },
+    ECL_NAMES: ECL_NAME
+  };
+});
+
+(function () {
+  'use strict';
+  var QR = window.QRCore;
+  function $(id) { return document.getElementById(id); }
+
+  var state = {
+    ecl: 'L',
+    autoVersion: true,
+    version: 1,
+    mask: -1,
+    fg: '#0b1118',
+    bg: '#ffffff',
+    quiet: 4,
+    radius: 0,
+    exportSize: 1024
+  };
+  var current = null;
+  var toastTimer = null;
+
+  var ECL_DESC = {
+    L: '约 7% 破损可恢复',
+    M: '约 15% 破损可恢复',
+    Q: '约 25% 破损可恢复',
+    H: '约 30% 破损可恢复'
+  };
+
+  /* ============ 绘制 ============ */
+
+  function roundRectPath(ctx, x, y, w, h, r) {
+    r = Math.min(r, w / 2, h / 2);
+    if (r <= 0) { ctx.rect(x, y, w, h); return; }
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.arcTo(x + w, y, x + w, y + r, r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+    ctx.lineTo(x + r, y + h);
+    ctx.arcTo(x, y + h, x, y + h - r, r);
+    ctx.lineTo(x, y + r);
+    ctx.arcTo(x, y, x + r, y, r);
+    ctx.closePath();
+  }
+
+  function inFinderZone(x, y, size) {
+    return (x < 8 && y < 8) || (x >= size - 8 && y < 8) || (x < 8 && y >= size - 8);
+  }
+
+  function drawFinderBlock(ctx, ox, oy, px) {
+    var s = 7 * px;
+    var c = Math.min(s * 0.26, px * 1.9);
+    var ci = Math.max(0, c - px * 0.35);
+    ctx.beginPath();
+    roundRectPath(ctx, ox, oy, s, s, c);
+    roundRectPath(ctx, ox + px, oy + px, 5 * px, 5 * px, ci);
+    ctx.fill('evenodd');
+    ctx.beginPath();
+    roundRectPath(ctx, ox + 2 * px, oy + 2 * px, 3 * px, 3 * px, ci);
+    ctx.fill();
+  }
+
+  function drawMatrix(canvas, matrix, cfg, targetPx, exact) {
+    var size = matrix.length;
+    var total = size + cfg.quiet * 2;
+    var px = Math.max(1, Math.floor(targetPx / total));
+    var dim = total * px;
+    var canvasDim = exact ? Math.max(dim, Math.round(targetPx)) : dim;
+    canvas.width = canvasDim;
+    canvas.height = canvasDim;
+    var ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvasDim, canvasDim);
+    ctx.fillStyle = cfg.bg;
+    ctx.fillRect(0, 0, canvasDim, canvasDim);
+    ctx.fillStyle = cfg.fg;
+    var r = Math.max(0, Math.min(0.5, cfg.radius)) * px;
+    var x, y, row;
+    var base = cfg.quiet * px + Math.floor((canvasDim - dim) / 2);
+    var off = base;
+    if (r < 0.02) {
+      for (y = 0; y < size; y++) {
+        row = matrix[y];
+        for (x = 0; x < size; x++) {
+          if (row[x]) ctx.fillRect(off + x * px, off + y * px, px, px);
+        }
+      }
+      return canvasDim;
+    }
+    ctx.beginPath();
+    for (y = 0; y < size; y++) {
+      row = matrix[y];
+      for (x = 0; x < size; x++) {
+        if (row[x] && !inFinderZone(x, y, size)) roundRectPath(ctx, off + x * px, off + y * px, px, px, r);
+      }
+    }
+    ctx.fill();
+    drawFinderBlock(ctx, off, off, px);
+    drawFinderBlock(ctx, off + (size - 7) * px, off, px);
+    drawFinderBlock(ctx, off, off + (size - 7) * px, px);
+    return canvasDim;
+  }
+
+  function renderPreview() {
+    var canvas = $('qrCanvas');
+    var empty = $('empty');
+    if (!current) {
+      canvas.classList.add('hide');
+      empty.classList.remove('hide');
+      return;
+    }
+    var wrap = $('canvasWrap');
+    var avail = Math.max(140, Math.min(wrap.clientWidth - 40, wrap.clientHeight - 40));
+    drawMatrix(canvas, current.matrix, {
+      quiet: state.quiet,
+      fg: state.fg,
+      bg: state.bg,
+      radius: state.radius / 100
+    }, avail);
+    canvas.classList.remove('hide');
+    empty.classList.add('hide');
+  }
+
+  /* ============ 提示 ============ */
+
+  function showNotice(msg, info) {
+    var n = $('notice');
+    n.textContent = msg;
+    n.className = 'notice show' + (info ? ' info' : '');
+  }
+  function hideNotice() { $('notice').className = 'notice'; }
+
+  function toast(msg) {
+    var t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.classList.remove('show'); }, 2600);
+  }
+
+  /* ============ 工具 ============ */
+
+  var encoder = (typeof TextEncoder !== 'undefined') ? new TextEncoder() : null;
+  function byteLength(s) { return encoder ? encoder.encode(s).length : unescape(encodeURIComponent(s)).length; }
+
+  function debounce(fn, wait) {
+    var timer = null;
+    return function () {
+      var args = arguments, self = this;
+      clearTimeout(timer);
+      timer = setTimeout(function () { fn.apply(self, args); }, wait);
+    };
+  }
+
+  function lum(hex) {
+    var h = hex.replace('#', '');
+    if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+    var r = parseInt(h.slice(0, 2), 16) / 255;
+    var g = parseInt(h.slice(2, 4), 16) / 255;
+    var b = parseInt(h.slice(4, 6), 16) / 255;
+    function f(c) { return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); }
+    return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+  }
+
+  function normalizeHex(v) {
+    v = String(v || '').trim();
+    if (!v) return null;
+    if (v[0] !== '#') v = '#' + v;
+    if (!/^#[0-9a-fA-F]{6}$/.test(v)) {
+      if (/^#[0-9a-fA-F]{3}$/.test(v)) {
+        return ('#' + v[1] + v[1] + v[2] + v[2] + v[3] + v[3]).toLowerCase();
+      }
+      return null;
+    }
+    return v.toLowerCase();
+  }
+
+  function contrastCheck() {
+    var f = lum(state.fg), b = lum(state.bg);
+    var hint = $('contrastHint');
+    var ratio = (Math.max(f, b) + 0.05) / (Math.min(f, b) + 0.05);
+    if (f >= b) {
+      hint.textContent = '反色方案，扫码器可能无法识别';
+      hint.style.color = 'rgba(251,113,133,.9)';
+    } else if (ratio < 3) {
+      hint.textContent = '对比度偏低（' + ratio.toFixed(1) + ':1），建议加深前景';
+      hint.style.color = 'rgba(251,191,36,.9)';
+    } else {
+      hint.textContent = '对比度 ' + ratio.toFixed(1) + ':1，适合扫描';
+      hint.style.color = 'rgba(94,234,212,.85)';
+    }
+  }
+
+  /* ============ 核心刷新 ============ */
+
+  function syncVersionUI(ver) {
+    var shown = state.autoVersion ? ver : state.version;
+    $('verRange').value = shown;
+    $('verNum').value = shown;
+    $('verRange').disabled = state.autoVersion;
+    $('verNum').disabled = state.autoVersion;
+    $('verVal').textContent = 'V' + shown;
+    var s = shown * 4 + 17;
+    $('sizeHint').textContent = s + ' × ' + s + ' 模块';
+  }
+
+  function updateMeta(res) {
+    $('tagVer').textContent = 'V' + res.version;
+    $('tagSize').textContent = res.size + '×' + res.size;
+    $('tagEcl').textContent = '容错 ' + state.ecl;
+    $('tagMask').textContent = '掩码 ' + res.mask;
+    $('badgeVer').textContent = 'V' + res.version + ' · ' + res.size + '×' + res.size;
+    var cap = QR.maxBytes(res.version, state.ecl);
+    var pct = cap ? Math.min(100, Math.round(res.bytes / cap * 100)) : 0;
+    var fill = $('capFill');
+    fill.style.width = pct + '%';
+    fill.className = pct >= 90 ? 'warn' : '';
+    $('capText').textContent = res.bytes + ' / ' + cap + ' 字节';
+    $('capPct').textContent = pct + '%';
+    $('statusLine').textContent = 'V' + res.version + ' · ' + res.size + '×' + res.size
+      + ' · 容错 ' + state.ecl + ' · 掩码 ' + res.mask + ' · 已就绪';
+    $('stageHint').textContent = '数据码字 ' + res.dataCodewords + ' / 总码字 ' + res.totalCodewords;
+  }
+
+  function refresh() {
+    var text = $('content').value;
+    var bytes = byteLength(text);
+    $('byteCounter').textContent = text.length + ' 字符 · ' + bytes + ' 字节';
+    hideNotice();
+    $('stageHint').textContent = '';
+
+    if (!text.length) {
+      current = null;
+      $('tagVer').textContent = 'V1';
+      $('tagSize').textContent = '21×21';
+      $('tagEcl').textContent = '容错 ' + state.ecl;
+      $('tagMask').textContent = '掩码 —';
+      $('badgeVer').textContent = 'V1 · 21×21';
+      $('capFill').style.width = '0%';
+      $('capFill').className = '';
+      $('capText').textContent = '0 / ' + QR.maxBytes(1, state.ecl) + ' 字节';
+      $('capPct').textContent = '0%';
+      $('statusLine').textContent = '等待输入内容 · 支持 V1–V40（21×21 – 177×177）';
+      syncVersionUI(state.autoVersion ? 1 : state.version);
+      renderPreview();
+      return;
+    }
+
+    var requested = state.version;
+    var res = QR.encode(text, {
+      ecl: state.ecl,
+      version: state.autoVersion ? null : state.version,
+      mask: state.mask
+    });
+
+    if (res.error === 'too-long' && !state.autoVersion && res.required) {
+      var bumpedTo = res.required;
+      res = QR.encode(text, { ecl: state.ecl, version: bumpedTo, mask: state.mask });
+      if (!res.error) {
+        state.version = bumpedTo;
+        showNotice('手动指定的 V' + requested + '×容错 ' + state.ecl + ' 容量不足，已自动提升到 V'
+          + bumpedTo + '（' + res.size + '×' + res.size + '）。', true);
+      }
+    }
+
+    if (res.error) {
+      current = null;
+      showNotice('内容共 ' + bytes + ' 字节，超出最大容量：容错 ' + state.ecl + ' 等级下 V40（177×177）最多可容纳 '
+        + QR.maxBytes(40, state.ecl) + ' 字节。请缩短内容，或把容错等级调低为 L。', false);
+      $('statusLine').textContent = '内容超长，超出 V40 容量';
+      $('tagVer').textContent = 'V40';
+      $('tagSize').textContent = '177×177';
+      $('tagEcl').textContent = '容错 ' + state.ecl;
+      $('tagMask').textContent = '掩码 —';
+      $('capFill').style.width = '100%';
+      $('capFill').className = 'warn';
+      $('capText').textContent = bytes + ' / ' + QR.maxBytes(40, state.ecl) + ' 字节';
+      $('capPct').textContent = '超限';
+      renderPreview();
+      return;
+    }
+
+    current = res;
+    updateMeta(res);
+    syncVersionUI(res.version);
+    renderPreview();
+  }
+
+  /* ============ JSON / 文件 ============ */
+
+  var PREFERRED_KEYS = ['text', 'content', 'message', 'msg', 'data', 'url', 'link', 'value',
+    'qrcode', 'qr', 'payload', 'code', 'str', 'string', 'desc', 'description', 'title', 'name'];
+
+  function pickString(v, depth) {
+    if (v === null || v === undefined || depth > 6) return null;
+    if (typeof v === 'string') return v.trim() ? v : null;
+    if (typeof v === 'number' || typeof v === 'boolean') return null;
+    if (Array.isArray(v)) {
+      for (var i = 0; i < v.length; i++) {
+        var r = pickString(v[i], depth + 1);
+        if (r) return r;
+      }
+      return null;
+    }
+    if (typeof v !== 'object') return null;
+    for (var k = 0; k < PREFERRED_KEYS.length; k++) {
+      var val = v[PREFERRED_KEYS[k]];
+      if (typeof val === 'string' && val.trim()) return val;
+    }
+    for (var key in v) {
+      if (Object.prototype.hasOwnProperty.call(v, key)) {
+        var r2 = pickString(v[key], depth + 1);
+        if (r2) return r2;
+      }
+    }
+    return null;
+  }
+
+  function extractJsonText(raw) {
+    var obj;
+    try { obj = JSON.parse(raw); }
+    catch (e) { return { text: raw, note: 'JSON 解析失败，已按原文使用' }; }
+    var found = pickString(obj, 0);
+    if (found) return { text: found, note: '已提取 JSON 文本字段' };
+    try { return { text: JSON.stringify(obj), note: '未找到文本字段，已使用压缩后的 JSON' }; }
+    catch (e2) { return { text: raw, note: '已按原文使用' }; }
+  }
+
+  function applyFileText(raw, file) {
+    var text = raw, note = '已载入文本文件';
+    if (/\.json$/i.test(file.name) || /^\s*[\[{]/.test(raw)) {
+      var picked = extractJsonText(raw);
+      text = picked.text;
+      note = picked.note;
+    }
+    $('content').value = text;
+    refresh();
+    toast(file.name + ' · ' + note + '（' + text.length + ' 字符 / ' + byteLength(text) + ' 字节）');
+  }
+
+  function readFile(file) {
+    if (!file) return;
+    if (file.size > 1024 * 1024) {
+      toast('文件超过 1 MB。二维码最多承载约 3 KB 内容，请先精简文件。');
+      return;
+    }
+    var reader = new FileReader();
+    reader.onload = function () {
+      var raw = String(reader.result || '');
+      if (raw.indexOf('\uFFFD') >= 0) {
+        try {
+          var r2 = new FileReader();
+          r2.onload = function () { applyFileText(String(r2.result || '').replace(/^\uFEFF/, ''), file); };
+          r2.onerror = function () { applyFileText(raw.replace(/^\uFEFF/, ''), file); };
+          r2.readAsText(file, 'gb18030');
+          return;
+        } catch (e) { /* 忽略，走 utf-8 结果 */ }
+      }
+      applyFileText(raw.replace(/^\uFEFF/, ''), file);
+    };
+    reader.onerror = function () { toast('文件读取失败：' + file.name); };
+    reader.readAsText(file, 'utf-8');
+  }
+
+  /* ============ 导出 ============ */
+
+  function stamp() {
+    var d = new Date();
+    function p(n) { return (n < 10 ? '0' : '') + n; }
+    return d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '-' + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds());
+  }
+
+  function exportAs(kind) {
+    if (!current) {
+      toast('请先输入内容，生成二维码后再导出');
+      return;
+    }
+    var canvas = document.createElement('canvas');
+    var dim = drawMatrix(canvas, current.matrix, {
+      quiet: state.quiet,
+      fg: state.fg,
+      bg: state.bg,
+      radius: state.radius / 100
+    }, state.exportSize, true);
+
+    var mime = kind === 'jpg' ? 'image/jpeg' : 'image/png';
+    var ext = kind === 'jpg' ? 'jpg' : 'png';
+    var name = 'QR_V' + current.version + '_' + current.size + 'x' + current.size + '_' + stamp() + '.' + ext;
+
+    function save(blob) {
+      if (!blob) { toast('导出失败：浏览器未生成图片数据'); return; }
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 5000);
+      toast('已导出 ' + ext.toUpperCase() + ' · ' + dim + '×' + dim + ' · ' + name);
+    }
+
+    if (canvas.toBlob) {
+      canvas.toBlob(save, mime, 0.95);
+    } else {
+      var data = canvas.toDataURL(mime, 0.95);
+      var bin = atob(data.split(',')[1]);
+      var arr = new Uint8Array(bin.length);
+      for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+      save(new Blob([arr], { type: mime }));
+    }
+  }
+
+  /* ============ 事件绑定 ============ */
+
+  var debouncedRefresh = debounce(refresh, 140);
+  var debouncedPreview = debounce(renderPreview, 120);
+
+  $('content').addEventListener('input', debouncedRefresh);
+
+  $('eclSeg').addEventListener('click', function (e) {
+    var btn = e.target.closest('button[data-ecl]');
+    if (!btn) return;
+    state.ecl = btn.getAttribute('data-ecl');
+    Array.prototype.forEach.call(this.children, function (b) { b.classList.toggle('active', b === btn); });
+    $('eclHint').textContent = ECL_DESC[state.ecl];
+    refresh();
+  });
+
+  $('autoVer').addEventListener('change', function () {
+    state.autoVersion = this.checked;
+    if (!state.autoVersion && current) state.version = current.version;
+    refresh();
+  });
+
+  function setVersion(v) {
+    v = Math.max(1, Math.min(40, parseInt(v, 10) || 1));
+    state.version = v;
+    syncVersionUI(v);
+    debouncedRefresh();
+  }
+  $('verRange').addEventListener('input', function () { setVersion(this.value); });
+  $('verNum').addEventListener('change', function () { setVersion(this.value); });
+
+  $('maskSel').addEventListener('change', function () {
+    state.mask = parseInt(this.value, 10);
+    refresh();
+  });
+
+  function setColor(which, hex) {
+    var n = normalizeHex(hex);
+    if (!n) return false;
+    state[which] = n;
+    $(which + 'Color').value = n;
+    $(which + 'Hex').value = n.toUpperCase();
+    contrastCheck();
+    renderPreview();
+    return true;
+  }
+
+  $('fgColor').addEventListener('input', function () { setColor('fg', this.value); });
+  $('bgColor').addEventListener('input', function () { setColor('bg', this.value); });
+  $('fgHex').addEventListener('change', function () {
+    if (!setColor('fg', this.value)) { this.value = state.fg.toUpperCase(); toast('颜色格式无效，请输入如 #0B1118'); }
+  });
+  $('bgHex').addEventListener('change', function () {
+    if (!setColor('bg', this.value)) { this.value = state.bg.toUpperCase(); toast('颜色格式无效，请输入如 #FFFFFF'); }
+  });
+
+  var FG_PRESETS = ['#0b1118', '#000000', '#0f3d3e', '#2b1a4a', '#4a1b2a', '#133a6b'];
+  var BG_PRESETS = ['#ffffff', '#f6f7fb', '#eafaf6', '#f4efff', '#fff8e6', '#e8eefc'];
+  function buildSwatches(hostId, presets, which) {
+    var host = $(hostId);
+    presets.forEach(function (c) {
+      var i = document.createElement('i');
+      i.style.background = c;
+      i.title = '使用 ' + c.toUpperCase();
+      i.addEventListener('click', function () { setColor(which, c); });
+      host.appendChild(i);
+    });
+  }
+  buildSwatches('fgSwatches', FG_PRESETS, 'fg');
+  buildSwatches('bgSwatches', BG_PRESETS, 'bg');
+
+  $('quiet').addEventListener('input', function () {
+    state.quiet = parseInt(this.value, 10);
+    $('quietVal').textContent = state.quiet + ' 模块';
+    debouncedPreview();
+  });
+  $('radius').addEventListener('input', function () {
+    state.radius = parseInt(this.value, 10);
+    $('radiusVal').textContent = state.radius + '%';
+    debouncedPreview();
+  });
+
+  $('sizeSeg').addEventListener('click', function (e) {
+    var btn = e.target.closest('button[data-size]');
+    if (!btn) return;
+    state.exportSize = parseInt(btn.getAttribute('data-size'), 10);
+    Array.prototype.forEach.call(this.children, function (b) { b.classList.toggle('active', b === btn); });
+    $('exportHint').textContent = state.exportSize + ' × ' + state.exportSize;
+  });
+
+  $('btnPng').addEventListener('click', function () { exportAs('png'); });
+  $('btnJpg').addEventListener('click', function () { exportAs('jpg'); });
+
+  $('fileInput').addEventListener('change', function () {
+    var f = this.files && this.files[0];
+    if (f) readFile(f);
+    this.value = '';
+  });
+  $('btnImport').addEventListener('click', function () { $('fileInput').click(); });
+  $('btnPick').addEventListener('click', function () { $('fileInput').click(); });
+
+  $('btnSample').addEventListener('click', function () {
+    $('content').value = 'https://example.com/qr-studio?from=desktop\nQR Studio 二维码生成器 · 演示内容 2026';
+    refresh();
+    toast('已填入示例内容');
+  });
+
+  $('btnClear').addEventListener('click', function () {
+    $('content').value = '';
+    refresh();
+    $('content').focus();
+  });
+
+  /* 拖拽导入 */
+  ['dragenter', 'dragover'].forEach(function (ev) {
+    document.addEventListener(ev, function (e) {
+      e.preventDefault();
+      document.body.classList.add('drag-over');
+    });
+  });
+  ['dragleave', 'drop'].forEach(function (ev) {
+    document.addEventListener(ev, function (e) {
+      e.preventDefault();
+      if (ev === 'dragleave' && e.relatedTarget) return;
+      document.body.classList.remove('drag-over');
+    });
+  });
+  document.addEventListener('drop', function (e) {
+    if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) readFile(e.dataTransfer.files[0]);
+  });
+
+  window.addEventListener('resize', debouncedPreview);
+
+  /* 初始化 */
+  $('eclHint').textContent = ECL_DESC[state.ecl];
+  $('exportHint').textContent = state.exportSize + ' × ' + state.exportSize;
+  contrastCheck();
+  refresh();
+})();
+</script>
+</body>
+</html>

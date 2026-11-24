@@ -2,9 +2,22 @@
 // 管理员功能（需要登录且 role === 'admin'）
 
 (function() {
+    // 存储键名统一来源（优化清单第 2 条），禁止手写字符串
+    var STORAGE_KEYS = window.WS_KEYS || { USERS: 'ws_users', TOKEN: 'ws_token', PENDING_SAVE: 'ws_pending_save', SAVE: 'black_room_prison_save' };
+
     // ---------- 获取用户数据 ----------
-    function getUsers() {
-        const raw = localStorage.getItem('ws_users');
+    // 优化清单第 22 条：用户名进入 innerHTML / 属性前统一转义，防止 < > & " 破坏 DOM 结构
+function escapeHtml(v) {
+    return String(v === null || v === undefined ? '' : v)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function getUsers() {
+        const raw = localStorage.getItem(STORAGE_KEYS.USERS);
         if (raw) {
             try { return JSON.parse(raw); } catch(e) {}
         }
@@ -12,7 +25,7 @@
     }
 
     function saveUsers(users) {
-        localStorage.setItem('ws_users', JSON.stringify(users));
+        localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
     }
 
     // ---------- 创建管理面板（只创建一次） ----------
@@ -76,16 +89,16 @@
             const canSave = data.canSave !== false;
             item.innerHTML = `
                 <div class="user-info">
-                    <span><strong>${username}</strong></span>
+                    <span><strong>${escapeHtml(username)}</strong></span>
                     <span style="color:${data.role === 'admin' ? '#ffd700' : '#aaa'};">
                         ${roleText}
                     </span>
                     <label>
-                        <input type="checkbox" class="can-save-check" data-username="${username}" ${canSave ? 'checked' : ''}>
+                        <input type="checkbox" class="can-save-check" data-username="${escapeHtml(username)}" ${canSave ? 'checked' : ''}>
                         允许存档
                     </label>
                 </div>
-                <button class="reset-pwd-btn" data-username="${username}">重置密码</button>
+                <button class="reset-pwd-btn" data-username="${escapeHtml(username)}">重置密码</button>
             `;
             list.appendChild(item);
         }
@@ -102,8 +115,8 @@
                     const current = window.getCurrentUser();
                     if (current && current.username === username) {
                         const tokenData = { ...current, canSave: this.checked };
-                        const token = btoa(JSON.stringify(tokenData));
-                        sessionStorage.setItem('ws_token', token);
+                        const token = btoa(unescape(encodeURIComponent(JSON.stringify(tokenData))));
+                        sessionStorage.setItem(STORAGE_KEYS.TOKEN, token);
                         // 刷新界面提示
                         const warn = document.getElementById('permissionWarning');
                         if (this.checked) {
@@ -124,7 +137,7 @@
                 if (newPwd && newPwd.length >= 6) {
                     resetPassword(username, newPwd);
                 } else if (newPwd !== null) {
-                    alert('密码长度至少6位');
+                    showToast('密码长度至少6位');
                 }
             });
         });
@@ -134,7 +147,7 @@
     async function resetPassword(username, newPassword) {
         const users = getUsers();
         if (!users[username]) {
-            alert('用户不存在');
+            showToast('用户不存在');
             return;
         }
         const salt = Math.random().toString(36).substring(2, 10);
@@ -142,7 +155,7 @@
         users[username].hash = hashed;
         users[username].salt = salt;
         saveUsers(users);
-        alert(`用户 ${username} 密码已重置`);
+        showToast(`用户 ${username} 密码已重置`);
         renderUserList(); // 刷新列表
     }
 
@@ -171,10 +184,10 @@
                 // 合并：导入的数据会覆盖同名用户
                 const merged = { ...current, ...imported };
                 saveUsers(merged);
-                alert('账户数据导入成功！');
+                showToast('账户数据导入成功！');
                 renderUserList();
             } catch(err) {
-                alert('导入失败：' + err.message);
+                showToast('导入失败：' + err.message);
             }
         };
         reader.readAsText(file);

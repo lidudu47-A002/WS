@@ -178,28 +178,28 @@
             <div class="editor-header">
                 <h3>Game Console</h3>
                 <div class="editor-controls">
-                    <button id="closeEditorBtn" class="close-editor-btn">✖ 关闭</button>
+                    <button id="closeEditorBtn" class="close-editor-btn">✖ Close</button>
                 </div>
             </div>
             <div class="main-editor-area">
                 <div class="code-input-area">
-                    <label>📝 代码编辑区 (JavaScript)</label>
-                    <textarea id="codeEditorTextarea" class="code-editor" spellcheck="false" placeholder='# 直接修改变量或调用函数&#10;gold += 500&#10;print("金币 +500")&#10;&#10;# 恢复生命&#10;playerHP = currentMaxHp&#10;print("生命已回满")&#10;&#10;# 召唤敌人&#10;# summonEnemies(3, "block")'></textarea>
+                    <label>📝 Code editor (JavaScript)</label>
+                    <textarea id="codeEditorTextarea" class="code-editor" spellcheck="false" placeholder='# Change variables or call functions directly&#10;gold += 500&#10;print("Gold +500")&#10;&#10;# Restore HP&#10;playerHP = currentMaxHp&#10;print("HP fully restored")&#10;&#10;# Summon enemies&#10;# summonEnemies(3, "block")'></textarea>
                 </div>
                 <div class="output-area">
-                    <label>📟 输出控制台</label>
+                    <label>📟 Output console</label>
                     <div id="outputConsole" class="output-console">
                         <div class="output-content" id="outputContent">
-                            <p style="color:#aaa;">✨ 就绪，按 Ctrl+Enter 运行代码</p>
-                            <p style="color:#ffd966;">💡 可用变量: player, gold, level, enemies, boss, playerHP, currentMaxHp ...</p>
-                            <p style="color:#ffd966;">💡 可用函数: print(msg), addItem(type, amount), summonEnemies(count, "block/black")</p>
+                            <p style="color:#aaa;">✨ Ready. Press Ctrl+Enter to run</p>
+                            <p style="color:#ffd966;">💡 Available variables: player, gold, level, enemies, boss, playerHP, currentMaxHp ...</p>
+                            <p style="color:#ffd966;">💡 Available functions: print(msg), addItem(type, amount), summonEnemies(count, "block/black")</p>
                         </div>
-                        <div class="hint-line">💡 按 Ctrl+F 清空输出区</div>
+                        <div class="hint-line">💡 Ctrl+F clears the output</div>
                     </div>
                 </div>
             </div>
             <div class="editor-footer">
-                <kbd>Ctrl+Enter</kbd> 运行代码 &nbsp;&nbsp;|&nbsp;&nbsp; <kbd>Ctrl+F</kbd> 清空输出 &nbsp;&nbsp;|&nbsp;&nbsp; <kbd>Esc</kbd> 关闭面板
+                <kbd>Ctrl+Enter</kbd> Run code &nbsp;&nbsp;|&nbsp;&nbsp; <kbd>Ctrl+F</kbd> Clear output &nbsp;&nbsp;|&nbsp;&nbsp; <kbd>Esc</kbd> Close panel
             </div>
         </div>
     `;

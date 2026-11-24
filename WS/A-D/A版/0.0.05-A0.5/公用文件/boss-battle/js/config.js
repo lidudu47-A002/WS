@@ -1,3 +1,6 @@
+// 存储键名统一来源（优化清单第 2 条）
+var SAVE_KEY = (window.WS_KEYS && window.WS_KEYS.SAVE) || 'black_room_prison_save';
+
 // ============================================================
 //  config.js — BOSS 战全局配置与状态（24×24 正方形方场 · 实时版）
 //  公用文件/boss-battle 统一入口，场景由 ?scene=blackroom|prison 决定
@@ -34,7 +37,7 @@ const SCENES = {
         key: 'blackroom',
         bossName: '？ ？ ？',
         bossTitle: '它从黑屋深处站了起来',
-        bossHp: 1500,
+        bossHp: 750,      // 原 1500，整体下调至 50%
         bossImg: 'assets/boss.png',
         soulImg: '../assets/soul_yellow.png',
         orbImg: '../assets/orb.png',
@@ -55,7 +58,7 @@ const SCENES = {
         key: 'prison',
         bossName: '狱 卒 长',
         bossTitle: '铁链在等距的尽头拖响',
-        bossHp: 1000,
+        bossHp: 500,      // 原 1000，整体下调至 50%
         bossImg: 'assets/boss.png',
         soulImg: '../assets/soul_blue.png',
         orbImg: '../assets/orb_blue.png',
@@ -166,7 +169,7 @@ let hasClownMask = false;
 function readSaveCompat() {
     let d = null;
     try {
-        const raw = localStorage.getItem('black_room_prison_save');
+        const raw = localStorage.getItem(SAVE_KEY);
         if (raw) d = JSON.parse(raw);
     } catch (e) {
         console.warn('[BOSS战] 存档解析失败', e);
@@ -217,13 +220,13 @@ function markBossDefeated() {
     // 2) 终局标记：黑屋胜利不写，否则 prison.html 会立刻跳到 forest，打断黑屋→监狱流程
     if (SCENE.key !== 'prison') return;
     try {
-        const raw = localStorage.getItem('black_room_prison_save');
+        const raw = localStorage.getItem(SAVE_KEY);
         if (!raw) return;
         const d = JSON.parse(raw);
         if (!d || typeof d !== 'object') return;
         d.bd = true;
         if (d.bossDefeated !== undefined) d.bossDefeated = true;
-        localStorage.setItem('black_room_prison_save', JSON.stringify(d));
+        localStorage.setItem(SAVE_KEY, JSON.stringify(d));
     } catch (e) {
         console.warn('[BOSS战] 写入击败标记失败', e);
     }

@@ -1,0 +1,22 @@
+# ---------- 手工备份 / 历史快照（勿提交） ----------
+*_backup*
+*_bak*
+*_old*
+*.backup
+*_2026*.js
+*_2025*.js
+terrain_*.js
+!terrain.js
+
+# ---------- 系统与编辑器 ----------
+Thumbs.db
+Desktop.ini
+.DS_Store
+.vscode/
+.idea/
+
+# ---------- 临时产物 ----------
+temp/
+output/
+*.log
+*.tmp

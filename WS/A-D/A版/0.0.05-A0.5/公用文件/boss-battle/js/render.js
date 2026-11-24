@@ -73,6 +73,12 @@ const Render = {
     },
 
     // ---------------- 地形块 ----------------
+    // 靠近镜头（南侧）的围墙只保留矮缘石，否则会挡住场内视线
+    wallHeight(x, z) {
+        if (z >= WORLD_H - ARENA_BORDER) return 0.34;
+        return 2.1;
+    },
+
     collectTerrain(list, vb) {
         // 两场景独立配色（贴图缺失时的回退色）
         const pal = IS_PRISON
@@ -87,11 +93,13 @@ const Render = {
             for (let x = vb.x0; x < vb.x1; x++) {
                 const t = MAP.grid[z * WORLD_W + x];
                 if (!t) continue;
-                const d = x + z;
+                // 纵深排序：z 为主（越大越靠近镜头），同排按 x 递增
+                const d = z + x * 0.001;
                 if (t === 1) {
+                    const hgt = this.wallHeight(x, z);
                     list.push({ d: d, draw: function (c) {
-                        if (!Iso.drawBlockTex(c, x, z, 2.1, 'wall')) {
-                            Iso.drawBlock(c, x, z, 2.1, pal.top, pal.face, pal.side);
+                        if (!Iso.drawBlockTex(c, x, z, hgt, 'wall')) {
+                            Iso.drawBlock(c, x, z, hgt, pal.top, pal.face, pal.side);
                         }
                     } });
                 } else if (t === 2) {
@@ -197,8 +205,10 @@ const Render = {
         for (let i = 0; i < MAP.deco.length; i++) {
             const o = MAP.deco[i];
             if (o.x < vb.x0 - 2 || o.x > vb.x1 + 2 || o.z < vb.z0 - 2 || o.z > vb.z1 + 2) continue;
-            list.push({ d: o.x + o.z + 0.01, draw: function (c) {
+            list.push({ d: o.z + o.x * 0.001, draw: function (c) {
                 const p = Iso.proj(o.x, o.z, 0);
+                // 触地阴影：让立在地上的摆件与地面贴合，强化立体
+                self.shadow(c, o.x, o.z, o.kind === 'brazier' ? 1.5 : 1.6, 0.34);
                 if (o.kind === 'brazier') {
                     const flick = 1 + Math.sin(self.time * 9 + o.x) * 0.06;
                     const dw = sp.brazier.width;
@@ -217,8 +227,20 @@ const Render = {
 
     // ---------------- 实体 ----------------
     collectEntities(list) {
-        if (!boss.dead) list.push({ d: boss.x + boss.z, draw: this.drawBoss.bind(this) });
-        list.push({ d: player.x + player.z, draw: this.drawPlayer.bind(this) });
+        if (!boss.dead) list.push({ d: boss.z + 0.02 + boss.x * 0.001, draw: this.drawBoss.bind(this) });
+        list.push({ d: player.z + 0.02 + player.x * 0.001, draw: this.drawPlayer.bind(this) });
+        // 召唤物 block：与 BOSS / player 同层做深度排序
+        if (typeof Summon !== 'undefined' && Summon.list) {
+            for (let i = 0; i < Summon.list.length; i++) {
+                const b = Summon.list[i];
+                list.push({
+                    d: b.z + 0.02 + b.x * 0.001,
+                    draw: (function (blk) {
+                        return function (c) { Summon.drawOne(c, blk); };
+                    })(b)
+                });
+            }
+        }
     },
 
     shadow(c, x, z, radiusCells, alpha) {
@@ -233,11 +255,30 @@ const Render = {
         c.restore();
     },
 
+    // 给平面精灵补一层纵深侧面，让实体看起来是立起来的立体（右侧面 + 触地阴影）
+    sideFace(c, x, z, wCells, hCells, dCells, color) {
+        const sh = Iso.hSH * dCells, th = Iso.hTH * dCells;
+        const H = Iso.heightPx(hCells);
+        const p = Iso.proj(x + wCells / 2, z, 0);
+        c.save();
+        c.fillStyle = color;
+        c.beginPath();
+        c.moveTo(p.x, p.y);
+        c.lineTo(p.x + sh, p.y + th);
+        c.lineTo(p.x + sh, p.y + th - H);
+        c.lineTo(p.x, p.y - H);
+        c.closePath();
+        c.fill();
+        c.restore();
+    },
+
     drawBoss(c) {
         const s = Iso.getScale();
         const bob = Math.sin(this.time * 1.8) * 0.16;
         const hBase = boss.h + bob;
-        this.shadow(c, boss.x, boss.z, 4.6, 0.5);
+        this.shadow(c, boss.x, boss.z + 0.5, 4.6, 0.5);
+        this.sideFace(c, boss.x, boss.z - 0.6, 4.6, hBase + 6.2, 1.2,
+            IS_PRISON ? '#140a12' : '#160713');
 
         const p0 = Iso.proj(boss.x, boss.z, 0);
         const R = 80 * s;
@@ -265,21 +306,7 @@ const Render = {
             c.restore();
         }
 
-        // 眼睛
-        const eyeY = Iso.proj(boss.x, boss.z, hBase + hc * 0.62).y;
-        const eyeGap = 15 * s;
-        const eyeR = (boss.phase >= 3 ? 5.2 : 4.0) * s;
-        for (let i = -1; i <= 1; i += 2) {
-            const ex = p0.x + eyeGap * i;
-            const gr = c.createRadialGradient(ex, eyeY, 1, ex, eyeY, eyeR * 3);
-            gr.addColorStop(0, '#fff');
-            gr.addColorStop(0.3, SCENE.accent);
-            gr.addColorStop(1, 'rgba(255, 0, 40, 0)');
-            c.fillStyle = gr;
-            c.beginPath();
-            c.arc(ex, eyeY, eyeR * 3, 0, Math.PI * 2);
-            c.fill();
-        }
+        // 头顶两个光点已移除（BOSS 头部不再有"眼睛"光斑）
     },
 
     drawPlayer(c) {
@@ -287,7 +314,9 @@ const Render = {
         const img = Assets.get('player');
         const bob = player.moving ? Math.abs(Math.sin(player.walkPhase)) * 0.12 : 0;
 
-        this.shadow(c, player.x, player.z, 1.15, 0.45);
+        this.shadow(c, player.x, player.z + 0.3, 1.15, 0.45);
+        this.sideFace(c, player.x, player.z - 0.22, 1.15, bob + 1.75, 0.45,
+            IS_PRISON ? '#1b2430' : '#241d33');
 
         const wp = Iso.lenPx(1.15);
         const hpx = Iso.heightPx(1.75);

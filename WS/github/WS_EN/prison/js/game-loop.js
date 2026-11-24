@@ -88,7 +88,7 @@ function executeCommand(cmd) {
         return;
     }
 
-    if (/^image\s+(reset|clear|还原)$/i.test(cmd.trim())) {
+    if (/^image\s+(reset|clear|restore|还原)$/i.test(cmd.trim())) {
         if (typeof window.resetImageOverrides === 'function') window.resetImageOverrides();
         else alert('Sprite system not loaded');
         return;
